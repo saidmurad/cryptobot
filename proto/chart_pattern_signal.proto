@@ -17,8 +17,10 @@ enum TradeType {
 }
 
 message ChartPatternSignal {
+  // Example BTCUSDT
   string coin_pair = 1;
 
+  // Name of the pattern.
   string pattern = 2;
 
   // If false, it is an emerging signal.
@@ -35,5 +37,7 @@ message ChartPatternSignal {
   int64 target_time_secs = 7;
 
   TradeType trade_type = 8;
+
+  string breakout_time = 9;
 }
 

@@ -18,5 +18,5 @@ public class SignalReceiver {
     this.processSignals = processSignals;
   }
 
-
+  // Each Socket message is an array: ChartPattern[]
 }

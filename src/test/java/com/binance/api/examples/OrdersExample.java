@@ -2,6 +2,7 @@ package com.binance.api.examples;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.config.BinanceApiConfig;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.NewOrderResponseType;
@@ -24,11 +25,11 @@ import static com.binance.api.client.domain.account.NewOrder.marketBuy;
 public class OrdersExample {
 
   public static void main(String[] args) {
-    BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("YOUR_API_KEY", "YOUR_SECRET");
+    BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("", "", true, true);
     BinanceApiRestClient client = factory.newRestClient();
 
     // Getting list of open orders
-    List<Order> openOrders = client.getOpenOrders(new OrderRequest("LINKETH"));
+    List<Order> openOrders = client.getOpenOrders(new OrderRequest("BTCUSDT"));
     System.out.println(openOrders);
 
     // Getting list of all orders with a limit of 10

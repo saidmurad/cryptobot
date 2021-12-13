@@ -317,7 +317,7 @@ Closable ws = client.onAggTradeEvent("ethbtc", someCallback);
 ws.close();
 ```
 
-#### Listen for aggregated trade events for ETH/BTC
+#### Listen for aggregated tradingBot events for ETH/BTC
 ```java
 client.onAggTradeEvent("ethbtc", (AggTradeEvent response) -> {
   System.out.println(response.getPrice());
@@ -422,7 +422,7 @@ client.onUserDataUpdateEvent(listenKey, response -> {
   } else {
     OrderTradeUpdateEvent orderTradeUpdateEvent = response.getOrderTradeUpdateEvent();
     
-    // Print details about an order/trade
+    // Print details about an order/tradingBot
     System.out.println(orderTradeUpdateEvent);
 
     // Print original quantity

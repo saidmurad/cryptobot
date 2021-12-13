@@ -5,6 +5,8 @@ package com.binance.api.client.config;
  */
 public class BinanceApiConfig {
 
+	public static final double MAX_AMOUNT_PER_TRADE_USDT = 250;
+
 	/**
 	 * Base domain for URLs.
 	 */

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <profiles>
+        <profile>
+            <id>any-java-project</id>
+            <repositories>
+                <repository>
+                    <id>mockito</id>
+                    <name>mockito</name>
+                    <url>https://mvnrepository.com/artifact/org.mockito/mockito-all</url>
+                </repository>
+                <repository>
+                    <id>google-guice</id>
+                    <name>google-guice</name>
+                    <url>https://mvnrepository.com/artifact/com.google.inject/guice</url>
+                </repository>
+                <repository>
+                    <id>google-protobuf</id>
+                    <name>google-protobuf</name>
+                    <url>https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java</url>
+                </repository>
+                <repository>
+                    <id>google-options</id>
+                    <name>google-options</name>
+                    <url>https://mvnrepository.com/artifact/com.github.pcj/google-options</url>
+                </repository>
+                <repository>
+                    <id>javax-annotation</id>
+                    <name>javax-annotation</name>
+                    <url>https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api</url>
+                </repository>
+                <repository>
+                    <id>guice-testlib</id>
+                    <name>guice-testlib</name>
+                    <url>https://mvnrepository.com/artifact/com.google.inject.extensions/guice-testlib</url>
+                </repository>
+            </repositories>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>any-java-project</activeProfile>
+    </activeProfiles>
+</settings>

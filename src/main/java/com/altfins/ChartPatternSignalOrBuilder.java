@@ -8,20 +8,36 @@ public interface ChartPatternSignalOrBuilder extends
     com.google.protobuf.MessageOrBuilder {
 
   /**
+   * <pre>
+   * Example BTCUSDT
+   * </pre>
+   *
    * <code>string coin_pair = 1;</code>
    */
   java.lang.String getCoinPair();
   /**
+   * <pre>
+   * Example BTCUSDT
+   * </pre>
+   *
    * <code>string coin_pair = 1;</code>
    */
   com.google.protobuf.ByteString
       getCoinPairBytes();
 
   /**
+   * <pre>
+   * Name of the pattern.
+   * </pre>
+   *
    * <code>string pattern = 2;</code>
    */
   java.lang.String getPattern();
   /**
+   * <pre>
+   * Name of the pattern.
+   * </pre>
+   *
    * <code>string pattern = 2;</code>
    */
   com.google.protobuf.ByteString
@@ -60,6 +76,10 @@ public interface ChartPatternSignalOrBuilder extends
   double getTargetPrice();
 
   /**
+   * <pre>
+   * The target time for the signal in Epoch seconds.
+   * </pre>
+   *
    * <code>int64 target_time_secs = 7;</code>
    */
   long getTargetTimeSecs();
@@ -72,4 +92,22 @@ public interface ChartPatternSignalOrBuilder extends
    * <code>.altfins.TradeType trade_type = 8;</code>
    */
   com.altfins.TradeType getTradeType();
+
+  /**
+   * <pre>
+   * "xx minutes/hours/days ago"
+   * </pre>
+   *
+   * <code>string breakout_time = 9;</code>
+   */
+  java.lang.String getBreakoutTime();
+  /**
+   * <pre>
+   * "xx minutes/hours/days ago"
+   * </pre>
+   *
+   * <code>string breakout_time = 9;</code>
+   */
+  com.google.protobuf.ByteString
+      getBreakoutTimeBytes();
 }

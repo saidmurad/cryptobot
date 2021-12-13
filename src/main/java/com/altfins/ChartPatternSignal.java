@@ -24,6 +24,7 @@ private static final long serialVersionUID = 0L;
     targetPrice_ = 0D;
     targetTimeSecs_ = 0L;
     tradeType_ = 0;
+    breakoutTime_ = "";
   }
 
   @java.lang.Override
@@ -94,6 +95,12 @@ private static final long serialVersionUID = 0L;
             tradeType_ = rawValue;
             break;
           }
+          case 74: {
+            java.lang.String s = input.readStringRequireUtf8();
+
+            breakoutTime_ = s;
+            break;
+          }
           default: {
             if (!parseUnknownFieldProto3(
                 input, unknownFields, extensionRegistry, tag)) {
@@ -129,6 +136,10 @@ private static final long serialVersionUID = 0L;
   public static final int COIN_PAIR_FIELD_NUMBER = 1;
   private volatile java.lang.Object coinPair_;
   /**
+   * <pre>
+   * Example BTCUSDT
+   * </pre>
+   *
    * <code>string coin_pair = 1;</code>
    */
   public java.lang.String getCoinPair() {
@@ -144,6 +155,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * Example BTCUSDT
+   * </pre>
+   *
    * <code>string coin_pair = 1;</code>
    */
   public com.google.protobuf.ByteString
@@ -163,6 +178,10 @@ private static final long serialVersionUID = 0L;
   public static final int PATTERN_FIELD_NUMBER = 2;
   private volatile java.lang.Object pattern_;
   /**
+   * <pre>
+   * Name of the pattern.
+   * </pre>
+   *
    * <code>string pattern = 2;</code>
    */
   public java.lang.String getPattern() {
@@ -178,6 +197,10 @@ private static final long serialVersionUID = 0L;
     }
   }
   /**
+   * <pre>
+   * Name of the pattern.
+   * </pre>
+   *
    * <code>string pattern = 2;</code>
    */
   public com.google.protobuf.ByteString
@@ -249,6 +272,10 @@ private static final long serialVersionUID = 0L;
   public static final int TARGET_TIME_SECS_FIELD_NUMBER = 7;
   private long targetTimeSecs_;
   /**
+   * <pre>
+   * The target time for the signal in Epoch seconds.
+   * </pre>
+   *
    * <code>int64 target_time_secs = 7;</code>
    */
   public long getTargetTimeSecs() {
@@ -270,6 +297,48 @@ private static final long serialVersionUID = 0L;
     @SuppressWarnings("deprecation")
     com.altfins.TradeType result = com.altfins.TradeType.valueOf(tradeType_);
     return result == null ? com.altfins.TradeType.UNRECOGNIZED : result;
+  }
+
+  public static final int BREAKOUT_TIME_FIELD_NUMBER = 9;
+  private volatile java.lang.Object breakoutTime_;
+  /**
+   * <pre>
+   * "xx minutes/hours/days ago"
+   * </pre>
+   *
+   * <code>string breakout_time = 9;</code>
+   */
+  public java.lang.String getBreakoutTime() {
+    java.lang.Object ref = breakoutTime_;
+    if (ref instanceof java.lang.String) {
+      return (java.lang.String) ref;
+    } else {
+      com.google.protobuf.ByteString bs = 
+          (com.google.protobuf.ByteString) ref;
+      java.lang.String s = bs.toStringUtf8();
+      breakoutTime_ = s;
+      return s;
+    }
+  }
+  /**
+   * <pre>
+   * "xx minutes/hours/days ago"
+   * </pre>
+   *
+   * <code>string breakout_time = 9;</code>
+   */
+  public com.google.protobuf.ByteString
+      getBreakoutTimeBytes() {
+    java.lang.Object ref = breakoutTime_;
+    if (ref instanceof java.lang.String) {
+      com.google.protobuf.ByteString b = 
+          com.google.protobuf.ByteString.copyFromUtf8(
+              (java.lang.String) ref);
+      breakoutTime_ = b;
+      return b;
+    } else {
+      return (com.google.protobuf.ByteString) ref;
+    }
   }
 
   private byte memoizedIsInitialized = -1;
@@ -310,6 +379,9 @@ private static final long serialVersionUID = 0L;
     if (tradeType_ != com.altfins.TradeType.BUY.getNumber()) {
       output.writeEnum(8, tradeType_);
     }
+    if (!getBreakoutTimeBytes().isEmpty()) {
+      com.google.protobuf.GeneratedMessageV3.writeString(output, 9, breakoutTime_);
+    }
     unknownFields.writeTo(output);
   }
 
@@ -349,6 +421,9 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeEnumSize(8, tradeType_);
     }
+    if (!getBreakoutTimeBytes().isEmpty()) {
+      size += com.google.protobuf.GeneratedMessageV3.computeStringSize(9, breakoutTime_);
+    }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
@@ -383,6 +458,8 @@ private static final long serialVersionUID = 0L;
     result = result && (getTargetTimeSecs()
         == other.getTargetTimeSecs());
     result = result && tradeType_ == other.tradeType_;
+    result = result && getBreakoutTime()
+        .equals(other.getBreakoutTime());
     result = result && unknownFields.equals(other.unknownFields);
     return result;
   }
@@ -414,6 +491,8 @@ private static final long serialVersionUID = 0L;
         getTargetTimeSecs());
     hash = (37 * hash) + TRADE_TYPE_FIELD_NUMBER;
     hash = (53 * hash) + tradeType_;
+    hash = (37 * hash) + BREAKOUT_TIME_FIELD_NUMBER;
+    hash = (53 * hash) + getBreakoutTime().hashCode();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
@@ -563,6 +642,8 @@ private static final long serialVersionUID = 0L;
 
       tradeType_ = 0;
 
+      breakoutTime_ = "";
+
       return this;
     }
 
@@ -597,6 +678,7 @@ private static final long serialVersionUID = 0L;
       result.targetPrice_ = targetPrice_;
       result.targetTimeSecs_ = targetTimeSecs_;
       result.tradeType_ = tradeType_;
+      result.breakoutTime_ = breakoutTime_;
       onBuilt();
       return result;
     }
@@ -671,6 +753,10 @@ private static final long serialVersionUID = 0L;
       if (other.tradeType_ != 0) {
         setTradeTypeValue(other.getTradeTypeValue());
       }
+      if (!other.getBreakoutTime().isEmpty()) {
+        breakoutTime_ = other.breakoutTime_;
+        onChanged();
+      }
       this.mergeUnknownFields(other.unknownFields);
       onChanged();
       return this;
@@ -702,6 +788,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object coinPair_ = "";
     /**
+     * <pre>
+     * Example BTCUSDT
+     * </pre>
+     *
      * <code>string coin_pair = 1;</code>
      */
     public java.lang.String getCoinPair() {
@@ -717,6 +807,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Example BTCUSDT
+     * </pre>
+     *
      * <code>string coin_pair = 1;</code>
      */
     public com.google.protobuf.ByteString
@@ -733,6 +827,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Example BTCUSDT
+     * </pre>
+     *
      * <code>string coin_pair = 1;</code>
      */
     public Builder setCoinPair(
@@ -746,6 +844,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Example BTCUSDT
+     * </pre>
+     *
      * <code>string coin_pair = 1;</code>
      */
     public Builder clearCoinPair() {
@@ -755,6 +857,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Example BTCUSDT
+     * </pre>
+     *
      * <code>string coin_pair = 1;</code>
      */
     public Builder setCoinPairBytes(
@@ -771,6 +877,10 @@ private static final long serialVersionUID = 0L;
 
     private java.lang.Object pattern_ = "";
     /**
+     * <pre>
+     * Name of the pattern.
+     * </pre>
+     *
      * <code>string pattern = 2;</code>
      */
     public java.lang.String getPattern() {
@@ -786,6 +896,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Name of the pattern.
+     * </pre>
+     *
      * <code>string pattern = 2;</code>
      */
     public com.google.protobuf.ByteString
@@ -802,6 +916,10 @@ private static final long serialVersionUID = 0L;
       }
     }
     /**
+     * <pre>
+     * Name of the pattern.
+     * </pre>
+     *
      * <code>string pattern = 2;</code>
      */
     public Builder setPattern(
@@ -815,6 +933,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Name of the pattern.
+     * </pre>
+     *
      * <code>string pattern = 2;</code>
      */
     public Builder clearPattern() {
@@ -824,6 +946,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * Name of the pattern.
+     * </pre>
+     *
      * <code>string pattern = 2;</code>
      */
     public Builder setPatternBytes(
@@ -987,12 +1113,20 @@ private static final long serialVersionUID = 0L;
 
     private long targetTimeSecs_ ;
     /**
+     * <pre>
+     * The target time for the signal in Epoch seconds.
+     * </pre>
+     *
      * <code>int64 target_time_secs = 7;</code>
      */
     public long getTargetTimeSecs() {
       return targetTimeSecs_;
     }
     /**
+     * <pre>
+     * The target time for the signal in Epoch seconds.
+     * </pre>
+     *
      * <code>int64 target_time_secs = 7;</code>
      */
     public Builder setTargetTimeSecs(long value) {
@@ -1002,6 +1136,10 @@ private static final long serialVersionUID = 0L;
       return this;
     }
     /**
+     * <pre>
+     * The target time for the signal in Epoch seconds.
+     * </pre>
+     *
      * <code>int64 target_time_secs = 7;</code>
      */
     public Builder clearTargetTimeSecs() {
@@ -1052,6 +1190,95 @@ private static final long serialVersionUID = 0L;
     public Builder clearTradeType() {
       
       tradeType_ = 0;
+      onChanged();
+      return this;
+    }
+
+    private java.lang.Object breakoutTime_ = "";
+    /**
+     * <pre>
+     * "xx minutes/hours/days ago"
+     * </pre>
+     *
+     * <code>string breakout_time = 9;</code>
+     */
+    public java.lang.String getBreakoutTime() {
+      java.lang.Object ref = breakoutTime_;
+      if (!(ref instanceof java.lang.String)) {
+        com.google.protobuf.ByteString bs =
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        breakoutTime_ = s;
+        return s;
+      } else {
+        return (java.lang.String) ref;
+      }
+    }
+    /**
+     * <pre>
+     * "xx minutes/hours/days ago"
+     * </pre>
+     *
+     * <code>string breakout_time = 9;</code>
+     */
+    public com.google.protobuf.ByteString
+        getBreakoutTimeBytes() {
+      java.lang.Object ref = breakoutTime_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        breakoutTime_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    /**
+     * <pre>
+     * "xx minutes/hours/days ago"
+     * </pre>
+     *
+     * <code>string breakout_time = 9;</code>
+     */
+    public Builder setBreakoutTime(
+        java.lang.String value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  
+      breakoutTime_ = value;
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * "xx minutes/hours/days ago"
+     * </pre>
+     *
+     * <code>string breakout_time = 9;</code>
+     */
+    public Builder clearBreakoutTime() {
+      
+      breakoutTime_ = getDefaultInstance().getBreakoutTime();
+      onChanged();
+      return this;
+    }
+    /**
+     * <pre>
+     * "xx minutes/hours/days ago"
+     * </pre>
+     *
+     * <code>string breakout_time = 9;</code>
+     */
+    public Builder setBreakoutTimeBytes(
+        com.google.protobuf.ByteString value) {
+      if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+      
+      breakoutTime_ = value;
       onChanged();
       return this;
     }

@@ -4,6 +4,8 @@ package altfins;
 option java_package = "com.altfins";
 option java_multiple_files = true;
 
+// Command to generate the java code ChartPatternSignal.proto using the protoc compiler:
+// protoc --proto_path=proto --java_out=src/main/java proto/chart_pattern_signal.proto
 enum TimeFrame {
   FIFTEEN_MIN = 0;
   ONE_HOUR = 1;
@@ -38,6 +40,7 @@ message ChartPatternSignal {
 
   TradeType trade_type = 8;
 
+  // "xx minutes/hours/days ago"
   string breakout_time = 9;
 }
 

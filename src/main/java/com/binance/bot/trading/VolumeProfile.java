@@ -6,18 +6,20 @@ import com.google.auto.value.AutoValue;
 import java.util.List;
 
 @AutoValue
-abstract class VolumeProfile {
-    abstract List<Candlestick> recentCandlesticks();
+public abstract class VolumeProfile {
+    public abstract List<Candlestick> recentCandlesticks();
 
-    abstract Candlestick currentCandlestick();
+    public abstract Candlestick currentCandlestick();
 
-    abstract double minVol();
+    public abstract double minVol();
 
-    abstract double maxVol();
+    public abstract double maxVol();
 
-    abstract double avgVol();
+    public abstract double avgVol();
 
-    abstract boolean isVolSurged();
+    public abstract boolean isVolSurged();
+
+    public abstract boolean isVolAtleastMaintained();
 
     static Builder builder() {
         return new AutoValue_VolumeProfile.Builder();
@@ -36,6 +38,8 @@ abstract class VolumeProfile {
         abstract Builder setAvgVol(double avgVol);
 
         abstract Builder setIsVolSurged(boolean isVolSurged);
+
+        abstract Builder setIsVolAtleastMaintained(boolean isVolAtleastMaintained);
 
         abstract VolumeProfile build();
     }

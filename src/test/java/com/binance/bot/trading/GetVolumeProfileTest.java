@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 @RunWith(JUnit4.class)
@@ -50,9 +52,9 @@ public class GetVolumeProfileTest {
   public void getVolumeProfile_minMaxAvg() {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
-        .thenReturn(getCandlesticks());
+        .thenReturn(getCandlesticks("100", "200"));
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
-        .thenReturn(getCandlesticks());
+        .thenReturn(getCandlesticks("100", "200"));
 
     VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);
 
@@ -61,13 +63,65 @@ public class GetVolumeProfileTest {
     assertEquals(200.0, volumeProfile.maxVol());
   }
 
-  private List<Candlestick> getCandlesticks() {
+  @Test
+  public void getVolumeProfile_volNotMaintainedEven() {
+    when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
+        .thenReturn(getCandlesticks("100", "200"));
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
+        .thenReturn(getCandlesticks("100", "200"));
+
+    VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);
+
+    assertFalse(volumeProfile.isVolAtleastMaintained());
+  }
+
+  @Test
+  public void getVolumeProfile_volAtleastMaintainedEven() {
+    when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
+        .thenReturn(getCandlesticks("100", "200"));
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
+        .thenReturn(getCandlesticks("150", "200"));
+
+    VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);
+
+    assertTrue(volumeProfile.isVolAtleastMaintained());
+  }
+
+  @Test
+  public void getVolumeProfile_volNotSurged() {
+    when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
+        .thenReturn(getCandlesticks("100", "200"));
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
+        .thenReturn(getCandlesticks("150", "200"));
+
+    VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);
+
+    assertFalse(volumeProfile.isVolSurged());
+  }
+
+  @Test
+  public void getVolumeProfile_volSurged() {
+    when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
+        .thenReturn(getCandlesticks("100", "200"));
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
+        .thenReturn(getCandlesticks("300", "200"));
+
+    VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);
+
+    assertTrue(volumeProfile.isVolSurged());
+  }
+
+  private List<Candlestick> getCandlesticks(String vol1, String vol2) {
     List<Candlestick> candlesticks = new ArrayList<>();
     Candlestick candlestick = new Candlestick();
-    candlestick.setVolume("100");
+    candlestick.setVolume(vol1);
     candlesticks.add(candlestick);
     candlestick = new Candlestick();
-    candlestick.setVolume("200");
+    candlestick.setVolume(vol2);
     candlesticks.add(candlestick);
     return candlesticks;
   }

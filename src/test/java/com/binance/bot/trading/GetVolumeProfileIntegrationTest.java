@@ -17,6 +17,7 @@ import java.time.Clock;
 public class GetVolumeProfileIntegrationTest extends TestCase {
 
     private static final long CURRENT_TIME_MILLIS = 999999999999999999l;
+    private boolean isUsingTestNet, isUsingRealApiKey;
 
     @Inject
     private GetVolumeProfile getVolumeProfile;
@@ -29,18 +30,28 @@ public class GetVolumeProfileIntegrationTest extends TestCase {
 
     @Before
     public void setUp() {
+        String testArgs[] = TestUtil.getArgs();
+        isUsingTestNet = testArgs.length > 0 && testArgs[0].equals("--use_testnet=true");
+        isUsingRealApiKey = testArgs.length > 1 && testArgs[1].startsWith("--api_key=true");
         MockitoAnnotations.initMocks(this);
         Guice.createInjector(
             BoundFieldModule.of(this),
-            new BinanceModule(TestUtil.getArgs())).injectMembers(this);
+            new BinanceModule(testArgs)).injectMembers(this);
     }
 
     public void testCanPlaceTrade() {
+        if (!isUsingTestNet && !isUsingRealApiKey) {
+            return;
+        }
         assertTrue(getVolumeProfile.canPlaceTrade("ETHUSDT", TradeType.BUY));
     }
 
-    // Run against real net to get non zero volumes using test api key, by passing System Property -D--use_testnet=false
+    // Run against real (non-test) binancenet to get non zero volumes using test api key itself but by passing
+    // System Property -D--use_testnet=false
     public void testGetVolumeProfile() {
+        if (isUsingTestNet) {
+            return;
+        }
         VolumeProfile volProfile = getVolumeProfile.getVolumeProfile("ETHUSDT");
         assertTrue(volProfile.minVol() > 0);
         assertTrue(volProfile.maxVol() > 0);

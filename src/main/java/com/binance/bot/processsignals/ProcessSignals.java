@@ -1,8 +1,8 @@
 package com.binance.bot.processsignals;
 
+import com.altfins.ChartPatternSignal;
 import com.altfins.TimeFrame;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.bot.chartpattern.ChartPatternSignal;
 import com.binance.bot.trading.GetVolumeProfile;
 
 import javax.inject.Inject;
@@ -25,7 +25,7 @@ public class ProcessSignals {
      * seen before and entered in our system. "Newer" is defined as follows:
      * For 15 minute time frame, less then 15 minutes.
      * For other time frames, less than an hour.
-     */
+     */ 
     public void ProcessPattern(TimeFrame timeFrame, List<ChartPatternSignal> chartPatternSignals) {
         // Filter the recent signals.
 

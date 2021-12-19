@@ -29,7 +29,7 @@ public class GetVolumeProfile {
         return Double.parseDouble(balance.getFree()) >= 0;
     }
 
-    VolumeProfile getVolumeProfile(String coinPair) {
+    public VolumeProfile getVolumeProfile(String coinPair) {
         long currentTimeMillis = clock.millis();
         // Look from 2:30 hours past till 30 min ago
         List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(coinPair, CandlestickInterval.FIFTEEN_MINUTES, 1000, currentTimeMillis - 150 * 60 * 1000, currentTimeMillis - 30 * 60 * 100);
@@ -54,6 +54,7 @@ public class GetVolumeProfile {
                 .setMaxVol(maxVol)
                 .setAvgVol(avgVol)
                 .setIsVolSurged(Double.parseDouble(currentCandlestick.getVolume()) >= 2 * avgVol)
+                .setIsVolAtleastMaintained(Double.parseDouble(currentCandlestick.getVolume()) >= avgVol)
                 .build();
     }
 }

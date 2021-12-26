@@ -22,8 +22,10 @@ public class Util {
     }
 
   public static String chartPatternSignalToString(ChartPatternSignal chartPatternSignal) {
+      return null;
   }
 
   public static String volumeProfileToString(VolumeProfile volumeProfile) {
+      return null;
   }
 }

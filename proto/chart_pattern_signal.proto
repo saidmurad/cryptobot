@@ -6,17 +6,6 @@ option java_multiple_files = true;
 
 // Command to generate the java code ChartPatternSignal.proto using the protoc compiler:
 // protoc --proto_path=proto --java_out=src/main/java proto/chart_pattern_signal.proto
-enum TimeFrame {
-  FIFTEEN_MIN = 0;
-  ONE_HOUR = 1;
-  FOUR_HOURS = 2;
-  ONE_DAY = 3;
-}
-
-enum TradeType {
-  BUY = 0;
-  SELL = 1;
-}
 
 message ChartPatternSignal {
   // Example BTCUSDT
@@ -28,7 +17,7 @@ message ChartPatternSignal {
   // If false, it is an emerging signal.
   bool is_breakout = 3;
 
-  TimeFrame time_frame = 4;
+  int32 time_frame = 4;
 
   // The price at breakout, avaialble in some types of patterns such as breaking resistance and support.
   double breakout_price = 5;
@@ -38,7 +27,7 @@ message ChartPatternSignal {
   // The target time for the signal in Epoch seconds.
   int64 target_time_secs = 7;
 
-  TradeType trade_type = 8;
+  int32 trade_type = 8;
 
   // "xx minutes/hours/days ago"
   string breakout_time = 9;

@@ -1,11 +1,9 @@
 package com.binance.bot.trading;
 
-import com.altfins.TradeType;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.bot.tradesignals.TradeType;
 import com.binance.common.TestUtil;
-import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
-import com.google.inject.testing.fieldbinder.BoundFieldModule;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.mockito.MockitoAnnotations;
@@ -15,7 +13,6 @@ import java.time.Clock;
 
 public class GetVolumeProfileIntegrationTest extends TestCase {
 
-    private static final long CURRENT_TIME_MILLIS = 999999999999999999l;
     private boolean isUsingTestNet, isUsingRealApiKey;
 
     @Inject

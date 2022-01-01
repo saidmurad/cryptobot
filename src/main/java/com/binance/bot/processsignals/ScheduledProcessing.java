@@ -16,7 +16,7 @@ package com.binance.bot.processsignals;
  * since there can be several rows in that state and the regular thread that runs every minute should not
  * be blocked on it.
  */
-public class Process implements Runnable {
+public class ScheduledProcessing implements Runnable {
   
   @Override
   public void run() {

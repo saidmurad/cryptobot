@@ -1,6 +1,3 @@
-sqlite3
-open .BotTrading
-
 Create Table ChartPatternSignal(
     CoinPair TEXT NOT NULL,
     TimeFrame TEXT NOT NULL,

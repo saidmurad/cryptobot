@@ -1,8 +1,7 @@
 package com.binance.bot.trading;
 
-import com.altfins.ChartPatternSignal;
-import com.altfins.TradeType;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.bot.tradesignals.ChartPatternSignal;
 
 public final class BinanceTradingBot {
     private final BinanceApiRestClient binanceApiRestClient;

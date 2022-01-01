@@ -1,11 +1,11 @@
 package com.binance.bot.trading;
 
-import com.altfins.TradeType;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.account.AssetBalance;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
 import com.binance.bot.common.Util;
+import com.binance.bot.tradesignals.TradeType;
 
 import javax.inject.Inject;
 import java.time.Clock;

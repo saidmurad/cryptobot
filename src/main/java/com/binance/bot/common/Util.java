@@ -1,6 +1,6 @@
 package com.binance.bot.common;
 
-import com.altfins.ChartPatternSignal;
+import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.VolumeProfile;
 
 import java.time.Instant;

@@ -1,8 +1,8 @@
 package com.binance.bot.processsignals;
 
-import com.altfins.ChartPatternSignal;
-import com.altfins.TimeFrame;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.trading.GetVolumeProfile;
 
 import javax.inject.Inject;

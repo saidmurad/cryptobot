@@ -7,6 +7,9 @@ option java_multiple_files = true;
 // Command to generate the java code ChartPatternSignal.proto using the protoc compiler:
 // protoc --proto_path=proto --java_out=src/main/java proto/chart_pattern_signal.proto
 
+// Command to generate python code using protoc:
+// protoc --proto_path=/home/kannanj/IdeaProjects/binance-java-api/proto --python_out=src /home/kannanj/IdeaProjects/binance-java-api/proto/chart_pattern_signal.proto
+
 message ChartPatternSignal {
   // Example BTCUSDT
   string coin_pair = 1;

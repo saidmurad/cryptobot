@@ -2,7 +2,6 @@ package com.binance.bot.trading;
 
 import com.altfins.TradeType;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.bot.module.BinanceModule;
 import com.binance.common.TestUtil;
 import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
@@ -34,9 +33,6 @@ public class GetVolumeProfileIntegrationTest extends TestCase {
         isUsingTestNet = testArgs.length > 0 && testArgs[0].equals("--use_testnet=true");
         isUsingRealApiKey = testArgs.length > 1 && testArgs[1].startsWith("--api_key=true");
         MockitoAnnotations.initMocks(this);
-        Guice.createInjector(
-            BoundFieldModule.of(this),
-            new BinanceModule(testArgs)).injectMembers(this);
     }
 
     public void testCanPlaceTrade() {

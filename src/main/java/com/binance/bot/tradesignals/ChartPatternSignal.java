@@ -7,48 +7,48 @@ import java.util.Date;
 
 @AutoValue
 public abstract class ChartPatternSignal {
-  abstract String coinPair();
+  public abstract String coinPair();
 
-  abstract TimeFrame timeFrame();
+  public abstract TimeFrame timeFrame();
 
-  abstract TradeType tradeType();
+  public abstract TradeType tradeType();
 
-  abstract String pattern();
+  public abstract String pattern();
 
-  abstract double priceAtTimeOfSignal();
+  public abstract double priceAtTimeOfSignal();
 
-  abstract Date timeOfSignal();
+  public abstract Date timeOfSignal();
 
-  abstract double priceRelatedToPattern();
+  public abstract double priceRelatedToPattern();
 
-  abstract double priceTarget();
+  public abstract double priceTarget();
 
-  abstract double profitPotential();
+  public abstract double profitPotential();
 
-  abstract boolean isSignalOn();
+  public abstract boolean isSignalOn();
 
-  abstract long volumeAtSignalCandlestick();
+  public abstract long volumeAtSignalCandlestick();
 
-  abstract double volumeAverage();
+  public abstract double volumeAverage();
 
-  abstract boolean isVolumeSurge();
-
-  @Nullable
-  abstract Date timeOfSignalInvalidation();
+  public abstract boolean isVolumeSurge();
 
   @Nullable
-  abstract ReasonForSignalInvalidation reasonForSignalInvalidation();
-
-  abstract double priceAtSignalTargetTime();
-
-  abstract double priceAtTenCandlestickTime();
-
-  abstract double priceBestReached();
-
-  abstract double priceCurrent();
+  public abstract Date timeOfSignalInvalidation();
 
   @Nullable
-  abstract Date currentTime();
+  public abstract ReasonForSignalInvalidation reasonForSignalInvalidation();
+
+  public abstract double priceAtSignalTargetTime();
+
+  public abstract double priceAtTenCandlestickTime();
+
+  public abstract double priceBestReached();
+
+  public abstract double priceCurrent();
+
+  @Nullable
+  public abstract Date currentTime();
 
   public Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()

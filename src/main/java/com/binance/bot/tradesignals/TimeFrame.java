@@ -2,7 +2,7 @@ package com.binance.bot.tradesignals;
 
 public enum TimeFrame {
   FIFTEEN_MINUTES,
-  HOURL,
+  HOUR,
   FOUR_HOURS,
   DAY
 }

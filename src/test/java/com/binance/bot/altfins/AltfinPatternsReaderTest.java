@@ -20,7 +20,7 @@ public class AltfinPatternsReaderTest extends TestCase {
 
   public void testReadPatterns() throws IOException {
     List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    assertThat(patterns).hasSize(4);
+    assertThat(patterns).hasSize(6);
     ChartPatternSignal pattern = patterns.get(0);
     assertThat(pattern.coinPair()).isEqualTo("ORNUSDT");
     assertThat(pattern.pattern()).isEqualTo("Triangle");
@@ -42,6 +42,12 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns.get(1).priceTarget()).isEqualTo(0.0254);
     assertThat(patterns.get(2).priceTarget()).isEqualTo(0.0254);
     assertThat(patterns.get(3).priceTarget()).isEqualTo(0.0248);
+
+    // Comma in double value
+    assertThat(patterns.get(4).priceAtTimeOfSignal()).isEqualTo(4000.0);
+    assertThat(patterns.get(4).priceTarget()).isEqualTo(5000.0);
+    // In range.
+    assertThat(patterns.get(5).priceTarget()).isEqualTo(5000.0);
   }
 
   private String getPatternsFileContents() throws IOException {

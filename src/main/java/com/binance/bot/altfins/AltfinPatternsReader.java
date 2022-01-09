@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import java.util.List;
 /**
  * Reads the patterns output by the Python code.
  */
+@Component
 public class AltfinPatternsReader implements Runnable {
 
   static final String[] patternsFiles = {"/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns1.txt",

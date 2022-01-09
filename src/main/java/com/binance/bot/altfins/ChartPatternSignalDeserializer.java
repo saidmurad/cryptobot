@@ -8,17 +8,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ChartPatternSignalDeserializer implements JsonDeserializer<List<ChartPatternSignal>> {
   private static final Map<String, TimeFrame> timeFrameMap = new HashMap<>();
   private static final Map<String, TradeType> tradeTypeMap = new HashMap<>();
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   public ChartPatternSignalDeserializer() {
@@ -53,7 +52,7 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
         .setTimeFrame(timeFrameMap.get(patternElement.get("interval").getAsString()))
         .setPattern(patternElement.get("pattern").getAsString())
         .setTradeType(tradeType)
-        .setPriceAtTimeOfSignal(patternElement.get("current_price").getAsDouble())
+        .setPriceAtTimeOfSignal(parseDouble(patternElement.get("current_price").getAsString()))
         .setTimeOfSignal(dateFormat.parse(patternElement.get("signal_occurence_time").getAsString()))
         .setPattern(patternElement.get("pattern").getAsString())
         .setPriceTarget(getPriceTarget(patternElement.get("profit_target").getAsString(), tradeType))
@@ -64,11 +63,11 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
     return builder.build();
   }
 
-  private double getPriceTarget(String priceTargetStr, TradeType tradeType) {
+  private double getPriceTarget(String priceTargetStr, TradeType tradeType) throws ParseException {
     if (priceTargetStr.contains("to")) {
       int ind = priceTargetStr.indexOf(' ');
-      double fromPrice = Double.parseDouble(priceTargetStr.substring(0, ind));
-      double toPrice =  Double.parseDouble(priceTargetStr.substring(ind + 4));
+      double fromPrice = parseDouble(priceTargetStr.substring(0, ind));
+      double toPrice =  parseDouble(priceTargetStr.substring(ind + 4));
       switch (tradeType) {
         case BUY:
           return fromPrice;
@@ -80,6 +79,10 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
           return toPrice;
       }
     }
-    return Double.parseDouble(priceTargetStr);
+    return parseDouble(priceTargetStr);
+  }
+
+  private double parseDouble(String doubleStr) throws ParseException {
+    return numberFormat.parse(doubleStr).doubleValue();
   }
 }

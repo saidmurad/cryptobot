@@ -1,0 +1,42 @@
+[{
+  "coin_pair": "ORNUSDT",
+  "interval": "1",
+  "current_price": "4.8325",
+  "signal_occurence_time": "2022-01-09 08:45",
+  "pattern": "Triangle",
+  "trade_type": "Buy",
+  "profit_potential_percent": "1.77",
+  "profit_target": "4.9181",
+  "profit_target_time": "2022-1-9 14:11"
+  },{
+  "coin_pair": "RSRUSDT",
+  "interval": "2",
+  "current_price": "0.02468355",
+  "signal_occurence_time": "2022-01-09 08:45",
+  "pattern": "3 Point Extension",
+  "trade_type": "Sell",
+  "profit_potential_percent": "",
+  "profit_target": "0.0248 to 0.0254",
+  "profit_target_time": "2022-1-9 9:56"
+  },{
+  "coin_pair": "BTCUSDT",
+  "interval": "3",
+  "current_price": "4.8325",
+  "signal_occurence_time": "2022-01-09 08:45",
+  "pattern": "Triangle",
+  "trade_type": "Sell",
+  "profit_potential_percent": "1.77",
+  "profit_target": "0.0254 to 0.0248",
+  "profit_target_time": "2022-1-9 14:11"
+  },{
+  "coin_pair": "ETHUSDT",
+  "interval": "4",
+  "current_price": "0.02468355",
+  "signal_occurence_time": "2022-01-09 08:45",
+  "pattern": "3 Point Extension",
+  "trade_type": "Buy",
+  "profit_potential_percent": "",
+  "profit_target": "0.0248 to 0.0254",
+  "profit_target_time": "2022-1-9 9:56"
+  }
+  ]

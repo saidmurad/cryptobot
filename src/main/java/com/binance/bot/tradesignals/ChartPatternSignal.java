@@ -19,11 +19,13 @@ public abstract class ChartPatternSignal {
 
   public abstract Date timeOfSignal();
 
+  public abstract Date priceTargetTime();
+
   public abstract double priceRelatedToPattern();
 
   public abstract double priceTarget();
 
-  public abstract double profitPotential();
+  public abstract double profitPotentialPercent();
 
   public abstract boolean isSignalOn();
 
@@ -50,7 +52,7 @@ public abstract class ChartPatternSignal {
   @Nullable
   public abstract Date currentTime();
 
-  public Builder newBuilder() {
+  public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
         .setPriceRelatedToPattern(0)
         .setIsSignalOn(true)
@@ -60,7 +62,8 @@ public abstract class ChartPatternSignal {
         .setPriceAtSignalTargetTime(0)
         .setPriceAtTenCandlestickTime(0)
         .setPriceBestReached(0)
-        .setPriceCurrent(0);
+        .setPriceCurrent(0)
+        .setProfitPotentialPercent(0);
   }
 
   @AutoValue.Builder
@@ -75,13 +78,15 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setPriceAtTimeOfSignal(double priceAtTimeOfSignal);
 
+    public abstract Builder setPriceTargetTime(Date priceTargetTime);
+
     public abstract Builder setTimeOfSignal(Date timeOfSignal);
 
     public abstract Builder setPriceRelatedToPattern(double priceRelatedToPattern);
 
     public abstract Builder setPriceTarget(double priceTarget);
 
-    public abstract Builder setProfitPotential(double profitPotential);
+    public abstract Builder setProfitPotentialPercent(double profitPotentialPercent);
 
     public abstract Builder setIsSignalOn(boolean isSignalOn);
 

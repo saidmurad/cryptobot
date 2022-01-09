@@ -1,7 +1,5 @@
 package com.binance.api.client;
 
-import com.binance.client.RequestOptions;
-import com.binance.client.SyncRequestClient;
 import com.binance.api.client.impl.*;
 import com.binance.api.client.config.BinanceApiConfig;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -157,11 +155,11 @@ public class BinanceApiClientFactory {
   /**
    * Creates a new synchronous/blocking Futures REST client.
    */
-  public SyncRequestClient newFuturesRestClient() {
+  /*public SyncRequestClient newFuturesRestClient() {
     RequestOptions requestOptions = new RequestOptions();
     if (useTestnet) {
       requestOptions.setUrl(FUTURES_TESTNET_URL);
     }
     return SyncRequestClient.create(futuresApiKey, futuresApiSecret, requestOptions);
-  }
+  }*/
 }

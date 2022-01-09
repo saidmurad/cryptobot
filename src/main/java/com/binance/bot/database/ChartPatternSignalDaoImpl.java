@@ -23,7 +23,7 @@ public class ChartPatternSignalDaoImpl {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, " +
         "PriceRelatedToPattern, TimeOfSignal, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn";
     Object params[] = new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), chartPatternSignal.priceAtSignalTargetTime(), chartPatternSignal.priceRelatedToPattern(), df.format(chartPatternSignal.timeOfSignal()),
-        chartPatternSignal.priceTarget(), chartPatternSignal.};
+        chartPatternSignal.priceTarget(), chartPatternSignal.priceTargetTime(), chartPatternSignal.profitPotentialPercent(), chartPatternSignal.isSignalOn()};
 
     jdbcTemplate.update(sql, params);
   }

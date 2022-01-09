@@ -1,43 +1,60 @@
 package com.binance.bot.altfins;
 
-import com.binance.bot.processsignals.ProcessSignals;
+import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Reads the patterns output by the Python code.
  */
 public class AltfinPatternsReader implements Runnable {
 
-  private static final String FIFTEEN_MIN_PATTERNS_FILE = "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns1.txt";
+  static final String[] patternsFiles = {"/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns1.txt",
+      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns2.txt",
+      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns3.txt",
+      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns4.txt"};
+  private long[] lastProcessedTimes = new long[4];
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  private final Gson gson = new Gson();
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   @Override
   public void run() {
-    long lastProcessTime = 0;
     while (true) {
       try {
-        File fifteenMinPatternsFile = new File(FIFTEEN_MIN_PATTERNS_FILE);
-        if (lastProcessTime == 0 || fifteenMinPatternsFile.lastModified() > lastProcessTime) {
-          lastProcessTime = fifteenMinPatternsFile.lastModified();
+        for (int i =0; i < 4; i++) {
+          File file = new File(patternsFiles[i]);
+          if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
+            List<ChartPatternSignal> patterns = readPatterns(new String(Files.readAllBytes(file.toPath())));
+            logger.info(String.format("Read {1} patterns for timeframe {2} for file modified at {3}.", patterns.size(), i, dateFormat.format(new Date(file.lastModified()))));
+            lastProcessedTimes[i] = file.lastModified();
+          }
         }
         Thread.sleep(60000);
       } catch (InterruptedException | IOException e) {
         logger.error("Exception.", e);
+        throw new RuntimeException(e);
       }
     }
   }
   
-  void readPatterns(Path filePath) throws IOException {
-    String content = Files.readString(filePath);
-    gson
+  List<ChartPatternSignal> readPatterns(String content) {
+    Type listType = new TypeToken<List<ChartPatternSignal>>(){}.getType();
+    List<ChartPatternSignal> patterns = new GsonBuilder()
+        .registerTypeAdapter(listType, new ChartPatternSignalDeserializer())
+        .create()
+        .fromJson(content, listType);
+    return patterns;
   }
 }

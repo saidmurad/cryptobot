@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -39,7 +40,7 @@ public class AltfinPatternsReader implements Runnable {
           File file = new File(patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             List<ChartPatternSignal> patterns = readPatterns(new String(Files.readAllBytes(file.toPath())));
-            logger.info(String.format("Read {1} patterns for timeframe {2} for file modified at {3}.", patterns.size(), i, dateFormat.format(new Date(file.lastModified()))));
+            logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patterns.size(), i, dateFormat.format(new Date(file.lastModified()))));
             lastProcessedTimes[i] = file.lastModified();
           }
         }

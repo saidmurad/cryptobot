@@ -36,6 +36,21 @@
                     <name>guice-testlib</name>
                     <url>https://mvnrepository.com/artifact/com.google.inject.extensions/guice-testlib</url>
                 </repository>
+                <repository>
+                    <id>log4j-core</id>
+                    <name>lolg4j-core</name>
+                    <url>https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core</url>
+                </repository>
+                <repository>
+                    <id>gson</id>
+                    <name>gson</name>
+                    <url>https://mvnrepository.com/artifact/com.google.code.gson/gson</url>
+                </repository>
+                <repository>
+                    <id>javax.mail-api</id>
+                    <name>javax.mail-api</name>
+                    <url>https://mvnrepository.com/artifact/javax.mail/javax.mail-api</url>
+                </repository>
             </repositories>
         </profile>
     </profiles>

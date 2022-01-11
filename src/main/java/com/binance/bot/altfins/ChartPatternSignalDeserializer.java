@@ -54,11 +54,10 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
         .setTradeType(tradeType)
         .setPriceAtTimeOfSignal(parseDouble(patternElement.get("current_price").getAsString()))
         .setTimeOfSignal(dateFormat.parse(patternElement.get("signal_occurence_time").getAsString()))
-        .setPattern(patternElement.get("pattern").getAsString())
         .setPriceTarget(getPriceTarget(patternElement.get("profit_target").getAsString(), tradeType))
         .setPriceTargetTime(dateFormat.parse(patternElement.get("profit_target_time").getAsString()));
     if (patternElement.get("profit_potential_percent").getAsString().length() > 0) {
-      builder.setProfitPotentialPercent(patternElement.get("profit_potential_percent").getAsDouble());
+      builder.setProfitPotentialPercent(parseDouble(patternElement.get("profit_potential_percent").getAsString()));
     }
     return builder.build();
   }

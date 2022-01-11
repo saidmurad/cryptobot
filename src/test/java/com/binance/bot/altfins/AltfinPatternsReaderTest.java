@@ -30,6 +30,8 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(pattern.profitPotentialPercent()).isEqualTo(1.77);
     assertThat(dateFormat.format(pattern.priceTargetTime())).isEqualTo("2022-01-09 14:11");
 
+    assertThat(patterns.get(1).profitPotentialPercent()).isEqualTo(-21999);
+
     assertThat(patterns.get(0).tradeType()).isEqualTo(TradeType.BUY);
     assertThat(patterns.get(1).tradeType()).isEqualTo(TradeType.SELL);
 

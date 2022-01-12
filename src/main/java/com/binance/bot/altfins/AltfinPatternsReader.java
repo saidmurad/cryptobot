@@ -42,6 +42,10 @@ public class AltfinPatternsReader implements Runnable {
             List<ChartPatternSignal> patterns = readPatterns(new String(Files.readAllBytes(file.toPath())));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patterns.size(), i, dateFormat.format(new Date(file.lastModified()))));
             lastProcessedTimes[i] = file.lastModified();
+            if (patterns.size() == 0) {
+              logger.warn("Read empty array. Ignoring");
+              continue;
+            }
           }
         }
         Thread.sleep(60000);

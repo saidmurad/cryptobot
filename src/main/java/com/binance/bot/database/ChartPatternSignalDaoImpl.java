@@ -21,10 +21,15 @@ public class ChartPatternSignalDaoImpl {
 
   public void insertChartPatternSignal(ChartPatternSignal chartPatternSignal) {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, " +
-        "PriceRelatedToPattern, TimeOfSignal, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn";
+        "PriceRelatedToPattern, TimeOfSignal, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn)" +
+        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     Object params[] = new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), chartPatternSignal.priceAtSignalTargetTime(), chartPatternSignal.priceRelatedToPattern(), df.format(chartPatternSignal.timeOfSignal()),
         chartPatternSignal.priceTarget(), chartPatternSignal.priceTargetTime(), chartPatternSignal.profitPotentialPercent(), chartPatternSignal.isSignalOn()};
 
     jdbcTemplate.update(sql, params);
+  }
+
+  public List<ChartPatternSignal> getActiveChartPatterns() {
+    return null;
   }
 }

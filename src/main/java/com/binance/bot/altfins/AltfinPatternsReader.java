@@ -4,10 +4,12 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -15,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -58,10 +61,16 @@ public class AltfinPatternsReader implements Runnable {
   
   List<ChartPatternSignal> readPatterns(String content) {
     Type listType = new TypeToken<List<ChartPatternSignal>>(){}.getType();
-    List<ChartPatternSignal> patterns = new GsonBuilder()
-        .registerTypeAdapter(listType, new ChartPatternSignalDeserializer())
-        .create()
-        .fromJson(content, listType);
+    List<ChartPatternSignal> patterns;
+    try {
+      patterns = new GsonBuilder()
+          .registerTypeAdapter(listType, new ChartPatternSignalDeserializer())
+          .create()
+          .fromJson(content, listType);
+    } catch (JsonSyntaxException e) {
+      logger.warn("Faced JsonSyntaxException and ignoring.", e);
+      patterns = new ArrayList<>();
+    }
     return patterns;
   }
 }

@@ -46,7 +46,7 @@ public class AltfinPatternsReader implements Runnable {
         for (int i =0; i < 4; i++) {
           File file = new File(patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
-            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(Files.readAllBytes(file.toPath())));
+            List<ChartPatternSignal> patternFromAltfins = makeUnique(readPatterns(new String(Files.readAllBytes(file.toPath()))));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {
@@ -75,7 +75,15 @@ public class AltfinPatternsReader implements Runnable {
       }
     }
   }
-  
+
+  private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {
+    Set<ChartPatternSignal> signalSet = new HashSet<>();
+    signalSet.addAll(patterns);
+    List<ChartPatternSignal> condensedList = signalSet.stream().collect(Collectors.toList());
+    logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
+    return condensedList;
+  }
+
   List<ChartPatternSignal> readPatterns(String content) {
     Type listType = new TypeToken<List<ChartPatternSignal>>(){}.getType();
     List<ChartPatternSignal> patterns;

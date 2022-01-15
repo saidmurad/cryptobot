@@ -22,7 +22,7 @@ public abstract class ChartPatternSignal {
 
   @Override
   public String toString() {
-    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %d",
+    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f",
         coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget());
   }
   @Override

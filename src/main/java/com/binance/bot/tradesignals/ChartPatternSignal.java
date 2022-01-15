@@ -3,10 +3,13 @@ package com.binance.bot.tradesignals;
 import com.google.auto.value.AutoValue;
 
 import javax.annotation.Nullable;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Objects;
 
 @AutoValue
 public abstract class ChartPatternSignal {
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm");
   public abstract String coinPair();
 
   public abstract TimeFrame timeFrame();
@@ -15,9 +18,26 @@ public abstract class ChartPatternSignal {
 
   public abstract String pattern();
 
-  public abstract double priceAtTimeOfSignal();
-
   public abstract Date timeOfSignal();
+
+  @Override
+  public String toString() {
+    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %d",
+        coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget());
+  }
+  @Override
+  public boolean equals(Object that) {
+    ChartPatternSignal other = (ChartPatternSignal) that;
+    return this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
+        && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(), this.timeOfSignal());
+  }
+
+  public abstract double priceAtTimeOfSignal();
 
   public abstract Date priceTargetTime();
 

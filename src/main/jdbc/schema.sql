@@ -4,7 +4,7 @@ Create Table ChartPatternSignal(
     TradeType TEXT NOT NULL,
     Pattern TEXT NOT NULL,
     PriceAtTimeOfSignal REAL NOT NULL,
-    PriceRelatedToPattern REAL NOT NULL,
+    PriceRelatedToPattern REAL,
     TimeOfSignal TEXT NOT NULL,
     PriceTarget REAL NOT NULL,
     PriceTargetTime TEXT NOT NULL,

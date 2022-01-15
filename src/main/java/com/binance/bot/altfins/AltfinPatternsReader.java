@@ -56,6 +56,7 @@ public class AltfinPatternsReader implements Runnable {
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getActiveChartPatterns(timeFrames[i]);
             List<ChartPatternSignal> newChartPatternSignals = getChartPatternSignalsDelta(chartPatternsInDB, patternFromAltfins);
             for (ChartPatternSignal chartPatternSignal: newChartPatternSignals) {
+              logger.info("Attempting insertion of chart pattern signal " + chartPatternSignal);
               boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
               logger.info("Inserted chart pattern signal " + chartPatternSignal + " into DB with ret val '" + ret + "'");
             }

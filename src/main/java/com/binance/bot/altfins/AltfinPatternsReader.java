@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -48,6 +49,7 @@ public class AltfinPatternsReader implements Runnable {
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             List<ChartPatternSignal> patternFromAltfins = makeUnique(readPatterns(new String(Files.readAllBytes(file.toPath()))));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
+            dumpPatterns(i, patternFromAltfins);
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {
               logger.warn("Read empty array. Ignoring");
@@ -74,6 +76,14 @@ public class AltfinPatternsReader implements Runnable {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  private void dumpPatterns(int i, List<ChartPatternSignal> patternFromAltfins) throws IOException {
+    FileWriter fw = new FileWriter(String.format("/tmp/altfins_patterns_dump_%d_%s.txt", i, dateFormat.format(new Date())));
+    for (ChartPatternSignal chartPatternSigal: patternFromAltfins) {
+      fw.write(chartPatternSigal.toString());
+    }
+    fw.close();
   }
 
   private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {

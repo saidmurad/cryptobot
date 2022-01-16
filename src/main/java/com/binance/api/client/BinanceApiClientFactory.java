@@ -28,6 +28,10 @@ public class BinanceApiClientFactory {
   private boolean useTestnet = true;
   private static final String FUTURES_TESTNET_URL = "https://testnet.binancefuture.com";
 
+  // For use in test only, uses test binance urls and apikeys (which are the default).
+  public BinanceApiClientFactory() {
+  }
+
   @Autowired
   public BinanceApiClientFactory(Environment env) {
     String useTestnetArg = env.getProperty("use_testnet");

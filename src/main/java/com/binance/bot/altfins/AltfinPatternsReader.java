@@ -44,6 +44,7 @@ public class AltfinPatternsReader implements Runnable {
   private ChartPatternSignalDaoImpl chartPatternSignalDao;
 
   public AltfinPatternsReader() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     if (new File(PROD_MACHINE_DIR).exists()) {
       ALTFINS_PATTERNS_DIR = PROD_MACHINE_DIR;
     } else {

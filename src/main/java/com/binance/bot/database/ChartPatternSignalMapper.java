@@ -10,9 +10,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
-  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm");
+
+  ChartPatternSignalMapper() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   @Override
   public ChartPatternSignal mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -39,6 +44,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
               ReasonForSignalInvalidation.valueOf(rs.getString("ReasonForSignalInvalidation")) : null)
           .setPriceAtSignalTargetTime(rs.getDouble("PriceAtSignalTargetTime"))
           .setPriceAtTenCandlestickTime(rs.getDouble("PriceAtTenCandlestickTime"))
+          .setProfitPercentAtTenCandlestickTime(rs.getDouble("ProfitPercentAtTenCandlestickTime"))
           .setPriceBestReached(rs.getDouble("PriceBestReached"))
           .setPriceCurrent(rs.getDouble("PriceCurrent"))
           .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null)

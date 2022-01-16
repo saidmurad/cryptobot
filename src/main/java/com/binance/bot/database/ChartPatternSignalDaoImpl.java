@@ -11,12 +11,17 @@ import javax.sql.DataSource;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 @Repository
 public class ChartPatternSignalDaoImpl {
   @Autowired
   private JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+
+  ChartPatternSignalDaoImpl() {
+    df.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   void setDataSource(DataSource dataSource) {
     jdbcTemplate = new JdbcTemplate(dataSource);
@@ -59,5 +64,25 @@ public class ChartPatternSignalDaoImpl {
     String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and TimeOfSignal=?";
     return jdbcTemplate.queryForObject(sql, new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())}, new ChartPatternSignalMapper());
+  }
+
+  public List<ChartPatternSignal> getChatPatternSignalsThatReachedTenCandleStickTime() {
+    String sql = "select * from ChartPatternSignal where IsSignalOn = 1\n" +
+        "    and PriceAtTenCandlestickTime is null\n" +
+        "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now'))\n" +
+        "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now'))\n" +
+        "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now'))\n" +
+        "    or (TimeFrame = 'DAY' and DATETIME(TimeOfSignal, '+10 day') <= DATETIME('now')))";
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
+  public boolean setTenCandleStickTimePrice(ChartPatternSignal chartPatternSignal,
+                                            double tenCandleStickTimePrice,
+                                            double tenCandleStickTimeProfitPercent) {
+    String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and TimeOfSignal=? and IsSignalOn=1";
+    return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal())) == 1;
   }
 }

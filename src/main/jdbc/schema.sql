@@ -17,8 +17,9 @@ Create Table ChartPatternSignal(
     ReasonForSignalInvalidation TEXT,
     PriceAtSignalTargetTime REAL,
     PriceAtTenCandlestickTime REAL,
+    ProfitPercentAtTenCandlestickTime REAL,
     PriceBestReached REAL,
     PriceCurrent REAL,
-    CurrentTime TEXT,
-    PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)
+    CurrentTime TEXT
 );
+PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)

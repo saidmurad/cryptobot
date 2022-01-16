@@ -65,6 +65,8 @@ public abstract class ChartPatternSignal {
 
   public abstract double priceAtTenCandlestickTime();
 
+  public abstract double profitPercentAtTenCandlestickTime();
+
   public abstract double priceBestReached();
 
   public abstract double priceCurrent();
@@ -81,6 +83,7 @@ public abstract class ChartPatternSignal {
         .setIsVolumeSurge(false)
         .setPriceAtSignalTargetTime(0)
         .setPriceAtTenCandlestickTime(0)
+        .setProfitPercentAtTenCandlestickTime(0)
         .setPriceBestReached(0)
         .setPriceCurrent(0)
         .setProfitPotentialPercent(0);
@@ -131,5 +134,7 @@ public abstract class ChartPatternSignal {
     public abstract Builder setCurrentTime(Date currentTime);
 
     public abstract ChartPatternSignal build();
+
+    public abstract Builder setProfitPercentAtTenCandlestickTime(double profitPercentAtTenCandlestickTime);
   }
 }

@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -42,10 +43,10 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
+      "    ProfitPercentAtTenCandlestickTime REAL,\n" +
       "    PriceBestReached REAL,\n" +
       "    PriceCurrent REAL,\n" +
-      "    CurrentTime TEXT,\n" +
-      "    PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)\n" +
+      "    CurrentTime TEXT" +
       ");";
 
   @Before
@@ -87,6 +88,106 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(updatedChartPatternSignal.isSignalOn()).isFalse();
     assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
     assertThat(updatedChartPatternSignal.timeOfSignalInvalidation().getTime() - currentTime).isLessThan(5000L);
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_fifteenMinute_TimeFrame() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(149)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(150)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_Hour_TimeFrame() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(9)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(10)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_FourHour_TimeFrame() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(39)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_Daily_TimeFrame() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(39)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testSetTenCandleStickTimePrice() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true).build();
+    dao.insertChartPatternSignal(chartPatternSignal);
+    ChartPatternSignal unrelatedChartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.HOUR)
+        .setIsSignalOn(true)
+        .build();
+    dao.insertChartPatternSignal(unrelatedChartPatternSignal);
+
+    assertThat(dao.setTenCandleStickTimePrice(chartPatternSignal, 100, 10))
+        .isTrue();
+
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.priceAtTenCandlestickTime()).isEqualTo(100.0);
+    assertThat(chartPatternSignal.profitPercentAtTenCandlestickTime()).isEqualTo(10.0);
   }
 
   private void assertChartPatternAgainstInsertedValues(ChartPatternSignal chartPatternSignal) {

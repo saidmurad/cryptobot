@@ -17,6 +17,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -56,9 +57,10 @@ public class AltfinPatternsReader implements Runnable {
         for (int i =0; i < 4; i++) {
           File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
-            List<ChartPatternSignal> patternFromAltfins = makeUnique(readPatterns(new String(Files.readAllBytes(file.toPath()))));
+            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(Files.readAllBytes(file.toPath())));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
-            dumpPatterns(i, patternFromAltfins);
+            Files.copy(Path.of(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]), Path.of("/tmp/" + patternsFiles[i] + "_" + dateFormat.format(new Date(file.lastModified()))));
+            patternFromAltfins = makeUnique(patternFromAltfins);
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {
               logger.warn("Read empty array. Ignoring");
@@ -67,9 +69,8 @@ public class AltfinPatternsReader implements Runnable {
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getActiveChartPatterns(timeFrames[i]);
             List<ChartPatternSignal> newChartPatternSignals = getChartPatternSignalsDelta(chartPatternsInDB, patternFromAltfins);
             for (ChartPatternSignal chartPatternSignal: newChartPatternSignals) {
-              logger.info("Attempting insertion of chart pattern signal " + chartPatternSignal);
-              boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
-              logger.info("Inserted chart pattern signal " + chartPatternSignal + " into DB with ret val '" + ret + "'");
+              logger.info("Inserting chart pattern signal " + chartPatternSignal);
+              chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
             }
 
             List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsDelta(patternFromAltfins, chartPatternsInDB);
@@ -85,14 +86,6 @@ public class AltfinPatternsReader implements Runnable {
         throw new RuntimeException(e);
       }
     }
-  }
-
-  private void dumpPatterns(int i, List<ChartPatternSignal> patternFromAltfins) throws IOException {
-    FileWriter fw = new FileWriter(String.format("/tmp/altfins_patterns_dump_%d_%s.txt", i, dateFormat.format(new Date())));
-    for (ChartPatternSignal chartPatternSigal: patternFromAltfins) {
-      fw.write(chartPatternSigal.toString());
-    }
-    fw.close();
   }
 
   private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {

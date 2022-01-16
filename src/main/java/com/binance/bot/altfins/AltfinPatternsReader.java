@@ -73,11 +73,11 @@ public class AltfinPatternsReader implements Runnable {
               chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
             }
 
-            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsDelta(patternFromAltfins, chartPatternsInDB);
+            /*List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsDelta(patternFromAltfins, chartPatternsInDB);
             for (ChartPatternSignal chartPatternSignal: invalidatedChartPatternSignals) {
               boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
               logger.info("Invalidated chart pattern signal " + chartPatternSignal + " in DB with ret val '" + ret + "'");
-            }
+            }*/
           }
         }
         Thread.sleep(60000);

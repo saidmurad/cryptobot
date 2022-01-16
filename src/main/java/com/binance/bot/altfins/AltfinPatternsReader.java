@@ -28,24 +28,33 @@ import java.util.stream.Collectors;
 @Component
 public class AltfinPatternsReader implements Runnable {
 
-  static final String[] patternsFiles = {"/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns1.txt",
-      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns2.txt",
-      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns3.txt",
-      "/usr/local/google/home/kannanj/altfins/send_alerts/data_patterns4.txt"};
+  static final String[] patternsFiles = {"data_patterns1.txt",
+      "data_patterns2.txt",
+      "data_patterns3.txt",
+      "data_patterns4.txt"};
+  private static final String PROD_MACHINE_DIR = "/usr/local/google/home/kannanj/altfins/send_alerts";
+  private static final String DEV_MACHINE_DIR = "/home/kannanj";
   private final TimeFrame[] timeFrames = {TimeFrame.FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
   private long[] lastProcessedTimes = new long[4];
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-
+  private final String ALTFINS_PATTERNS_DIR;
   @Autowired
   private ChartPatternSignalDaoImpl chartPatternSignalDao;
-  
+
+  public AltfinPatternsReader() {
+    if (new File(PROD_MACHINE_DIR).exists()) {
+      ALTFINS_PATTERNS_DIR = PROD_MACHINE_DIR;
+    } else {
+      ALTFINS_PATTERNS_DIR = DEV_MACHINE_DIR;
+    }
+  }
   @Override
   public void run() {
     while (true) {
       try {
-        for (int i =0; i < 4; i++) {
-          File file = new File(patternsFiles[i]);
+        for (int i =1; i < 2; i++) {
+          File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             List<ChartPatternSignal> patternFromAltfins = makeUnique(readPatterns(new String(Files.readAllBytes(file.toPath()))));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
@@ -91,7 +100,26 @@ public class AltfinPatternsReader implements Runnable {
     signalSet.addAll(patterns);
     List<ChartPatternSignal> condensedList = signalSet.stream().collect(Collectors.toList());
     logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
+    if (signalSet.size() < patterns.size()) {
+      printDuplicatePatterns(patterns);
+    }
     return condensedList;
+  }
+
+  private void printDuplicatePatterns(List<ChartPatternSignal> patterns) {
+    Map<ChartPatternSignal, Integer> counts = new HashMap<>();
+    for (ChartPatternSignal chartPatternSignal: patterns) {
+      Integer count = counts.get(chartPatternSignal);
+      if (count == null) {
+        count = 0;
+      }
+      count ++;
+      counts.put(chartPatternSignal, count);
+    }
+    List<Map.Entry<ChartPatternSignal, Integer>> duplicates = counts.entrySet().stream().filter(entry -> entry.getValue() > 1).collect(Collectors.toList());
+    for (Map.Entry<ChartPatternSignal, Integer> entry : duplicates) {
+      logger.warn(String.format("ChartPatternSignal %s occured %d times.", entry.getKey().toString(), entry.getValue()));
+    }
   }
 
   List<ChartPatternSignal> readPatterns(String content) {

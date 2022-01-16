@@ -59,7 +59,6 @@ public class AltfinPatternsReader implements Runnable {
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(Files.readAllBytes(file.toPath())));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
-            Files.copy(Path.of(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]), Path.of("/tmp/" + patternsFiles[i] + "_" + dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {

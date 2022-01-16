@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat;
 import java.util.TimeZone;
 
 public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
-  private final SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm");
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   ChartPatternSignalMapper() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));

@@ -4,11 +4,13 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import junit.framework.TestCase;
+import org.junit.Before;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -17,6 +19,11 @@ public class AltfinPatternsReaderTest extends TestCase {
   private static final String TEST_PATTERNS_FILE = "/test_data_patterns1.txt";
   private final AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader();
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+  @Before
+  public void setUp() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   public void testReadPatterns() throws IOException {
     List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());

@@ -3,8 +3,11 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
+import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +23,8 @@ class PriceTargetCheckerTask {
   private final BinanceApiRestClient restClient;
   private ChartPatternSignalDaoImpl dao;
   private Logger logger = LoggerFactory.getLogger(getClass());
+  @Autowired
+  private SupportedSymbolsInfo supportedSymbolsInfo;
 
   @Autowired
   PriceTargetCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
@@ -32,6 +37,12 @@ class PriceTargetCheckerTask {
   public void performPriceTargetChecks() {
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     signalsTenCandleStick.stream().forEach(chartPatternSignal -> {
+      if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
+        logger.warn("Symbol unsupported: " + chartPatternSignal.coinPair());
+        boolean ret = dao.invalidateChartPatternSignal(chartPatternSignal, ReasonForSignalInvalidation.SYMBOL_NOT_SUPPORTED);
+        logger.warn("Ret val: " + ret);
+        return;
+      }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
       List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + 1000);
       if (tradesList.size() == 0) {

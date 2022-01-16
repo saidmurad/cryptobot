@@ -21,6 +21,7 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   public ChartPatternSignalDeserializer() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     tradeTypeMap.put("Buy", TradeType.BUY);
     tradeTypeMap.put("Sell", TradeType.SELL);
 

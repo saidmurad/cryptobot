@@ -17,7 +17,7 @@ import java.util.TimeZone;
 public class ChartPatternSignalDaoImpl {
   @Autowired
   private JdbcTemplate jdbcTemplate;
-  final SimpleDateFormat df = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
+  final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   ChartPatternSignalDaoImpl() {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -55,8 +55,9 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal())) == 1;
   }
 
-  public List<ChartPatternSignal> getActiveChartPatterns(TimeFrame timeFrame) {
-    return jdbcTemplate.query("select * from ChartPatternSignal where IsSignalOn=1 and TimeFrame='" + timeFrame.name() + "'", new ChartPatternSignalMapper());
+  // TODO: Think of a way how we can trim the data considered.
+  public List<ChartPatternSignal> getAllChartPatterns(TimeFrame timeFrame) {
+    return jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + timeFrame.name() + "'", new ChartPatternSignalMapper());
   }
 
   // intented for test use.

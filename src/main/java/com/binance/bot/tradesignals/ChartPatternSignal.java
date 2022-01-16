@@ -6,10 +6,11 @@ import javax.annotation.Nullable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
+import java.util.TimeZone;
 
 @AutoValue
 public abstract class ChartPatternSignal {
-  private final SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm");
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   public abstract String coinPair();
 
   public abstract TimeFrame timeFrame();
@@ -22,6 +23,7 @@ public abstract class ChartPatternSignal {
 
   @Override
   public String toString() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f",
         coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget());
   }

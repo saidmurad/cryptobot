@@ -2,7 +2,6 @@ package com.binance.bot.altfins;
 
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
@@ -13,11 +12,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -55,7 +52,7 @@ public class AltfinPatternsReader implements Runnable {
   public void run() {
     while (true) {
       try {
-        for (int i =0; i < 4; i++) {
+        for (int i =0; i < 1; i++) {
           File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(Files.readAllBytes(file.toPath())));
@@ -66,11 +63,12 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read empty array. Ignoring");
               continue;
             }
-            List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getActiveChartPatterns(timeFrames[i]);
+            List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
             List<ChartPatternSignal> newChartPatternSignals = getChartPatternSignalsDelta(chartPatternsInDB, patternFromAltfins);
             for (ChartPatternSignal chartPatternSignal: newChartPatternSignals) {
               logger.info("Inserting chart pattern signal " + chartPatternSignal);
-              chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
+              boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal);
+              logger.info("Ret value: " + ret);
             }
 
             /*List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsDelta(patternFromAltfins, chartPatternsInDB);
@@ -131,6 +129,11 @@ public class AltfinPatternsReader implements Runnable {
   }
 
   List<ChartPatternSignal> getChartPatternSignalsDelta(List<ChartPatternSignal> listToCheckAgainst, List<ChartPatternSignal> listToCheck) {
+    listToCheckAgainst.parallelStream().forEach(cps -> {
+      if (cps.coinPair().equals("FTMUSDT")) {
+        logger.info("Hashcode: " + cps.hashCode());
+      }
+    });
     Set<ChartPatternSignal> signalsInTableSet = new HashSet<>();
     signalsInTableSet.addAll(listToCheckAgainst);
     return listToCheck.stream().filter(chartPatternSignal -> !signalsInTableSet.contains(chartPatternSignal))

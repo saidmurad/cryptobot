@@ -5,7 +5,6 @@ import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import junit.framework.TestCase;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.sqlite.SQLiteDataSource;
@@ -61,11 +60,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   }
 
   @Test
-  public void testGetActiveChartPatternSignals() {
+  public void testGetAllChartPatternSignals() {
     assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setIsSignalOn(true).build()));
     assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setCoinPair("Unrelated").setIsSignalOn(false).build()));
-    List<ChartPatternSignal> chartPatternSignals = dao.getActiveChartPatterns(TimeFrame.FIFTEEN_MINUTES);
-    assertTrue(chartPatternSignals.size() == 1);
+    List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES);
+    assertTrue(chartPatternSignals.size() == 2);
     assertChartPatternAgainstInsertedValues(chartPatternSignals.get(0));
   }
 

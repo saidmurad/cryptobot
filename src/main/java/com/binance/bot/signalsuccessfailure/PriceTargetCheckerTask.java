@@ -33,7 +33,7 @@ class PriceTargetCheckerTask {
     this.dao = dao;
   }
 
-  @Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000)
   public void performPriceTargetChecks() {
     logger.info("Invoked.");
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatReachedTenCandleStickTime();

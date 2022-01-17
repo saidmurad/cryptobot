@@ -90,7 +90,7 @@ public class AltfinPatternsReader implements Runnable {
     Set<ChartPatternSignal> signalSet = new HashSet<>();
     signalSet.addAll(patterns);
     List<ChartPatternSignal> condensedList = signalSet.stream().collect(Collectors.toList());
-    logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
+    //logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
     if (signalSet.size() < patterns.size()) {
       printDuplicatePatterns(patterns);
     }

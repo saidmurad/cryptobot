@@ -35,6 +35,7 @@ class PriceTargetCheckerTask {
 
   @Scheduled(fixedDelay = 60000)
   public void performPriceTargetChecks() {
+    logger.info("Invoked.");
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     signalsTenCandleStick.stream().forEach(chartPatternSignal -> {
       if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
@@ -51,7 +52,8 @@ class PriceTargetCheckerTask {
         return;
       }
       double tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
-      dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+      boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+      logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "'. Ret val=" + ret);
     });
   }
 

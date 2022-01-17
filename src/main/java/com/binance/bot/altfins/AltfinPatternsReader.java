@@ -129,11 +129,6 @@ public class AltfinPatternsReader implements Runnable {
   }
 
   List<ChartPatternSignal> getChartPatternSignalsDelta(List<ChartPatternSignal> listToCheckAgainst, List<ChartPatternSignal> listToCheck) {
-    listToCheckAgainst.parallelStream().forEach(cps -> {
-      if (cps.coinPair().equals("FTMUSDT")) {
-        logger.info("Hashcode: " + cps.hashCode());
-      }
-    });
     Set<ChartPatternSignal> signalsInTableSet = new HashSet<>();
     signalsInTableSet.addAll(listToCheckAgainst);
     return listToCheck.stream().filter(chartPatternSignal -> !signalsInTableSet.contains(chartPatternSignal))

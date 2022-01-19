@@ -61,7 +61,7 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read an empty file. Ignoring.");
               continue;
             }
-            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(fileBytes)));
+            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(fileBytes));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             lastProcessedTimes[i] = file.lastModified();

@@ -55,7 +55,13 @@ public class AltfinPatternsReader implements Runnable {
         for (int i =0; i < 1; i++) {
           File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
-            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(Files.readAllBytes(file.toPath())));
+            byte[] fileBytes = Files.readAllBytes(file.toPath();
+            if (fileBytes == null) {
+              // Read file at the wrong time.
+              logger.warn("Read an empty file. Ignoring.");
+              continue;
+            }
+            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(fileBytes)));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             lastProcessedTimes[i] = file.lastModified();

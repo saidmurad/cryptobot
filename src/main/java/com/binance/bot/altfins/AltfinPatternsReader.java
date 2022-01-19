@@ -52,7 +52,7 @@ public class AltfinPatternsReader implements Runnable {
   public void run() {
     while (true) {
       try {
-        for (int i =0; i < 1; i++) {
+        for (int i =0; i < 4; i++) {
           File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             byte[] fileBytes = Files.readAllBytes(file.toPath());

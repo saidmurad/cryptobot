@@ -40,7 +40,7 @@ public class PriceTargetCheckerTaskIntegrationTest {
 
   @Before
   public void setUp() {
-    priceTargetCheckerTask = new PriceTargetCheckerTask(new BinanceApiClientFactory(), mockChartPatternSignalDaoImpl);
+    priceTargetCheckerTask = new PriceTargetCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl);
   }
 
   @Test

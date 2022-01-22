@@ -51,6 +51,7 @@ public class AltfinPatternsReader implements Runnable {
 
   @Autowired
   private SupportedSymbolsInfo supportedSymbolsInfo;
+  @Autowired
   private GetVolumeProfile getVolumeProfile;
 
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile, ChartPatternSignalDaoImpl chartPatternSignalDao) {
@@ -81,9 +82,10 @@ public class AltfinPatternsReader implements Runnable {
               continue;
             }
             List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(fileBytes));
-            patternFromAltfins = patternFromAltfins.stream()
-                .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair()))
-                .collect(Collectors.toList());
+            if (patternFromAltfins.size() == 0) {
+              logger.warn("Read empty array. Ignoring");
+              continue;
+            }
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             int origSize = patternFromAltfins.size();
@@ -95,7 +97,7 @@ public class AltfinPatternsReader implements Runnable {
             }
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {
-              logger.warn("Read empty array. Ignoring");
+              logger.info("Left with empty patterns list now.");
               continue;
             }
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
@@ -110,7 +112,7 @@ public class AltfinPatternsReader implements Runnable {
             List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
             if (!invalidatedChartPatternSignals.isEmpty()) {
               ReasonForSignalInvalidation reasonForInvalidation = coldStart ? ReasonForSignalInvalidation.BACKLOG_AND_COLD_START : ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
-              logger.info(String.format("Invalidating %d chart pattern signals for time frame %d for reason %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name(), reasonForInvalidation.name()));
+              logger.info(String.format("Invalidating %d chart pattern signals for time frame %s for reason %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name(), reasonForInvalidation.name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
                 double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {

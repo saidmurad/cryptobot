@@ -37,7 +37,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
-    altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(), mockGetVolumeProfile, dao);
+    altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 

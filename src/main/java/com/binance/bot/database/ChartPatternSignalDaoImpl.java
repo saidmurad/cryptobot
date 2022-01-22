@@ -39,7 +39,7 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.priceAtTimeOfSignal(),
         chartPatternSignal.priceRelatedToPattern(),
         df.format(chartPatternSignal.timeOfSignal()),
-        Long.parseLong(volProfile.currentCandlestick().getVolume()),
+        (long) Double.parseDouble(volProfile.currentCandlestick().getVolume()),
         volProfile.avgVol(),
         volProfile.isVolSurged()? 1:0,
         chartPatternSignal.priceTarget(),

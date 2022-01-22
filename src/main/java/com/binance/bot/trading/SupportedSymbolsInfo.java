@@ -3,6 +3,7 @@ package com.binance.bot.trading;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderType;
+import com.binance.api.client.domain.general.SymbolStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,9 @@ public class SupportedSymbolsInfo {
       return symbolInfoMap;
     }
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-      symbolInfoMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());
+      if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
+        symbolInfoMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());
+      }
     });
     logger.info(String.format("Returning symbol map with %d symbols.", symbolInfoMap.size()));
     return symbolInfoMap;

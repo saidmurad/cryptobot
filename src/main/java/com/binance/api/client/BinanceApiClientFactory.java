@@ -3,6 +3,7 @@ package com.binance.api.client;
 import com.binance.api.client.impl.*;
 import com.binance.api.client.config.BinanceApiConfig;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -17,33 +18,19 @@ public class BinanceApiClientFactory {
   /**
    * API Key
    */
-  private String apiKey = "31MUPiM1hMNKt4uUXJ8et0GbYwXYvZ33HzLmRdXYEtrvvM8A0p59N510EvQcA99A";
+  private String apiKey;
 
   /**
-   * Secret.
+   * Secret.B
    */
-  private String apiSecret = "SVI8zkiPBsM96Uyd1UijdojGpIefAT9ZzB5pWPSB9M6uPYSUHGyK32O6Bxdxppzf";
+  private String apiSecret;
   private String futuresApiKey = "87314199199403b9416250d3105716317a7973bc5a1ae21e9fe10ba45d542abf";
   private String futuresApiSecret = "8c206e8e8f1fdd8b1183c604ba26cbd7de81cd1dbb812d6907e6b091c0e31247";
   private boolean useTestnet = true;
   private static final String FUTURES_TESTNET_URL = "https://testnet.binancefuture.com";
 
-  // For use in test only, uses test binance urls and apikeys (which are the default).
-  public BinanceApiClientFactory() {
-  }
-
   @Autowired
-  public BinanceApiClientFactory(Environment env) {
-    String useTestnetArg = env.getProperty("use_testnet");
-    if (useTestnetArg != null) {
-      useTestnet = Boolean.parseBoolean(useTestnetArg);
-    }
-    if (!useTestnet) {
-      apiKey = env.getProperty("api_key");
-      apiSecret = env.getProperty("api_secret");
-      futuresApiKey = env.getProperty("futures_api_key");
-      futuresApiSecret = env.getProperty("futures_api_secret");
-    }
+  public BinanceApiClientFactory(@Value("${use_testnet}") boolean useTestnet, @Value("${api_key}") String apiKey, @Value("${api_secret}") String apiSecret) {
     construct(apiKey, apiSecret, useTestnet, useTestnet);
   }
 

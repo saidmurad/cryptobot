@@ -1,11 +1,14 @@
 package com.binance.bot.trading;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.account.AssetBalance;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
 import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.TradeType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;
 import java.time.Clock;
@@ -13,14 +16,14 @@ import java.util.List;
 
 import static com.binance.bot.common.Constants.USDT;
 
+@Component
 public class GetVolumeProfile {
     private final BinanceApiRestClient binanceApiRestClient;
-    private final Clock clock;
+    private final Clock clock = Clock.systemDefaultZone();
 
-    @Inject
-    GetVolumeProfile(BinanceApiRestClient binanceApiRestClient, Clock clock) {
-        this.binanceApiRestClient = binanceApiRestClient;
-        this.clock = clock;
+    @Autowired
+    GetVolumeProfile(BinanceApiClientFactory binanceApiClientFactory) {
+        this.binanceApiRestClient = binanceApiClientFactory.newRestClient();
     }
 
     boolean canPlaceTrade(String coinPair, TradeType tradeType) {

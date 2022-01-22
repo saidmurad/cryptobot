@@ -63,7 +63,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     Statement stmt = dataSource.getConnection().createStatement();
     stmt.execute(createTableStmt);
     Candlestick currentCandlestick = new Candlestick();
-    currentCandlestick.setVolume("100");
+    currentCandlestick.setVolume("100.0000");
     volProfile = VolumeProfile.newBuilder()
         .setCurrentCandlestick(currentCandlestick)
         .setMinVol(49)
@@ -218,7 +218,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertEquals(new Date(currentTimeMillis + 360000), chartPatternSignal.priceTargetTime());
     assertEquals(2.3, chartPatternSignal.profitPotentialPercent());
 
-    assertThat(chartPatternSignal.volumeAtSignalCandlestick()).isEqualTo(Long.parseLong(volProfile.currentCandlestick().getVolume()));
+    assertThat(chartPatternSignal.volumeAtSignalCandlestick()).isEqualTo(100);
     assertThat(chartPatternSignal.volumeAverage()).isEqualTo(volProfile.avgVol());
     assertThat(chartPatternSignal.isVolumeSurge()).isEqualTo(volProfile.isVolSurged());
   }

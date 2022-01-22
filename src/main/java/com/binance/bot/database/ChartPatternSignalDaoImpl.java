@@ -54,7 +54,7 @@ public class ChartPatternSignalDaoImpl {
   public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation, ReasonForSignalInvalidation reasonForSignalInvalidation) {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
         "PriceAtTimeOfSignalInvalidation=?, ReasonForSignalInvalidation=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and TimeOfSignal=?";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
     return jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation), reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;
@@ -67,7 +67,7 @@ public class ChartPatternSignalDaoImpl {
 
   // intented for test use.
   public ChartPatternSignal getChartPattern(ChartPatternSignal chartPatternSignal) {
-    String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and TimeOfSignal=?";
+    String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
     return jdbcTemplate.queryForObject(sql, new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())}, new ChartPatternSignalMapper());
   }
@@ -86,7 +86,7 @@ public class ChartPatternSignalDaoImpl {
                                             double tenCandleStickTimePrice,
                                             double tenCandleStickTimeProfitPercent) {
     String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and TimeOfSignal=? and IsSignalOn=1";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and IsSignalOn=1";
     return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;

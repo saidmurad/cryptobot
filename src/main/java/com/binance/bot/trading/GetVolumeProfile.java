@@ -47,7 +47,7 @@ public class GetVolumeProfile {
         }
         double avgVol = totVol / candlesticks.size();
         Candlestick currentCandlestick = binanceApiRestClient.getCandlestickBars(coinPair, CandlestickInterval.FIFTEEN_MINUTES, 2, currentTimeMillis - 30 * 60 * 1000, currentTimeMillis).get(0);
-        return VolumeProfile.builder()
+        return VolumeProfile.newBuilder()
                 .setRecentCandlesticks(candlesticks)
                 .setCurrentCandlestick(currentCandlestick)
                 .setMinVol(minVol)

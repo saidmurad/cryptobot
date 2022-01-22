@@ -76,6 +76,8 @@ public abstract class ChartPatternSignal {
   @Nullable
   public abstract Date currentTime();
 
+  public abstract double priceAtTimeOfSignalInvalidation();
+
   public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
         .setPriceRelatedToPattern(0)
@@ -83,6 +85,7 @@ public abstract class ChartPatternSignal {
         .setVolumeAtSignalCandlestick(0)
         .setVolumeAverage(0)
         .setIsVolumeSurge(false)
+        .setPriceAtTimeOfSignalInvalidation(0)
         .setPriceAtSignalTargetTime(0)
         .setPriceAtTenCandlestickTime(0)
         .setProfitPercentAtTenCandlestickTime(0)
@@ -122,6 +125,8 @@ public abstract class ChartPatternSignal {
     public abstract Builder setIsVolumeSurge(boolean isVolumeSurge);
 
     public abstract Builder setTimeOfSignalInvalidation(Date timeOfSignalInvalidation);
+
+    public abstract Builder setPriceAtTimeOfSignalInvalidation(double priceAtTimeOfSignalInvalidation);
 
     public abstract Builder setReasonForSignalInvalidation(ReasonForSignalInvalidation reasonForSignalInvalidation);
 

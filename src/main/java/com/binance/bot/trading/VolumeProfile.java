@@ -21,26 +21,26 @@ public abstract class VolumeProfile {
 
     public abstract boolean isVolAtleastMaintained();
 
-    static Builder builder() {
+    public static Builder newBuilder() {
         return new AutoValue_VolumeProfile.Builder();
     }
 
     @AutoValue.Builder
-    abstract static class Builder {
-        abstract Builder setRecentCandlesticks(List<Candlestick> recentCandlesticks);
+    public abstract static class Builder {
+        public abstract Builder setRecentCandlesticks(List<Candlestick> recentCandlesticks);
 
-        abstract Builder setCurrentCandlestick(Candlestick currentCandlestick);
+        public abstract Builder setCurrentCandlestick(Candlestick currentCandlestick);
 
-        abstract Builder setMinVol(double minVol);
+        public abstract Builder setMinVol(double minVol);
 
-        abstract Builder setMaxVol(double maxVol);
+        public abstract Builder setMaxVol(double maxVol);
 
-        abstract Builder setAvgVol(double avgVol);
+        public abstract Builder setAvgVol(double avgVol);
 
-        abstract Builder setIsVolSurged(boolean isVolSurged);
+        public abstract Builder setIsVolSurged(boolean isVolSurged);
 
-        abstract Builder setIsVolAtleastMaintained(boolean isVolAtleastMaintained);
+        public abstract Builder setIsVolAtleastMaintained(boolean isVolAtleastMaintained);
 
-        abstract VolumeProfile build();
+        public abstract VolumeProfile build();
     }
 }

@@ -1,9 +1,12 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.domain.market.Candlestick;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.VolumeProfile;
+import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,6 +26,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   private final long currentTimeMillis = 1642258800000L; // 2022-01-15 15:00
 
   ChartPatternSignalDaoImpl dao;
+  private VolumeProfile volProfile;
   String createTableStmt = "Create Table ChartPatternSignal(\n" +
       "    CoinPair TEXT NOT NULL,\n" +
       "    TimeFrame TEXT NOT NULL,\n" +
@@ -39,6 +43,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    VolumeAverage REAL,\n" +
       "    IsVolumeSurge INTEGER,\n" +
       "    TimeOfSignalInvalidation TEXT,\n" +
+      "    PriceAtTimeOfSignalInvalidation REAL,\n" +
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
@@ -57,28 +62,40 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.setDataSource(dataSource);
     Statement stmt = dataSource.getConnection().createStatement();
     stmt.execute(createTableStmt);
+    Candlestick currentCandlestick = new Candlestick();
+    currentCandlestick.setVolume("100");
+    volProfile = VolumeProfile.newBuilder()
+        .setCurrentCandlestick(currentCandlestick)
+        .setMinVol(49)
+        .setMaxVol(51)
+        .setIsVolAtleastMaintained(true)
+        .setAvgVol(50)
+        .setIsVolSurged(true)
+        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
+        .build();
   }
 
   @Test
   public void testGetAllChartPatternSignals() {
-    assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setIsSignalOn(true).build()));
-    assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setCoinPair("Unrelated").setIsSignalOn(false).build()));
+    assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setIsSignalOn(true).build(), volProfile));
+    assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setCoinPair("Unrelated").setIsSignalOn(false).build(), volProfile));
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES);
     assertTrue(chartPatternSignals.size() == 2);
-    assertChartPatternAgainstInsertedValues(chartPatternSignals.get(0));
+    assertChartPatternAgainstInsertedValues(chartPatternSignals.get(0), volProfile);
   }
 
   @Test
   public void testInvalidateChartPatternSignal() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true).build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     ChartPatternSignal unrelatedChartPatternSignal = getChartPatternSignal()
         .setCoinPair("UNRELATED")
         .setIsSignalOn(true)
         .build();
-    dao.insertChartPatternSignal(unrelatedChartPatternSignal);
+    dao.insertChartPatternSignal(unrelatedChartPatternSignal, volProfile);
 
-    assertThat(dao.invalidateChartPatternSignal(chartPatternSignal, ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS))
+    final double priceAtTimeOfInvalidation = 100.01;
+    assertThat(dao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS))
         .isTrue();
 
     long currentTime = System.currentTimeMillis();
@@ -87,6 +104,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(updatedChartPatternSignal.isSignalOn()).isFalse();
     assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
     assertThat(updatedChartPatternSignal.timeOfSignalInvalidation().getTime() - currentTime).isLessThan(5000L);
+    assertThat(updatedChartPatternSignal.priceAtTimeOfSignalInvalidation()).isEqualTo(priceAtTimeOfInvalidation);
   }
 
   @Test
@@ -96,12 +114,12 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setCoinPair("ETHUSDT")
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(149)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("BTCUSDT")
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(150)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
@@ -116,13 +134,13 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setTimeFrame(TimeFrame.HOUR)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(9)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("BTCUSDT")
         .setTimeFrame(TimeFrame.HOUR)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(10)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
@@ -137,13 +155,13 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(39)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("BTCUSDT")
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
@@ -158,13 +176,13 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(39)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("BTCUSDT")
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40)))
         .build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
@@ -174,12 +192,12 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   @Test
   public void testSetTenCandleStickTimePrice() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true).build();
-    dao.insertChartPatternSignal(chartPatternSignal);
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     ChartPatternSignal unrelatedChartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.HOUR)
         .setIsSignalOn(true)
         .build();
-    dao.insertChartPatternSignal(unrelatedChartPatternSignal);
+    dao.insertChartPatternSignal(unrelatedChartPatternSignal, volProfile);
 
     assertThat(dao.setTenCandleStickTimePrice(chartPatternSignal, 100, 10))
         .isTrue();
@@ -189,7 +207,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignal.profitPercentAtTenCandlestickTime()).isEqualTo(10.0);
   }
 
-  private void assertChartPatternAgainstInsertedValues(ChartPatternSignal chartPatternSignal) {
+  private void assertChartPatternAgainstInsertedValues(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
     assertEquals("ETHUSDT", chartPatternSignal.coinPair());
     assertEquals(TimeFrame.FIFTEEN_MINUTES, chartPatternSignal.timeFrame());
     assertEquals("Resistance", chartPatternSignal.pattern());
@@ -199,6 +217,10 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertEquals(6000.0, chartPatternSignal.priceTarget());
     assertEquals(new Date(currentTimeMillis + 360000), chartPatternSignal.priceTargetTime());
     assertEquals(2.3, chartPatternSignal.profitPotentialPercent());
+
+    assertThat(chartPatternSignal.volumeAtSignalCandlestick()).isEqualTo(Long.parseLong(volProfile.currentCandlestick().getVolume()));
+    assertThat(chartPatternSignal.volumeAverage()).isEqualTo(volProfile.avgVol());
+    assertThat(chartPatternSignal.isVolumeSurge()).isEqualTo(volProfile.isVolSurged());
   }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {

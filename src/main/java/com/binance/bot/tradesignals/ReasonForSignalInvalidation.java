@@ -5,5 +5,5 @@ public enum ReasonForSignalInvalidation {
   SYMBOL_NOT_SUPPORTED,
   EXPIRED,
   FAKEOUT,
-  VOLUME_TOO_LOW
+  BACKLOG_AND_COLD_START, VOLUME_TOO_LOW
 }

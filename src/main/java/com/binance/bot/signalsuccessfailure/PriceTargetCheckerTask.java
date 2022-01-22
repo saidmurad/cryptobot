@@ -3,7 +3,6 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
-import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
@@ -11,7 +10,6 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,7 +38,7 @@ class PriceTargetCheckerTask {
     signalsTenCandleStick.stream().forEach(chartPatternSignal -> {
       if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
         logger.warn("Symbol unsupported: " + chartPatternSignal.coinPair());
-        boolean ret = dao.invalidateChartPatternSignal(chartPatternSignal, ReasonForSignalInvalidation.SYMBOL_NOT_SUPPORTED);
+        boolean ret = dao.invalidateChartPatternSignal(chartPatternSignal, 0.0, ReasonForSignalInvalidation.SYMBOL_NOT_SUPPORTED);
         logger.warn("Ret val: " + ret);
         return;
       }

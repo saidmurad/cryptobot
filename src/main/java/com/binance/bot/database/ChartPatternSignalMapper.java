@@ -38,6 +38,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setVolumeAtSignalCandlestick(rs.getInt("VolumeAtSignalCandlestick"))
           .setVolumeAverage(rs.getDouble("VolumeAverage"))
           .setIsVolumeSurge(rs.getInt("IsVolumeSurge") == 1)
+          .setPriceAtTimeOfSignalInvalidation(rs.getDouble("PriceAtTimeOfSignalInvalidation"))
           .setTimeOfSignalInvalidation(rs.getString("TimeOfSignalInvalidation") != null?
               dateFormat.parse(rs.getString("TimeOfSignalInvalidation")): null)
           .setReasonForSignalInvalidation(rs.getString("ReasonForSignalInvalidation") != null?

@@ -1,10 +1,18 @@
 package com.binance.bot.altfins;
 
+import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.domain.market.Candlestick;
+import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.GetVolumeProfile;
+import com.binance.bot.trading.VolumeProfile;
+import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -13,15 +21,23 @@ import java.util.List;
 import java.util.TimeZone;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class AltfinPatternsReaderTest extends TestCase {
 
   private static final String TEST_PATTERNS_FILE = "/test_data_patterns1.txt";
-  private final AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader();
+  private AltfinPatternsReader altfinPatternsReader;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  @Mock
+  private GetVolumeProfile mockGetVolumeProfile;
+  @Mock private ChartPatternSignalDaoImpl dao;
 
   @Before
   public void setUp() {
+    MockitoAnnotations.openMocks(this);
+    altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(), mockGetVolumeProfile, dao);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -62,7 +78,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   public void testFilterNewPatterns() throws IOException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
     // Without any change
     assertThat(newPatterns).hasSize(0);
   }
@@ -84,7 +100,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.set(0, modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
 
     assertThat(newPatterns).hasSize(0);
   }
@@ -105,7 +121,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
 
     assertThat(newPatterns).hasSize(1);
     assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
@@ -127,7 +143,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
 
     assertThat(newPatterns).hasSize(1);
     assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
@@ -149,7 +165,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
 
     assertThat(newPatterns).hasSize(1);
     assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
@@ -171,10 +187,71 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getChartPatternSignalsDelta(patternsInDb, patternsFromAltfins);
+    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
 
     assertThat(newPatterns).hasSize(1);
     assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
+  }
+
+  public void testFilterPatternsToInvalidate_allPatternsInDBStillOnAltfins_noneToInvalidate() throws IOException {
+    List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+
+    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDb, patternsInDb);
+
+    assertThat(patternSignalsToInvalidate).hasSize(0);
+  }
+
+  public void testFilterPatternsToInvalidate_oneActivePatternStoppedComing_isReturned() throws IOException {
+    List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    patternsFromAltfins.remove(0);
+
+    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDb);
+
+    assertThat(patternSignalsToInvalidate).hasSize(1);
+    assertThat(patternSignalsToInvalidate.get(0)).isEqualTo(patternsInDb.get(0));
+  }
+
+  public void testFilterPatternsToInvalidate_oneActivePatternStoppedComing_butWasAlreadyInvalidated_zeroResults() throws IOException {
+    List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    patternsFromAltfins.remove(0);
+    ChartPatternSignal patternAlreadyToInvalidate = ChartPatternSignal.newBuilder()
+        .setCoinPair(patternsInDb.get(0).coinPair())
+        .setTimeFrame(patternsInDb.get(0).timeFrame())
+        .setTradeType(patternsInDb.get(0).tradeType())
+        .setPattern(patternsInDb.get(0).pattern())
+        .setTimeOfSignal(patternsInDb.get(0).timeOfSignal())
+        .setPriceAtTimeOfSignal(patternsInDb.get(0).priceAtTimeOfSignal())
+        .setPriceTarget(patternsInDb.get(0).priceTarget())
+        .setPriceTargetTime(patternsInDb.get(0).priceTargetTime())
+        .setProfitPotentialPercent(patternsInDb.get(0).profitPotentialPercent())
+        .setIsSignalOn(false)
+        .build();
+    patternsInDb.set(0, patternAlreadyToInvalidate);
+    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDb, patternsInDb);
+
+    assertThat(patternSignalsToInvalidate).hasSize(0);
+  }
+
+  public void testInsertChartPatternSignal() throws IOException {
+    ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
+    Candlestick currentCandlestick = new Candlestick();
+    currentCandlestick.setVolume("100");
+    VolumeProfile volProfile = VolumeProfile.newBuilder()
+        .setCurrentCandlestick(currentCandlestick)
+        .setMinVol(49)
+        .setMaxVol(51)
+        .setIsVolAtleastMaintained(true)
+        .setAvgVol(50)
+        .setIsVolSurged(true)
+        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
+        .build();
+    when(mockGetVolumeProfile.getVolumeProfile(pattern.coinPair())).thenReturn(volProfile);
+
+    altfinPatternsReader.insertNewChartPatternSignal(pattern);
+
+    verify(dao).insertChartPatternSignal(eq(pattern), eq(volProfile));
   }
 
   private TimeFrame changeTimeFrame(TimeFrame timeFrame) {

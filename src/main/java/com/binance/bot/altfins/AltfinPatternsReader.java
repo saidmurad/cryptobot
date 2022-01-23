@@ -71,7 +71,7 @@ public class AltfinPatternsReader implements Runnable {
   @Override
   // TODO: Add unit tests.
   public void run() {
-    boolean coldStart = true;
+    Date[] earliestChartPatternTimesInThisRun = null;
     while (true) {
       try {
         for (int i =0; i < 4; i++) {
@@ -111,14 +111,18 @@ public class AltfinPatternsReader implements Runnable {
               logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
                 insertNewChartPatternSignal(chartPatternSignal);
+                if (earliestChartPatternTimesInThisRun[i] == null || earliestChartPatternTimesInThisRun[i].after(chartPatternSignal.timeOfSignal())) {
+                  earliestChartPatternTimesInThisRun[i] = chartPatternSignal.timeOfSignal();
+                }
               }
             }
 
             List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
             if (!invalidatedChartPatternSignals.isEmpty()) {
-              ReasonForSignalInvalidation reasonForInvalidation = coldStart ? ReasonForSignalInvalidation.BACKLOG_AND_COLD_START : ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
-              logger.info(String.format("Invalidating %d chart pattern signals for time frame %s for reason %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name(), reasonForInvalidation.name()));
+              logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
+                ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
+                    chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
                 double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
                   priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
@@ -130,7 +134,6 @@ public class AltfinPatternsReader implements Runnable {
             }
           }
         }
-        coldStart = false;
         Thread.sleep(60000);
       } catch (InterruptedException | IOException | ParseException e) {
         logger.error("Exception.", e);

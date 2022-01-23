@@ -71,7 +71,7 @@ public class AltfinPatternsReader implements Runnable {
   @Override
   // TODO: Add unit tests.
   public void run() {
-    Date[] earliestChartPatternTimesInThisRun = null;
+    Date[] earliestChartPatternTimesInThisRun = new Date[4];
     while (true) {
       try {
         for (int i =0; i < 4; i++) {
@@ -143,6 +143,9 @@ public class AltfinPatternsReader implements Runnable {
   }
 
   private void printPatterns(List<ChartPatternSignal> patterns, String s, LogLevel logLevel) {
+    if (patterns.isEmpty()) {
+      return;
+    }
     switch (logLevel) {
       case ERROR:
         logger.error("\n" + s);

@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -86,6 +87,7 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read empty array. Ignoring");
               continue;
             }
+            Files.copy(file.toPath(), Path.of("/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()))));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             int origSize = patternFromAltfins.size();

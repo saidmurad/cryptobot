@@ -4,6 +4,8 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.trading.VolumeProfile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -19,7 +21,7 @@ public class ChartPatternSignalDaoImpl {
   @Autowired
   private JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-
+  private final Logger logger = LoggerFactory.getLogger(getClass());
   ChartPatternSignalDaoImpl() {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
@@ -90,5 +92,40 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;
+  }
+
+  public void incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
+    String sql = "update ChartPatternSignal set NumTimesMissingInInput = NumTimesMissingInInput + 1 where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    for (ChartPatternSignal chartPatternSignal: chartPatternsMissingInInput) {
+      int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
+          chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+          df.format(chartPatternSignal.timeOfSignal()));
+      if (ret == 1) {
+        logger.info("Updated chart pattern signal missing count to " + (chartPatternSignal.numTimesMissingInInput() + 1) + " for chart pattern signal: " + chartPatternSignal.toString());
+      } else {
+        logger.error("Failed to increment numTimesMissingInInput for chart pattern signal: " + chartPatternSignal.toString());
+      }
+    }
+  }
+
+  public void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {
+    String sql = "update ChartPatternSignal set NumTimesMissingInInput = 0 where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignalsReappearedInTime) {
+      int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
+          chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+          df.format(chartPatternSignal.timeOfSignal()));
+      if (ret == 1) {
+        logger.info("Updated chart pattern signal missing count to 0 for chart pattern signal: " + chartPatternSignal.toString());
+      } else {
+        logger.error("Failed to make numTimesMissingInInput 0 for chart pattern signal: " + chartPatternSignal.toString());
+      }
+    }
+  }
+
+  public List<ChartPatternSignal> getChartPatternSignalsToInvalidate() {
+    String sql = "select * from ChartPatternSignal where IsSignalOn=1 and NumTimesMissingInInput >= 5";
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 }

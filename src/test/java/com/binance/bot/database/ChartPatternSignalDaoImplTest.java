@@ -39,6 +39,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    PriceTargetTime TEXT NOT NULL,\n" +
       "    ProfitPotentialPercent REAL NOT NULL,\n" +
       "    IsSignalOn INTEGER,\n" +
+      "    NumTimesMissingInInput INTEGER,\n" +
       "    VolumeAtSignalCandlestick INTEGER,\n" +
       "    VolumeAverage REAL,\n" +
       "    IsVolumeSurge INTEGER,\n" +

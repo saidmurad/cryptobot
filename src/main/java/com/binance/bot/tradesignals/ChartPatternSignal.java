@@ -78,6 +78,8 @@ public abstract class ChartPatternSignal {
 
   public abstract double priceAtTimeOfSignalInvalidation();
 
+  public abstract int numTimesMissingInInput();
+
   public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
         .setPriceRelatedToPattern(0)
@@ -91,6 +93,7 @@ public abstract class ChartPatternSignal {
         .setProfitPercentAtTenCandlestickTime(0)
         .setPriceBestReached(0)
         .setPriceCurrent(0)
+        .setNumTimesMissingInInput(0)
         .setProfitPotentialPercent(0);
   }
 
@@ -111,6 +114,8 @@ public abstract class ChartPatternSignal {
     public abstract Builder setTimeOfSignal(Date timeOfSignal);
 
     public abstract Builder setPriceRelatedToPattern(double priceRelatedToPattern);
+
+    public abstract Builder setNumTimesMissingInInput(int numTimesMissingInInput);
 
     public abstract Builder setPriceTarget(double priceTarget);
 

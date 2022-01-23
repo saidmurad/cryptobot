@@ -15,6 +15,7 @@ import com.google.gson.JsonSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.logging.LogLevel;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -102,8 +103,9 @@ public class AltfinPatternsReader implements Runnable {
               logger.info("Left with empty patterns list now.");
               continue;
             }
-            printPatterns(patternFromAltfins, "Patterns from Altfins that are still valid.");
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
+            List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
+            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
             List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
             if (!newChartPatternSignals.isEmpty()) {
               logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
@@ -120,6 +122,7 @@ public class AltfinPatternsReader implements Runnable {
                 double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
                   priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+                  logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
                 }
                 boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
                 logger.info("Invalidated chart pattern signal " + chartPatternSignal + " in DB with ret val " + ret);
@@ -136,12 +139,22 @@ public class AltfinPatternsReader implements Runnable {
     }
   }
 
-  private void printPatterns(List<ChartPatternSignal> patterns, String s) {
-    logger.info("\n" + s);
-    for (ChartPatternSignal c: patterns) {
-      logger.info(c.toString());
+  private void printPatterns(List<ChartPatternSignal> patterns, String s, LogLevel logLevel) {
+    switch (logLevel) {
+      case ERROR:
+        logger.error("\n" + s);
+        for (ChartPatternSignal c : patterns) {
+          logger.error(c.toString());
+        }
+        logger.error("\n");
+        break;
+      default:
+        logger.info("\n" + s);
+        for (ChartPatternSignal c : patterns) {
+          logger.info(c.toString());
+        }
+        logger.info("\n");
     }
-    logger.info("\n");
   }
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) {
@@ -200,11 +213,36 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
   }
 
+  // Which chart pattern signals I marked as invalidated again comes in the input with the same time of occurence of signal.
+  // TODO: unit test.
+  List<ChartPatternSignal> getChartPatternSignalsWronglyInvalidated(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {
+    Set<ChartPatternSignal> signalsInTableSet = new HashSet<>();
+    signalsInTableSet.addAll(patternsFromAltfins);
+    return allPatternsInDB.stream().filter(chartPatternSignal -> !chartPatternSignal.isSignalOn() && signalsInTableSet.contains(chartPatternSignal))
+        .collect(Collectors.toList());
+  }
+
   List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {
     Set<ChartPatternSignal> patternsFromAltfinsSet = new HashSet<>();
     patternsFromAltfinsSet.addAll(patternsFromAltfins);
-    return allPatternsInDB.stream().filter(chartPatternSignal ->
-          chartPatternSignal.isSignalOn() && !patternsFromAltfinsSet.contains(chartPatternSignal))
+    List<ChartPatternSignal> chartPatternsMissingInInput = allPatternsInDB.stream().filter(chartPatternSignal ->
+            chartPatternSignal.isSignalOn() && !patternsFromAltfinsSet.contains(chartPatternSignal))
         .collect(Collectors.toList());
+    chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
+
+    Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
+    allPatternsInDB.stream().forEach(patternInDB -> {
+      allPatternsInDBMap.put(patternInDB, patternInDB);
+    });
+    List<ChartPatternSignal> chartPatternSignalsReappearedInTime = new ArrayList<>();
+    patternsFromAltfins.stream().forEach(patternFromAltfins -> {
+      ChartPatternSignal patternInDB = allPatternsInDBMap.get(patternFromAltfins);
+      if (patternInDB.isSignalOn() && patternInDB.numTimesMissingInInput() > 0) {
+        chartPatternSignalsReappearedInTime.add(patternInDB);
+      }
+    });
+    chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternSignalsReappearedInTime);
+
+    return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
   }
 }

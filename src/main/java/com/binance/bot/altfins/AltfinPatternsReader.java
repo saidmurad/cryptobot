@@ -237,7 +237,7 @@ public class AltfinPatternsReader implements Runnable {
     List<ChartPatternSignal> chartPatternSignalsReappearedInTime = new ArrayList<>();
     patternsFromAltfins.stream().forEach(patternFromAltfins -> {
       ChartPatternSignal patternInDB = allPatternsInDBMap.get(patternFromAltfins);
-      if (patternInDB.isSignalOn() && patternInDB.numTimesMissingInInput() > 0) {
+      if (patternInDB != null && patternInDB.isSignalOn() && patternInDB.numTimesMissingInInput() > 0) {
         chartPatternSignalsReappearedInTime.add(patternInDB);
       }
     });

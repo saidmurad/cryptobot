@@ -21,6 +21,11 @@ public abstract class ChartPatternSignal {
 
   public abstract Date timeOfSignal();
 
+  @Nullable
+  public abstract Date timeOfInsertion();
+
+  public abstract boolean isInsertedLate();
+
   @Override
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -94,7 +99,8 @@ public abstract class ChartPatternSignal {
         .setPriceBestReached(0)
         .setPriceCurrent(0)
         .setNumTimesMissingInInput(0)
-        .setProfitPotentialPercent(0);
+        .setProfitPotentialPercent(0)
+        .setIsInsertedLate(false);
   }
 
   @AutoValue.Builder
@@ -112,6 +118,10 @@ public abstract class ChartPatternSignal {
     public abstract Builder setPriceTargetTime(Date priceTargetTime);
 
     public abstract Builder setTimeOfSignal(Date timeOfSignal);
+
+    public abstract Builder setTimeOfInsertion(Date timeOfInsertion);
+
+    public abstract Builder setIsInsertedLate(boolean isInsertedLate);
 
     public abstract Builder setPriceRelatedToPattern(double priceRelatedToPattern);
 
@@ -173,7 +183,9 @@ public abstract class ChartPatternSignal {
           .setPriceAtTenCandlestickTime(that.priceAtTenCandlestickTime())
           .setPriceBestReached(that.priceBestReached())
           .setPriceCurrent(that.priceCurrent())
-          .setCurrentTime(that.currentTime());
+          .setCurrentTime(that.currentTime())
+          .setTimeOfInsertion(that.timeOfInsertion())
+          .setIsInsertedLate(that.isInsertedLate());
     }
   }
 }

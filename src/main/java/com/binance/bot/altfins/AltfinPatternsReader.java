@@ -12,6 +12,7 @@ import com.binance.bot.trading.VolumeProfile;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,7 +123,7 @@ public class AltfinPatternsReader implements Runnable {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
                 ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
-                    chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
+                    earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
                 double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
                   priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
@@ -164,10 +165,29 @@ public class AltfinPatternsReader implements Runnable {
   }
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) {
+    Date currTime = new Date();
+    ChartPatternSignal.newBuilder().copy(chartPatternSignal)
+        .setTimeOfInsertion(currTime)
+        .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime));
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
     logger.info("Inserting chart pattern signal " + chartPatternSignal);
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
     logger.info("Ret value: " + ret);
+  }
+
+  // TODO: Unit test
+  private boolean isInsertedLate(TimeFrame timeFrame, Date timeOfSignal, Date currTime) {
+    long timeLagMins = (currTime.getTime() - timeOfSignal.getTime()) / 60000;
+    switch (timeFrame) {
+      case FIFTEEN_MINUTES:
+        return timeLagMins > 15;
+      case HOUR:
+        return timeLagMins > 30;
+      case FOUR_HOURS:
+        return timeLagMins > 30;
+      default:
+        return timeLagMins > 120;
+    }
   }
 
   private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {

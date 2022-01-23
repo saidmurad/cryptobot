@@ -31,6 +31,8 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setPattern(rs.getString("Pattern"))
           .setPriceAtTimeOfSignal(rs.getDouble("PriceAtTimeOfSignal"))
           .setTimeOfSignal(dateFormat.parse(rs.getString("TimeOfSignal")))
+          .setTimeOfInsertion(rs.getString("TimeOfInsertion") != null? dateFormat.parse(rs.getString("TimeOfInsertion")) : null)
+          .setIsInsertedLate(rs.getInt("IsInsertedLate") == 1)
           .setPriceTarget(rs.getDouble("PriceTarget"))
           .setPriceTargetTime(dateFormat.parse(rs.getString("PriceTargetTime")))
           .setProfitPotentialPercent(rs.getDouble("ProfitPotentialPercent"))

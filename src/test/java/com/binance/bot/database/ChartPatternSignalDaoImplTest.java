@@ -35,6 +35,8 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    PriceAtTimeOfSignal REAL NOT NULL,\n" +
       "    PriceRelatedToPattern REAL,\n" +
       "    TimeOfSignal TEXT NOT NULL,\n" +
+      "    TimeOfInsertion TEXT,\n" +
+      "    IsInsertedLate INTEGER,\n" +
       "    PriceTarget REAL NOT NULL,\n" +
       "    PriceTargetTime TEXT NOT NULL,\n" +
       "    ProfitPotentialPercent REAL NOT NULL,\n" +
@@ -232,6 +234,8 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setTradeType(TradeType.BUY)
         .setPriceAtTimeOfSignal(4000)
         .setTimeOfSignal(new Date(currentTimeMillis))
+        .setTimeOfInsertion(new Date(currentTimeMillis))
+        .setIsInsertedLate(false)
         .setPriceTarget(6000)
         .setPriceTargetTime(new Date(currentTimeMillis + 360000))
         .setProfitPotentialPercent(2.3)

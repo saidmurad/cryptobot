@@ -166,9 +166,10 @@ public class AltfinPatternsReader implements Runnable {
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) {
     Date currTime = new Date();
-    ChartPatternSignal.newBuilder().copy(chartPatternSignal)
+    chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
-        .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime));
+        .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime))
+        .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
     logger.info("Inserting chart pattern signal " + chartPatternSignal);
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);

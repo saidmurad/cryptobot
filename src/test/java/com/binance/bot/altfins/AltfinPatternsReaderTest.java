@@ -11,6 +11,7 @@ import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -240,7 +241,12 @@ public class AltfinPatternsReaderTest extends TestCase {
 
     altfinPatternsReader.insertNewChartPatternSignal(pattern);
 
-    verify(dao).insertChartPatternSignal(eq(pattern), eq(volProfile));
+    ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
+    verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volProfile));
+    ChartPatternSignal insertedVal = patternArgCatcher.getValue();
+    assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
+    assertThat(insertedVal.timeOfInsertion()).isNotNull();
+    assertThat(insertedVal.isInsertedLate()).isTrue();
   }
 
   private TimeFrame changeTimeFrame(TimeFrame timeFrame) {

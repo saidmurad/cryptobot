@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -295,5 +296,39 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
     verify(dao).resetNumTimesMissingInInput(Lists.newArrayList());
     verify(dao).getChartPatternSignalsToInvalidate();
+  }
+
+  public void testUnmatchingNightmare() throws ParseException, IOException {
+    AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao);
+    List<ChartPatternSignal> altfinPatterns = altfinPatternsReader.readPatterns(getPatternsFileContents_nonMatchingNightmare());
+    ChartPatternSignal chartPatternSignalInDB = ChartPatternSignal.newBuilder()
+        .setCoinPair("FTMUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTradeType(TradeType.SELL)
+        .setPattern("Support")
+        .setPriceAtTimeOfSignal(1.999)
+        .setTimeOfSignal(dateFormat.parse("2022-01-22 08:00"))
+        .setPriceTarget(1.3567)
+        .setPriceTargetTime(dateFormat.parse("2022-02-04 08:16"))
+        .setProfitPotentialPercent(32.13)
+        .build();
+    Candlestick currentCandlestick = new Candlestick();
+    currentCandlestick.setVolume("100");
+    VolumeProfile volProfile = VolumeProfile.newBuilder()
+        .setCurrentCandlestick(currentCandlestick)
+        .setMinVol(49)
+        .setMaxVol(51)
+        .setIsVolAtleastMaintained(true)
+        .setAvgVol(50)
+        .setIsVolSurged(true)
+        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+    List<ChartPatternSignal> allChartPatternsInDB = dao.getAllChartPatterns(TimeFrame.FOUR_HOURS);
+    List<ChartPatternSignal> patternsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(altfinPatterns, allChartPatternsInDB);
+  }
+
+  private String getPatternsFileContents_nonMatchingNightmare() throws IOException {
+    return new String(getClass().getResourceAsStream("/unmatching_nightmare.txt").readAllBytes());
   }
 }

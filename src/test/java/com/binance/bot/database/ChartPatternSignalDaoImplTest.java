@@ -1,20 +1,27 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.domain.market.Candlestick;
+import com.binance.bot.altfins.AltfinPatternsReader;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +31,6 @@ import static com.google.common.truth.Truth.assertThat;
 public class ChartPatternSignalDaoImplTest extends TestCase {
 
   private final long currentTimeMillis = 1642258800000L; // 2022-01-15 15:00
-
   ChartPatternSignalDaoImpl dao;
   private VolumeProfile volProfile;
   String createTableStmt = "Create Table ChartPatternSignal(\n" +
@@ -55,6 +61,9 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    PriceCurrent REAL,\n" +
       "    CurrentTime TEXT" +
       ");";
+
+  public ChartPatternSignalDaoImplTest() {
+  }
 
   @Before
   public void setUp() throws SQLException {

@@ -1,0 +1,11 @@
+[{
+  "coin_pair": "FTMUSDT",
+  "interval": "3",
+  "current_price": "2.1282",
+  "signal_occurence_time": "2022-1-22 8:00",
+  "pattern": "Support",
+  "trade_type": "Sell",
+  "profit_potential_percent": "36.25",
+  "profit_target": "1.3567",
+  "profit_target_time": "2022-2-4 19:08"
+  }]

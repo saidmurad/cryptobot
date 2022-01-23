@@ -105,8 +105,8 @@ public class AltfinPatternsReader implements Runnable {
               continue;
             }
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
-            List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
-            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
+            /*List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
+            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);*/
             List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
             if (!newChartPatternSignals.isEmpty()) {
               logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
@@ -118,7 +118,7 @@ public class AltfinPatternsReader implements Runnable {
               }
             }
 
-            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
+/*            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
             if (!invalidatedChartPatternSignals.isEmpty()) {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
@@ -132,11 +132,11 @@ public class AltfinPatternsReader implements Runnable {
                 boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
                 logger.info("Invalidated chart pattern signal " + chartPatternSignal + " in DB with ret val " + ret);
               }
-            }
+            }*/
           }
         }
         Thread.sleep(60000);
-      } catch (InterruptedException | IOException | ParseException e) {
+      } catch (InterruptedException | IOException e) {
         logger.error("Exception.", e);
         throw new RuntimeException(e);
       }
@@ -218,7 +218,7 @@ public class AltfinPatternsReader implements Runnable {
     }
   }
 
-  List<ChartPatternSignal> readPatterns(String content) {
+  public List<ChartPatternSignal> readPatterns(String content) {
     Type listType = new TypeToken<List<ChartPatternSignal>>(){}.getType();
     List<ChartPatternSignal> patterns;
     try {

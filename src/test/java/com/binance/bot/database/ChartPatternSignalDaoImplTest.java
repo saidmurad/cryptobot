@@ -234,6 +234,37 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setTimeOfSignal(new Date(currentTimeMillis))
         .setPriceTarget(6000)
         .setPriceTargetTime(new Date(currentTimeMillis + 360000))
-        .setProfitPotentialPercent(2.3);
+        .setProfitPotentialPercent(2.3)
+        .setIsSignalOn(true);
+  }
+
+  public void testIncrementNumTimesMissingInInput() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignalInDB));
+
+    assertThat(dao.getChartPattern(chartPatternSignalInDB).numTimesMissingInInput()).isEqualTo(1);
+  }
+
+  public void testResetNumTimesMissingInInput() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setNumTimesMissingInInput(1).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.resetNumTimesMissingInInput(Lists.newArrayList(chartPatternSignalInDB));
+
+    assertThat(dao.getChartPattern(chartPatternSignalInDB).numTimesMissingInInput()).isEqualTo(0);
+  }
+
+  public void testGetChartPatternSignalsToInvalidate() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setCoinPair("ETHUSDT").setNumTimesMissingInInput(1).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+    chartPatternSignalInDB = getChartPatternSignal().setCoinPair("BTCUSDT").setNumTimesMissingInInput(5).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    List<ChartPatternSignal> patternsToInvalidate = dao.getChartPatternSignalsToInvalidate();
+
+    assertThat(patternsToInvalidate).hasSize(1);
+    assertThat(patternsToInvalidate.get(0)).isEqualTo(chartPatternSignalInDB);
   }
 }

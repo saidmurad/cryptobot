@@ -201,17 +201,6 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testFilterPatternsToInvalidate_oneActivePatternStoppedComing_isReturned() throws IOException {
-    List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    patternsFromAltfins.remove(0);
-
-    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDb);
-
-    assertThat(patternSignalsToInvalidate).hasSize(1);
-    assertThat(patternSignalsToInvalidate.get(0)).isEqualTo(patternsInDb.get(0));
-  }
-
   public void testFilterPatternsToInvalidate_oneActivePatternStoppedComing_butWasAlreadyInvalidated_zeroResults() throws IOException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -269,5 +258,36 @@ public class AltfinPatternsReaderTest extends TestCase {
 
   private String getPatternsFileContents() throws IOException {
     return new String(getClass().getResourceAsStream(TEST_PATTERNS_FILE).readAllBytes());
+  }
+
+  public void testGetChartPatternSignalsToInvalidate_incrementsNumTimesMissing() throws IOException {
+    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    ChartPatternSignal patternMissingInInput = patternsFromAltfins.remove(0);
+
+    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDB);
+
+    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList(patternMissingInInput));
+  }
+
+  public void testGetChartPatternSignalsToInvalidate_patternReappearedInTheNickOfTime() throws IOException {
+    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    patternsInDB.set(0, ChartPatternSignal.newBuilder().copy(patternsInDB.get(0)).setNumTimesMissingInInput(4).build());
+    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+
+    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDB);
+
+    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
+    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList(patternsInDB.get(0)));
+  }
+
+  public void testGetChartPatternSignalsToInvalidate_getsPatternsToInvalidate() throws IOException {
+    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
+
+    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDB, patternsInDB);
+
+    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
+    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList());
+    verify(dao).getChartPatternSignalsToInvalidate();
   }
 }

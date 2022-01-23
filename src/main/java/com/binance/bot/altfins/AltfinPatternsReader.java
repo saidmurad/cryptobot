@@ -214,7 +214,6 @@ public class AltfinPatternsReader implements Runnable {
   }
 
   // Which chart pattern signals I marked as invalidated again comes in the input with the same time of occurence of signal.
-  // TODO: unit test.
   List<ChartPatternSignal> getChartPatternSignalsWronglyInvalidated(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {
     Set<ChartPatternSignal> signalsInTableSet = new HashSet<>();
     signalsInTableSet.addAll(patternsFromAltfins);

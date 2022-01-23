@@ -32,8 +32,8 @@ public class ChartPatternSignalDaoImpl {
 
   public boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, " +
-        "PriceRelatedToPattern, TimeOfSignal, VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn)" +
-        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "PriceRelatedToPattern, TimeOfSignal, NumTimesMissingInInput, VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn)" +
+        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     Object params[] = new Object[]{chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
@@ -41,6 +41,7 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.priceAtTimeOfSignal(),
         chartPatternSignal.priceRelatedToPattern(),
         df.format(chartPatternSignal.timeOfSignal()),
+        chartPatternSignal.numTimesMissingInInput(),
         (long) Double.parseDouble(volProfile.currentCandlestick().getVolume()),
         volProfile.avgVol(),
         volProfile.isVolSurged()? 1:0,

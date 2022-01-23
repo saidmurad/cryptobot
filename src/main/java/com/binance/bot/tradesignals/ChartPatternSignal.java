@@ -148,5 +148,32 @@ public abstract class ChartPatternSignal {
     public abstract ChartPatternSignal build();
 
     public abstract Builder setProfitPercentAtTenCandlestickTime(double profitPercentAtTenCandlestickTime);
+
+    public Builder copy(ChartPatternSignal that) {
+      return ChartPatternSignal.newBuilder()
+          .setCoinPair(that.coinPair())
+          .setTimeFrame(that.timeFrame())
+          .setTradeType(that.tradeType())
+          .setPattern(that.pattern())
+          .setPriceAtTimeOfSignal(that.priceAtTimeOfSignal())
+          .setPriceTargetTime(that.priceTargetTime())
+          .setTimeOfSignal(that.timeOfSignal())
+          .setPriceRelatedToPattern(that.priceRelatedToPattern())
+          .setNumTimesMissingInInput(that.numTimesMissingInInput())
+          .setPriceTarget(that.priceTarget())
+          .setProfitPotentialPercent(that.profitPotentialPercent())
+          .setIsSignalOn(that.isSignalOn())
+          .setVolumeAtSignalCandlestick(that.volumeAtSignalCandlestick())
+          .setVolumeAverage(that.volumeAverage())
+          .setIsVolumeSurge(that.isVolumeSurge())
+          .setTimeOfSignalInvalidation(that.timeOfSignalInvalidation())
+          .setPriceAtTimeOfSignalInvalidation(that.priceAtTimeOfSignalInvalidation())
+          .setReasonForSignalInvalidation(that.reasonForSignalInvalidation())
+          .setPriceAtSignalTargetTime(that.priceAtSignalTargetTime())
+          .setPriceAtTenCandlestickTime(that.priceAtTenCandlestickTime())
+          .setPriceBestReached(that.priceBestReached())
+          .setPriceCurrent(that.priceCurrent())
+          .setCurrentTime(that.currentTime());
+    }
   }
 }

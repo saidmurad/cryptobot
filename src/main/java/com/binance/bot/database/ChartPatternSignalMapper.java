@@ -35,6 +35,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setPriceTargetTime(dateFormat.parse(rs.getString("PriceTargetTime")))
           .setProfitPotentialPercent(rs.getDouble("ProfitPotentialPercent"))
           .setIsSignalOn(rs.getInt("IsSignalOn") == 1)
+          .setNumTimesMissingInInput(rs.getInt("NumTimesMissingInInput"))
           .setVolumeAtSignalCandlestick(rs.getInt("VolumeAtSignalCandlestick"))
           .setVolumeAverage(rs.getDouble("VolumeAverage"))
           .setIsVolumeSurge(rs.getInt("IsVolumeSurge") == 1)

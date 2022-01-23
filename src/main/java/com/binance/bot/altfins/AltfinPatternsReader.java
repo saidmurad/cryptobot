@@ -100,6 +100,7 @@ public class AltfinPatternsReader implements Runnable {
               logger.info("Left with empty patterns list now.");
               continue;
             }
+            printPatterns(patternFromAltfins, "Patterns from Altfins that are still valid.");
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
             List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
             if (!newChartPatternSignals.isEmpty()) {
@@ -131,6 +132,14 @@ public class AltfinPatternsReader implements Runnable {
         throw new RuntimeException(e);
       }
     }
+  }
+
+  private void printPatterns(List<ChartPatternSignal> patterns, String s) {
+    logger.info("\n" + s);
+    for (ChartPatternSignal c: patterns) {
+      logger.info(c.toString());
+    }
+    logger.info("\n");
   }
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) {

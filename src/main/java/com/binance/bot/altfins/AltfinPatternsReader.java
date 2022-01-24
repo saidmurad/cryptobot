@@ -124,12 +124,12 @@ public class AltfinPatternsReader implements Runnable {
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
                 ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
                     earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
-                /*double priceAtTimeOfInvalidation = 0;
+                double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
                   priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
                   logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
                 }
-                boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);*/
+                boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
                 logger.info("Invalidated chart pattern signal " + chartPatternSignal);
               }
             }

@@ -90,7 +90,7 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read empty array. Ignoring");
               continue;
             }
-            String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified())));
+            String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()));
             Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
@@ -107,8 +107,8 @@ public class AltfinPatternsReader implements Runnable {
               continue;
             }
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
-            /*List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
-            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);*/
+            List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
+            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
             List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
             if (!newChartPatternSignals.isEmpty()) {
               logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));

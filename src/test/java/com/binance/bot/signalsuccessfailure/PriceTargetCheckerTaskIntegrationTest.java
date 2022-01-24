@@ -21,6 +21,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.springframework.core.env.Environment;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -46,7 +47,7 @@ public class PriceTargetCheckerTaskIntegrationTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())

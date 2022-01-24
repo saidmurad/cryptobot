@@ -130,7 +130,7 @@ public class AltfinPatternsReader implements Runnable {
                   logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
                 }
                 boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
-                logger.info("Invalidated chart pattern signal " + chartPatternSignal);
+                logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
               }
             }
           }
@@ -256,6 +256,7 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
     chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
 
+    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput);
     Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
     allPatternsInDB.stream().forEach(patternInDB -> {
       allPatternsInDBMap.put(patternInDB, patternInDB);
@@ -270,5 +271,15 @@ public class AltfinPatternsReader implements Runnable {
     chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternSignalsReappearedInTime);
 
     return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
+  }
+
+  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput) {
+    for (ChartPatternSignal patternFromAltfin: patternsFromAltfins) {
+      for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
+        if (patternFromAltfin.coinPair().equals(patternMissing.coinPair()) && patternFromAltfin.pattern().equals(patternMissing.pattern()) && patternFromAltfin.tradeType() == patternMissing.tradeType()) {
+          logger.error("Suspicious removal of pattern:\n" + patternMissing.toString() + "\nShould have matched input pattern:\n" + patternFromAltfin.toString());
+        }
+      }
+    }
   }
 }

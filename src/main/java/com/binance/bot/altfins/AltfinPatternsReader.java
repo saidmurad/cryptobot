@@ -119,20 +119,20 @@ public class AltfinPatternsReader implements Runnable {
             }
 
             List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
-            /*if (!invalidatedChartPatternSignals.isEmpty()) {
+            if (!invalidatedChartPatternSignals.isEmpty()) {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
                 ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
                     earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
-                double priceAtTimeOfInvalidation = 0;
+                /*double priceAtTimeOfInvalidation = 0;
                 if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
                   priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
                   logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
                 }
-                boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
-                logger.info("Invalidated chart pattern signal " + chartPatternSignal + " in DB with ret val " + ret);
+                boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);*/
+                logger.info("Invalidated chart pattern signal " + chartPatternSignal);
               }
-            }*/
+            }
           }
         }
         Thread.sleep(60000);

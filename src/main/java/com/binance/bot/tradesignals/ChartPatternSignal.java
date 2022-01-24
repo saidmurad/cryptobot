@@ -41,7 +41,10 @@ public abstract class ChartPatternSignal {
     ChartPatternSignal other = (ChartPatternSignal) that;
     boolean ret= this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
-    logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
+    if (this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
+        && this.pattern().equals(other.pattern())) {
+      logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
+    }
     return ret;
   }
 

@@ -118,8 +118,8 @@ public class AltfinPatternsReader implements Runnable {
               }
             }
 
-/*            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
-            if (!invalidatedChartPatternSignals.isEmpty()) {
+            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
+            /*if (!invalidatedChartPatternSignals.isEmpty()) {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
                 ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||

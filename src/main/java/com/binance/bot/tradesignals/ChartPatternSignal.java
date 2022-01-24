@@ -1,6 +1,8 @@
 package com.binance.bot.tradesignals;
 
 import com.google.auto.value.AutoValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.text.SimpleDateFormat;
@@ -11,6 +13,8 @@ import java.util.TimeZone;
 @AutoValue
 public abstract class ChartPatternSignal {
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private final Logger logger = LoggerFactory.getLogger(getClass());
+
   public abstract String coinPair();
 
   public abstract TimeFrame timeFrame();
@@ -35,13 +39,17 @@ public abstract class ChartPatternSignal {
   @Override
   public boolean equals(Object that) {
     ChartPatternSignal other = (ChartPatternSignal) that;
-    return this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
+    boolean ret= this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
+    logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
+    return ret;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(), this.timeOfSignal());
+    int hash = Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(), this.timeOfSignal());
+    logger.info("hascode is " + hash + " for chart pattern signal:\n" + toString());
+    return hash;
   }
 
   public abstract double priceAtTimeOfSignal();

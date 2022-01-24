@@ -41,17 +41,16 @@ public abstract class ChartPatternSignal {
     ChartPatternSignal other = (ChartPatternSignal) that;
     boolean ret= this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
-    if (this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
+    /*if (this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern())) {
       logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
-    }
+    }*/
     return ret;
   }
 
   @Override
   public int hashCode() {
     int hash = Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(), this.timeOfSignal());
-    logger.info("hascode is " + hash + " for chart pattern signal:\n" + toString());
     return hash;
   }
 

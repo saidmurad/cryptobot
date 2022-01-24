@@ -12,7 +12,6 @@ import com.binance.bot.trading.VolumeProfile;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
-import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,7 +83,8 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read an empty file. Ignoring.");
               continue;
             }
-            List<ChartPatternSignal> patternFromAltfins = readPatterns(new String(fileBytes));
+            String altfinPatternsStr = new String(fileBytes);
+            List<ChartPatternSignal> patternFromAltfins = readPatterns(altfinPatternsStr);
             if (patternFromAltfins.size() == 0) {
               logger.warn("Read empty array. Ignoring");
               continue;
@@ -118,7 +118,7 @@ public class AltfinPatternsReader implements Runnable {
               }
             }
 
-            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB);
+            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr);
             if (!invalidatedChartPatternSignals.isEmpty()) {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
@@ -248,7 +248,7 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
   }
 
-  List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {
+  List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB, String altfinPatternsStr) {
     Set<ChartPatternSignal> patternsFromAltfinsSet = new HashSet<>();
     patternsFromAltfinsSet.addAll(patternsFromAltfins);
     List<ChartPatternSignal> chartPatternsMissingInInput = allPatternsInDB.stream().filter(chartPatternSignal ->
@@ -256,7 +256,7 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
     chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
 
-    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput);
+    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr);
     Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
     allPatternsInDB.stream().forEach(patternInDB -> {
       allPatternsInDBMap.put(patternInDB, patternInDB);
@@ -273,11 +273,13 @@ public class AltfinPatternsReader implements Runnable {
     return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
   }
 
-  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput) {
+  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput, String altfinPatternsStr) {
     for (ChartPatternSignal patternFromAltfin: patternsFromAltfins) {
       for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
         if (patternFromAltfin.coinPair().equals(patternMissing.coinPair()) && patternFromAltfin.pattern().equals(patternMissing.pattern()) && patternFromAltfin.tradeType() == patternMissing.tradeType()) {
           logger.error("Suspicious removal of pattern:\n" + patternMissing.toString() + "\nShould have matched input pattern:\n" + patternFromAltfin.toString());
+        } else if (altfinPatternsStr.contains(patternFromAltfin.coinPair())) {
+          logger.error("Suspicious removal of pattern for coin pair " + patternFromAltfin.coinPair() + " as it is seen in the altfins patterns file.");
         }
       }
     }

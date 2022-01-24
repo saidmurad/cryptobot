@@ -171,9 +171,9 @@ public class AltfinPatternsReader implements Runnable {
         .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime))
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
-    logger.info("Inserting chart pattern signal " + chartPatternSignal);
+    //logger.info("Inserting chart pattern signal " + chartPatternSignal);
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
-    logger.info("Ret value: " + ret);
+    //logger.info("Ret value: " + ret);
   }
 
   // TODO: Unit test

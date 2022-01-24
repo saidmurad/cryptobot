@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
@@ -89,7 +90,8 @@ public class AltfinPatternsReader implements Runnable {
               logger.warn("Read empty array. Ignoring");
               continue;
             }
-            Files.copy(file.toPath(), Path.of("/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()))));
+            String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified())));
+            Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             int origSize = patternFromAltfins.size();
@@ -118,7 +120,7 @@ public class AltfinPatternsReader implements Runnable {
               }
             }
 
-            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr);
+            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr, tmpAltfinsPatternsFilePath);
             if (!invalidatedChartPatternSignals.isEmpty()) {
               logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
               for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
@@ -248,7 +250,7 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
   }
 
-  List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB, String altfinPatternsStr) {
+  List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB, String altfinPatternsStr, String tmpAltfinsPatternsFilePath) {
     Set<ChartPatternSignal> patternsFromAltfinsSet = new HashSet<>();
     patternsFromAltfinsSet.addAll(patternsFromAltfins);
     List<ChartPatternSignal> chartPatternsMissingInInput = allPatternsInDB.stream().filter(chartPatternSignal ->
@@ -256,7 +258,7 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
     chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
 
-    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr);
+    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr, tmpAltfinsPatternsFilePath);
     Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
     allPatternsInDB.stream().forEach(patternInDB -> {
       allPatternsInDBMap.put(patternInDB, patternInDB);
@@ -273,14 +275,19 @@ public class AltfinPatternsReader implements Runnable {
     return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
   }
 
-  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput, String altfinPatternsStr) {
+  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput, String altfinPatternsStr, String tmpAltfinsPatternsFilePath) {
+    TimeFrame timeFrame = patternsFromAltfins.get(0).timeFrame();
     for (ChartPatternSignal patternFromAltfin: patternsFromAltfins) {
       for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
         if (patternFromAltfin.coinPair().equals(patternMissing.coinPair()) && patternFromAltfin.pattern().equals(patternMissing.pattern()) && patternFromAltfin.tradeType() == patternMissing.tradeType()) {
-          logger.error("Suspicious removal of pattern:\n" + patternMissing.toString() + "\nShould have matched input pattern:\n" + patternFromAltfin.toString());
-        } else if (altfinPatternsStr.contains(patternFromAltfin.coinPair())) {
-          logger.error("Suspicious removal of pattern for coin pair " + patternFromAltfin.coinPair() + " as it is seen in the altfins patterns file.");
+          logger.error("Suspicious removal in timeframe " + timeFrame.name() + " of pattern:\n" + patternMissing.toString() + "\nShould have matched input pattern:\n" + patternFromAltfin.toString());
         }
+      }
+    }
+
+    for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
+      if (altfinPatternsStr.contains(patternMissing.coinPair())) {
+        logger.error("Suspicious removal in timeframe " + timeFrame.name() + " of pattern for coin pair " + patternMissing.coinPair() + " as it is seen in the altfins patterns file " + tmpAltfinsPatternsFilePath);
       }
     }
   }

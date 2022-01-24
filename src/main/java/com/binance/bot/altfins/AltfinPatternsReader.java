@@ -136,7 +136,7 @@ public class AltfinPatternsReader implements Runnable {
           }
         }
         Thread.sleep(60000);
-      } catch (InterruptedException | IOException e) {
+      } catch (InterruptedException | IOException |ParseException e) {
         logger.error("Exception.", e);
         throw new RuntimeException(e);
       }

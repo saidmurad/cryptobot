@@ -10,49 +10,64 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 @Component
 class PriceTargetCheckerTask {
 
+  static final long TIME_RANGE_AGG_TRADES = 120000;
   private final BinanceApiRestClient restClient;
   private ChartPatternSignalDaoImpl dao;
   private Logger logger = LoggerFactory.getLogger(getClass());
-  @Autowired
-  private SupportedSymbolsInfo supportedSymbolsInfo;
+  private final SupportedSymbolsInfo supportedSymbolsInfo;
 
   @Autowired
   PriceTargetCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
-                         ChartPatternSignalDaoImpl dao) {
+                         ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
+    this.supportedSymbolsInfo = supportedSymbolsInfo;
   }
 
-  //@Scheduled(fixedDelay = 60000)
-  public void performPriceTargetChecks() {
-    logger.info("Invoked.");
+  private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
+
+  @Scheduled(fixedDelay = 60000)
+  public void performPriceTargetChecks() throws InterruptedException, ParseException {
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
-    signalsTenCandleStick.stream().forEach(chartPatternSignal -> {
+    for (int i = 0; i < signalsTenCandleStick.size(); i++) {
+      ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
       if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
         logger.warn("Symbol unsupported: " + chartPatternSignal.coinPair());
         boolean ret = dao.invalidateChartPatternSignal(chartPatternSignal, 0.0, ReasonForSignalInvalidation.SYMBOL_NOT_SUPPORTED);
         logger.warn("Ret val: " + ret);
-        return;
+        continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
-      List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + 1000);
-      if (tradesList.size() == 0) {
-        logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time '%d' but got zero trades.", chartPatternSignal.coinPair(),
-            tenCandleStickTime, tenCandleStickTime + 1000));
-        return;
+      double tenCandleStickTimePrice;
+      if (System.currentTimeMillis() - tenCandleStickTime <= 600000) {
+        tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+      } else {
+        List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES);
+        if (tradesList.size() == 0) {
+          logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time '%d' but got zero trades.", chartPatternSignal.coinPair(),
+              tenCandleStickTime, tenCandleStickTime + 1000));
+          continue;
+        }
+        tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
       }
-      double tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
       boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
       logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "'. Ret val=" + ret);
-    });
+      if (i > 0 && i % REQUEST_WEIGHT_1_MIN_LIMIT==0) {
+        Thread.sleep(60000);
+      }
+    }
   }
 
   private double getProfitPercentAtTenCandlestickTime(ChartPatternSignal chartPatternSignal, double tenCandleStickTimePrice) {

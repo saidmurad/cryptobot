@@ -8,6 +8,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
@@ -35,16 +36,17 @@ public class PriceTargetCheckerTaskIntegrationTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private ChartPatternSignalDaoImpl mockChartPatternSignalDaoImpl;
+  @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private Date currentTime = new Date();
   private PriceTargetCheckerTask priceTargetCheckerTask;
 
   @Before
   public void setUp() {
-    priceTargetCheckerTask = new PriceTargetCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl);
+    priceTargetCheckerTask = new PriceTargetCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())

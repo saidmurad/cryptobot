@@ -7,6 +7,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
@@ -21,8 +22,10 @@ import org.mockito.junit.MockitoRule;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.binance.bot.signalsuccessfailure.PriceTargetCheckerTask.TIME_RANGE_AGG_TRADES;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,6 +37,7 @@ public class PriceTargetCheckerTaskTest {
   private BinanceApiClientFactory mockBinanceApiClientFactory;
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private ChartPatternSignalDaoImpl mockChartPatternSignalDaoImpl;
+  @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private Date currentTime = new Date();
 
   private PriceTargetCheckerTask priceTargetCheckerTask;
@@ -41,12 +45,13 @@ public class PriceTargetCheckerTaskTest {
   @Before
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
+    when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
     priceTargetCheckerTask = new PriceTargetCheckerTask(
-        mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl);
+        mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
@@ -55,7 +60,7 @@ public class PriceTargetCheckerTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setPrice("6000");
     List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + 1000))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
         .thenReturn(tradesList);
 
     priceTargetCheckerTask.performPriceTargetChecks();
@@ -64,7 +69,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.SELL)
         .build();
@@ -75,7 +80,7 @@ public class PriceTargetCheckerTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setPrice("6000");
     List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + 1000))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
         .thenReturn(tradesList);
 
     priceTargetCheckerTask.performPriceTargetChecks();
@@ -84,7 +89,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_hour() {
+  public void testPerformPriceTargetChecks_timeFrame_hour() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.HOUR).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
@@ -93,7 +98,7 @@ public class PriceTargetCheckerTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setPrice("6000");
     List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + 1000))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
         .thenReturn(tradesList);
 
     priceTargetCheckerTask.performPriceTargetChecks();
@@ -102,7 +107,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_4hour() {
+  public void testPerformPriceTargetChecks_timeFrame_4hour() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FOUR_HOURS).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
@@ -111,7 +116,7 @@ public class PriceTargetCheckerTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setPrice("6000");
     List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + 1000))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
         .thenReturn(tradesList);
 
     priceTargetCheckerTask.performPriceTargetChecks();
@@ -120,7 +125,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_day() {
+  public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.DAY).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
@@ -129,7 +134,7 @@ public class PriceTargetCheckerTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setPrice("6000");
     List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + 1000))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
         .thenReturn(tradesList);
 
     priceTargetCheckerTask.performPriceTargetChecks();

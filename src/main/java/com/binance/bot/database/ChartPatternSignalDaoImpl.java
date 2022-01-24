@@ -78,8 +78,8 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getChatPatternSignalsThatReachedTenCandleStickTime() {
-    String sql = "select * from ChartPatternSignal where IsSignalOn = 1\n" +
-        "    and PriceAtTenCandlestickTime is null\n" +
+    String sql = "select * from ChartPatternSignal \n" +
+        "    where PriceAtTenCandlestickTime is null\n" +
         "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now'))\n" +
         "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now'))\n" +
         "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now'))\n" +
@@ -91,7 +91,7 @@ public class ChartPatternSignalDaoImpl {
                                             double tenCandleStickTimePrice,
                                             double tenCandleStickTimeProfitPercent) {
     String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and IsSignalOn=1";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
     return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;

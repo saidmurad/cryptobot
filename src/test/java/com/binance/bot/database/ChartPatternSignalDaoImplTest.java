@@ -56,6 +56,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
+      "    FailedToGetPriceAtTenCandlestickTime INTEGER,\n" +
       "    ProfitPercentAtTenCandlestickTime REAL,\n" +
       "    PriceBestReached REAL,\n" +
       "    PriceCurrent REAL,\n" +
@@ -117,6 +118,21 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
     assertThat(updatedChartPatternSignal.timeOfSignalInvalidation().getTime() - currentTime).isLessThan(5000L);
     assertThat(updatedChartPatternSignal.priceAtTimeOfSignalInvalidation()).isEqualTo(priceAtTimeOfInvalidation);
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_markedAsFailed_notReturned() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(149)))
+        .setFailedToGetPriceAtTenCandlestickTime(true)
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+
+    assertThat(ret).hasSize(0);
   }
 
   @Test
@@ -267,6 +283,16 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.resetNumTimesMissingInInput(Lists.newArrayList(chartPatternSignalInDB));
 
     assertThat(dao.getChartPattern(chartPatternSignalInDB).numTimesMissingInInput()).isEqualTo(0);
+  }
+
+  public void testSetFailedToGetPriceAtTenCandlestickTime() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+    assertThat(dao.getChartPattern(chartPatternSignalInDB).failedToGetPriceAtTenCandlestickTime()).isFalse();
+
+    dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignalInDB);
+
+    assertThat(dao.getChartPattern(chartPatternSignalInDB).failedToGetPriceAtTenCandlestickTime()).isTrue();
   }
 
   public void testGetChartPatternSignalsToInvalidate() {

@@ -88,6 +88,8 @@ public abstract class ChartPatternSignal {
 
   public abstract double priceCurrent();
 
+  public abstract boolean failedToGetPriceAtTenCandlestickTime();
+
   @Nullable
   public abstract Date currentTime();
 
@@ -105,6 +107,7 @@ public abstract class ChartPatternSignal {
         .setPriceAtTimeOfSignalInvalidation(0)
         .setPriceAtSignalTargetTime(0)
         .setPriceAtTenCandlestickTime(0)
+        .setFailedToGetPriceAtTenCandlestickTime(false)
         .setProfitPercentAtTenCandlestickTime(0)
         .setPriceBestReached(0)
         .setPriceCurrent(0)
@@ -159,6 +162,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setPriceAtTenCandlestickTime(double priceAtTenCandlestickTime);
 
+    public abstract Builder setFailedToGetPriceAtTenCandlestickTime(boolean failedToGetPriceAtTenCandlestickTime);
+
     public abstract Builder setPriceBestReached(double priceBestReached);
 
     public abstract Builder setPriceCurrent(double priceCurrent);
@@ -191,6 +196,7 @@ public abstract class ChartPatternSignal {
           .setReasonForSignalInvalidation(that.reasonForSignalInvalidation())
           .setPriceAtSignalTargetTime(that.priceAtSignalTargetTime())
           .setPriceAtTenCandlestickTime(that.priceAtTenCandlestickTime())
+          .setFailedToGetPriceAtTenCandlestickTime(that.failedToGetPriceAtTenCandlestickTime())
           .setPriceBestReached(that.priceBestReached())
           .setPriceCurrent(that.priceCurrent())
           .setCurrentTime(that.currentTime())

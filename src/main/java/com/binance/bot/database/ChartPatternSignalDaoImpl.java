@@ -80,6 +80,7 @@ public class ChartPatternSignalDaoImpl {
   public List<ChartPatternSignal> getChatPatternSignalsThatReachedTenCandleStickTime() {
     String sql = "select * from ChartPatternSignal \n" +
         "    where PriceAtTenCandlestickTime is null\n" +
+        "    and FailedToGetPriceAtTenCandlestickTime = 0\n" +
         "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now'))\n" +
         "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now'))\n" +
         "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now'))\n" +
@@ -124,6 +125,19 @@ public class ChartPatternSignalDaoImpl {
       } else {
         logger.error("Failed to make numTimesMissingInInput 0 for chart pattern signal: " + chartPatternSignal.toString());
       }
+    }
+  }
+
+  public void failedToGetPriceAtTenCandlestickTime(ChartPatternSignal chartPatternSignal) {
+    String sql = "update ChartPatternSignal set FailedToGetPriceAtTenCandlestickTime = 1 where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
+          chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+          df.format(chartPatternSignal.timeOfSignal()));
+    if (ret == 1) {
+      logger.info("Updated FailedToGetPriceAtTenCandlestickTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
+    } else {
+      logger.error("Failed to update FailedToGetPriceAtTenCandlestickTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
     }
   }
 

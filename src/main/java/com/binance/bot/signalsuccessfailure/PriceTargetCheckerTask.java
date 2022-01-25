@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +29,7 @@ class PriceTargetCheckerTask {
   private Logger logger = LoggerFactory.getLogger(getClass());
   private final SupportedSymbolsInfo supportedSymbolsInfo;
 
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   @Autowired
   PriceTargetCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
                          ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo) {
@@ -71,15 +73,16 @@ class PriceTargetCheckerTask {
           List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES * (j + 1));
           doRequestThrottleIfNeeded();
           if (tradesList.size() == 0) {
-            logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time %d min but got zero trades.", chartPatternSignal.coinPair(),
-                tenCandleStickTime, j+1));
+            logger.error(String.format("Got zero agg trades for '%s' in timeFrame '%s' with start time '%s' and end time %d min " +
+                    "but got zero trades.", chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), dateFormat.format(tenCandleStickTime), j+1));
           } else {
             tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
             usedWhichApi = "aggTrades";
           }
         }
         if (tenCandleStickTimePrice == 0.0) {
-          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval.", chartPatternSignal.coinPair()));
+          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.coinPair()));
+          dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
         }
       }
       if (tenCandleStickTimePrice > 0.0) {

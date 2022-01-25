@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 class PriceTargetCheckerTask {
 
-  static final long TIME_RANGE_AGG_TRADES = 120000;
+  static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
   private ChartPatternSignalDaoImpl dao;
   private Logger logger = LoggerFactory.getLogger(getClass());
@@ -50,20 +50,31 @@ class PriceTargetCheckerTask {
         continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
-      double tenCandleStickTimePrice;
+      double tenCandleStickTimePrice = 0.0;
+      String usedWhichApi = "";
       if (System.currentTimeMillis() - tenCandleStickTime <= 600000) {
         tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+        usedWhichApi = "Price";
       } else {
-        List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES);
-        if (tradesList.size() == 0) {
-          logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time '%d' but got zero trades.", chartPatternSignal.coinPair(),
-              tenCandleStickTime, tenCandleStickTime + 1000));
-          continue;
+        // TODO: Unit test.
+        for (int j = 0; j < 10; j ++) {
+          List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES * (j + 1));
+          if (tradesList.size() == 0) {
+            logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time %d min but got zero trades.", chartPatternSignal.coinPair(),
+                tenCandleStickTime, j+1));
+          } else {
+            tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
+            usedWhichApi = "aggTrades";
+          }
         }
-        tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
+        if (tenCandleStickTimePrice == 0.0) {
+          logger.error(String.format("Could not get agg trades for '%s' even with 10 minute interval.", chartPatternSignal.coinPair()));
+        }
       }
-      boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-      logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "'. Ret val=" + ret);
+      if (tenCandleStickTimePrice > 0.0) {
+        boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' using api: " + usedWhichApi + ". Ret val=" + ret);
+      }
       if (i > 0 && i % REQUEST_WEIGHT_1_MIN_LIMIT==0) {
         Thread.sleep(60000);
       }

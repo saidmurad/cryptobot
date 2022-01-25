@@ -37,6 +37,13 @@ class PriceTargetCheckerTask {
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
+  private long requestCount = 0;
+
+  private void doRequestThrottleIfNeeded() throws InterruptedException {
+    if (requestCount % REQUEST_WEIGHT_1_MIN_LIMIT == 0) {
+      Thread.sleep(60000);
+    }
+  }
 
   @Scheduled(fixedDelay = 60000)
   public void performPriceTargetChecks() throws InterruptedException, ParseException {
@@ -55,12 +62,14 @@ class PriceTargetCheckerTask {
       if (System.currentTimeMillis() - tenCandleStickTime <= 600000) {
         tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
         usedWhichApi = "Price";
+        doRequestThrottleIfNeeded();
       }
       // TODO: Move below block to a one time runnable batch processing.
       else {
         // TODO: Unit test.
         for (int j = 0; j < 60; j ++) {
           List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES * (j + 1));
+          doRequestThrottleIfNeeded();
           if (tradesList.size() == 0) {
             logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time %d min but got zero trades.", chartPatternSignal.coinPair(),
                 tenCandleStickTime, j+1));
@@ -68,7 +77,6 @@ class PriceTargetCheckerTask {
             tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
             usedWhichApi = "aggTrades";
           }
-          Thread.sleep(1000);
         }
         if (tenCandleStickTimePrice == 0.0) {
           logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval.", chartPatternSignal.coinPair()));
@@ -77,9 +85,6 @@ class PriceTargetCheckerTask {
       if (tenCandleStickTimePrice > 0.0) {
         boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
         logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' using api: " + usedWhichApi + ". Ret val=" + ret);
-      }
-      if (i > 0 && i % REQUEST_WEIGHT_1_MIN_LIMIT==0) {
-        Thread.sleep(60000);
       }
     }
   }

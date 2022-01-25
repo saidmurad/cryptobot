@@ -55,9 +55,11 @@ class PriceTargetCheckerTask {
       if (System.currentTimeMillis() - tenCandleStickTime <= 600000) {
         tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
         usedWhichApi = "Price";
-      } else {
+      }
+      // TODO: Move below block to a one time runnable batch processing.
+      else {
         // TODO: Unit test.
-        for (int j = 0; j < 10; j ++) {
+        for (int j = 0; j < 60; j ++) {
           List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES * (j + 1));
           if (tradesList.size() == 0) {
             logger.error(String.format("Got zero agg trades for '%s' with start time '%d' and end time %d min but got zero trades.", chartPatternSignal.coinPair(),
@@ -66,9 +68,10 @@ class PriceTargetCheckerTask {
             tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
             usedWhichApi = "aggTrades";
           }
+          Thread.sleep(1000);
         }
         if (tenCandleStickTimePrice == 0.0) {
-          logger.error(String.format("Could not get agg trades for '%s' even with 10 minute interval.", chartPatternSignal.coinPair()));
+          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval.", chartPatternSignal.coinPair()));
         }
       }
       if (tenCandleStickTimePrice > 0.0) {

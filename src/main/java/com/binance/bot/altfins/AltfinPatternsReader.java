@@ -91,6 +91,9 @@ public class AltfinPatternsReader implements Runnable {
               continue;
             }
             String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()));
+            if (Files.exists(Path.of(tmpAltfinsPatternsFilePath))) {
+              Files.delete(Path.of(tmpAltfinsPatternsFilePath));
+            }
             Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);

@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -36,6 +37,7 @@ class PriceTargetCheckerTask {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
@@ -87,7 +89,7 @@ class PriceTargetCheckerTask {
       }
       if (tenCandleStickTimePrice > 0.0) {
         boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' using api: " + usedWhichApi + ". Ret val=" + ret);
+        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: " + usedWhichApi + ". Ret val=" + ret);
       }
     }
   }

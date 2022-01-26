@@ -74,14 +74,14 @@ class PriceTargetCheckerTask {
           doRequestThrottleIfNeeded();
           if (tradesList.size() == 0) {
             logger.error(String.format("Got zero agg trades for '%s' in timeFrame '%s' with start time '%s' and end time %d min " +
-                    "but got zero trades.", chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), dateFormat.format(tenCandleStickTime), j+1));
+                    "but got zero trades.", chartPatternSignal.toString(), chartPatternSignal.timeFrame().name(), dateFormat.format(tenCandleStickTime), j+1));
           } else {
             tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
             usedWhichApi = "aggTrades";
           }
         }
         if (tenCandleStickTimePrice == 0.0) {
-          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.coinPair()));
+          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString()));
           dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
         }
       }

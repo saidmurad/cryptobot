@@ -157,6 +157,7 @@ public class AltfinPatternsReader implements Runnable {
         logger.error("\n" + s);
         for (ChartPatternSignal c : patterns) {
           logger.error(c.toString());
+          logger.error("Time of invalidation: " + dateFormat.format(c.timeOfSignalInvalidation()));
         }
         logger.error("\n");
         break;

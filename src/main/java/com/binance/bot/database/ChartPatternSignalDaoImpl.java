@@ -62,9 +62,16 @@ public class ChartPatternSignalDaoImpl {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
         "PriceAtTimeOfSignalInvalidation=?, ReasonForSignalInvalidation=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
-    return jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation), reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
+    boolean ret1 = jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation), reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;
+    String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +
+        "values(?, ?, ?, ?, ?, ?, ?)";
+
+    boolean ret2 = jdbcTemplate.update(sql2, chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()), "Disappeared", df.format(new Date())) == 1;
+    return ret1 && ret2;
   }
 
   // TODO: Think of a way how we can trim the data considered.
@@ -127,8 +134,10 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {
-    String sql = "update ChartPatternSignal set NumTimesMissingInInput = 0 where " +
+    String sql = "update ChartPatternSignal set NumTimesMissingInInput = 0, IsSignalOn=1 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +
+        "values(?, ?, ?, ?, ?, ?, ?)";
     for (ChartPatternSignal chartPatternSignal: chartPatternSignalsReappearedInTime) {
       int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
@@ -137,6 +146,12 @@ public class ChartPatternSignalDaoImpl {
         logger.info("Updated chart pattern signal missing count to 0 for chart pattern signal: " + chartPatternSignal.toString());
       } else {
         logger.error("Failed to make numTimesMissingInInput 0 for chart pattern signal: " + chartPatternSignal.toString());
+      }
+      ret = jdbcTemplate.update(sql2, chartPatternSignal.coinPair(),
+          chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+          df.format(chartPatternSignal.timeOfSignal()), "Reappeared", df.format(new Date()));
+      if (ret != 1) {
+        logger.error("Failed to update auxillary event table for chart pattern " + chartPatternSignal.toString());
       }
     }
   }
@@ -155,7 +170,21 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getChartPatternSignalsToInvalidate() {
-    String sql = "select * from ChartPatternSignal where IsSignalOn=1 and NumTimesMissingInInput >= 5";
+    String sql = "select * from ChartPatternSignal where IsSignalOn=1 and NumTimesMissingInInput >= 1";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
+  public void setEntryTrade(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Trade entryTrade) {
+    String sql = "update ChartPatternSignal set EntryOrderId=?, EntryPrice=?, Qty=? where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    int ret = jdbcTemplate.update(sql, entryTrade.orderId(), entryTrade.price(), entryTrade.qty(),
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()));
+    if (ret == 1) {
+      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
+    } else {
+      logger.info(String.format("Failed to update chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
+    }
   }
 }

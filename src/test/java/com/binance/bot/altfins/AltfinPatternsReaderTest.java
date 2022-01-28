@@ -8,6 +8,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
@@ -39,12 +40,13 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Mock private ChartPatternSignalDaoImpl dao;
   @Mock private BinanceApiClientFactory mockApiClientFactory;
   @Mock private BinanceApiRestClient mockRestClient;
+  @Mock private BinanceTradingBot mockBinanceTradingBot;
 
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
-    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, dao);
+    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, dao, mockBinanceTradingBot);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -251,6 +253,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.insertNewChartPatternSignal(pattern);
 
     ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
+//    verify(mockBinanceTradingBot).placeTrade(pattern);
     verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volProfile));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
@@ -294,7 +297,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDB, "", "");
 
     verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
-    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList(patternsInDB.get(0)));
+//    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList(patternsInDB.get(0)));
   }
 
   public void testGetChartPatternSignalsToInvalidate_getsPatternsToInvalidate() throws IOException {
@@ -303,12 +306,12 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDB, patternsInDB, "", "");
 
     verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
-    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList());
+    //verify(dao).resetNumTimesMissingInInput(Lists.newArrayList());
     verify(dao).getChartPatternSignalsToInvalidate();
   }
 
   public void testUnmatchingNightmare() throws ParseException, IOException {
-    AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao);
+    AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao, mockBinanceTradingBot);
     List<ChartPatternSignal> altfinPatterns = altfinPatternsReader.readPatterns(getPatternsFileContents_nonMatchingNightmare());
     ChartPatternSignal chartPatternSignalInDB = ChartPatternSignal.newBuilder()
         .setCoinPair("FTMUSDT")

@@ -6,6 +6,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
+import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
@@ -44,6 +45,7 @@ public class AltfinPatternsReader implements Runnable {
   private static final String PROD_MACHINE_DIR = "/usr/local/google/home/kannanj/altfins/send_alerts";
   private static final String DEV_MACHINE_DIR = "/home/kannanj";
   private final TimeFrame[] timeFrames = {TimeFrame.FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
+  private final BinanceTradingBot binanceTradingBot;
   private long[] lastProcessedTimes = new long[4];
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -54,10 +56,10 @@ public class AltfinPatternsReader implements Runnable {
 
   @Autowired
   private SupportedSymbolsInfo supportedSymbolsInfo;
-  @Autowired
   private GetVolumeProfile getVolumeProfile;
 
-  public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile, ChartPatternSignalDaoImpl chartPatternSignalDao) {
+  @Autowired
+  public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile, ChartPatternSignalDaoImpl chartPatternSignalDao, BinanceTradingBot binanceTradingBot) {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     if (new File(PROD_MACHINE_DIR).exists()) {
       ALTFINS_PATTERNS_DIR = PROD_MACHINE_DIR;
@@ -67,6 +69,7 @@ public class AltfinPatternsReader implements Runnable {
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
     this.chartPatternSignalDao = chartPatternSignalDao;
+    this.binanceTradingBot = binanceTradingBot;
   }
 
   @Override
@@ -112,6 +115,7 @@ public class AltfinPatternsReader implements Runnable {
             List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
             List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
             printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
+            chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternsWronglyInvalidated);
             List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
             if (!newChartPatternSignals.isEmpty()) {
               logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
@@ -263,8 +267,8 @@ public class AltfinPatternsReader implements Runnable {
         .collect(Collectors.toList());
     chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
 
-    printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr, tmpAltfinsPatternsFilePath);
-    Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
+    //printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr, tmpAltfinsPatternsFilePath);
+    /*Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
     allPatternsInDB.stream().forEach(patternInDB -> {
       allPatternsInDBMap.put(patternInDB, patternInDB);
     });
@@ -275,7 +279,7 @@ public class AltfinPatternsReader implements Runnable {
         chartPatternSignalsReappearedInTime.add(patternInDB);
       }
     });
-    chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternSignalsReappearedInTime);
+    chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternSignalsReappearedInTime);*/
 
     return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
   }

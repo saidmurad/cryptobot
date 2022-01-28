@@ -57,6 +57,9 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    CurrentTime TEXT" +
       ");";
 
+  /*
+  create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);
+   */
   public ChartPatternSignalDaoImplTest() {
   }
 
@@ -69,6 +72,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.setDataSource(dataSource);
     Statement stmt = dataSource.getConnection().createStatement();
     stmt.execute(createTableStmt);
+    stmt.execute("create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, TimeOfSignal Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);");
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100.0000");
     volProfile = VolumeProfile.newBuilder()

@@ -101,6 +101,25 @@ public abstract class ChartPatternSignal {
 
   public abstract int numTimesMissingInInput();
 
+  @AutoValue
+  public abstract static class Trade {
+    public abstract long orderId();
+
+    public abstract double price();
+
+    public abstract double qty();
+
+    public static AutoValue_ChartPatternSignal_Trade create(long orderId, double price, double qty) {
+      return new AutoValue_ChartPatternSignal_Trade(orderId, price, qty);
+    }
+  }
+
+  @Nullable
+  public abstract Trade entryTrade();
+
+  @Nullable
+  public abstract Trade exitTrade();
+
   public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
         .setPriceRelatedToPattern(0)
@@ -180,6 +199,10 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setProfitPercentAtTenCandlestickTime(double profitPercentAtTenCandlestickTime);
 
+    public abstract Builder setEntryTrade(Trade entryTrade);
+
+    public abstract Builder setExitTrade(Trade exitTrade);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -208,7 +231,9 @@ public abstract class ChartPatternSignal {
           .setPriceCurrent(that.priceCurrent())
           .setCurrentTime(that.currentTime())
           .setTimeOfInsertion(that.timeOfInsertion())
-          .setIsInsertedLate(that.isInsertedLate());
+          .setIsInsertedLate(that.isInsertedLate())
+          .setEntryTrade(that.entryTrade())
+          .setExitTrade(that.exitTrade());
     }
   }
 }

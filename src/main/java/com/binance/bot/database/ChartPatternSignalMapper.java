@@ -23,7 +23,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
   public ChartPatternSignal mapRow(ResultSet rs, int rowNum) throws SQLException {
     ChartPatternSignal.Builder chartPatternSignalBuilder = null;
     try {
-      return ChartPatternSignal.newBuilder()
+      chartPatternSignalBuilder = ChartPatternSignal.newBuilder()
           .setCoinPair(rs.getString("CoinPair"))
           .setTimeFrame(TimeFrame.valueOf(rs.getString("TimeFrame")))
           .setTradeType(TradeType.valueOf(rs.getString("TradeType")))
@@ -53,8 +53,13 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setProfitPercentAtTenCandlestickTime(rs.getDouble("ProfitPercentAtTenCandlestickTime"))
           .setPriceBestReached(rs.getDouble("PriceBestReached"))
           .setPriceCurrent(rs.getDouble("PriceCurrent"))
-          .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null)
-          .build();
+          .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null);
+     /* if (rs.getString("entryOrderId") != null) {
+        chartPatternSignalBuilder.setEntryTrade(
+          ChartPatternSignal.Trade.create(
+              rs.getInt("entryOrderId"), rs.getDouble("entryPrice"), rs.getDouble("entryQty")));
+      }*/
+      return chartPatternSignalBuilder.build();
     } catch (ParseException e) {
       throw new RuntimeException(e);
     }

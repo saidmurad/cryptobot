@@ -1,5 +1,6 @@
 package com.binance.bot.trading;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderType;
@@ -12,6 +13,7 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -19,6 +21,7 @@ import java.util.Locale;
 
 import static com.binance.bot.common.Constants.USDT;
 
+@Component
 public class BinanceTradingBot {
     private final BinanceApiRestClient binanceApiRestClient;
     private final ChartPatternSignalDaoImpl dao;
@@ -27,8 +30,8 @@ public class BinanceTradingBot {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private static final double PER_TRADE_AMOUNT = 20;
     @Autowired
-    public BinanceTradingBot(BinanceApiRestClient binanceApiRestClient, SupportedSymbolsInfo supportedSymbolsInfo, ChartPatternSignalDaoImpl dao) {
-        this.binanceApiRestClient = binanceApiRestClient;
+    public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory, SupportedSymbolsInfo supportedSymbolsInfo, ChartPatternSignalDaoImpl dao) {
+        this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
     }

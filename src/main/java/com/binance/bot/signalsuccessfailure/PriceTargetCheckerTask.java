@@ -43,15 +43,9 @@ class PriceTargetCheckerTask {
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
   private long requestCount = 0;
 
-  private void doRequestThrottleIfNeeded() throws InterruptedException {
-    if (requestCount % REQUEST_WEIGHT_1_MIN_LIMIT == 0) {
-      Thread.sleep(60000);
-    }
-  }
-
   @Scheduled(fixedDelay = 60000)
-  public void performPriceTargetChecks() throws InterruptedException, ParseException {
-    List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+  public void performPriceTargetChecks() throws ParseException {
+    List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
       if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
@@ -61,36 +55,9 @@ class PriceTargetCheckerTask {
         continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
-      double tenCandleStickTimePrice = 0.0;
-      String usedWhichApi = "";
-      if (System.currentTimeMillis() - tenCandleStickTime <= 600000) {
-        tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-        usedWhichApi = "Price";
-        doRequestThrottleIfNeeded();
-      }
-      // TODO: Move below block to a one time runnable batch processing.
-      else {
-        // TODO: Unit test.
-        for (int j = 0; j < 60; j ++) {
-          List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES * (j + 1));
-          doRequestThrottleIfNeeded();
-          if (tradesList.size() == 0) {
-            logger.error(String.format("Got zero agg trades for '%s' in timeFrame '%s' with start time '%s' and end time %d min " +
-                    "but got zero trades.", chartPatternSignal.toString(), chartPatternSignal.timeFrame().name(), dateFormat.format(tenCandleStickTime), j+1));
-          } else {
-            tenCandleStickTimePrice = Double.parseDouble(tradesList.get(0).getPrice());
-            usedWhichApi = "aggTrades";
-          }
-        }
-        if (tenCandleStickTimePrice == 0.0) {
-          logger.error(String.format("Could not get agg trades for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString()));
-          dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
-        }
-      }
-      if (tenCandleStickTimePrice > 0.0) {
-        boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: " + usedWhichApi + ". Ret val=" + ret);
-      }
+      double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+      boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+      logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
     }
   }
 

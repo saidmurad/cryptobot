@@ -32,8 +32,8 @@ public class ChartPatternSignalDaoImpl {
 
   public boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, " +
-        "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn)" +
-        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn, FailedToGetPriceAtTenCandlestickTime)" +
+        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     Object params[] = new Object[]{chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
@@ -50,7 +50,8 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.priceTarget(),
         df.format(chartPatternSignal.priceTargetTime()),
         chartPatternSignal.profitPotentialPercent(),
-        chartPatternSignal.isSignalOn()
+        chartPatternSignal.isSignalOn(),
+        chartPatternSignal.failedToGetPriceAtTenCandlestickTime()? 1:0
     };
 
     return jdbcTemplate.update(sql, params) > 0;
@@ -77,14 +78,14 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal())}, new ChartPatternSignalMapper());
   }
 
-  public List<ChartPatternSignal> getChatPatternSignalsThatReachedTenCandleStickTime() {
+  public List<ChartPatternSignal> getChatPatternSignalsThatJustReachedTenCandleStickTime() {
     String sql = "select * from ChartPatternSignal \n" +
         "    where PriceAtTenCandlestickTime is null\n" +
         "    and FailedToGetPriceAtTenCandlestickTime = 0\n" +
-        "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now'))\n" +
-        "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now'))\n" +
-        "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now'))\n" +
-        "    or (TimeFrame = 'DAY' and DATETIME(TimeOfSignal, '+10 day') <= DATETIME('now')))";
+        "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now') and DATETIME(TimeOfSignal, '+150 minute') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+10 hour') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+40 hour') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'DAY' and DATETIME(TimeOfSignal, '+10 day') <= DATETIME('now') and DATETIME(TimeOfSignal, '+10 day') >= DATETIME('now', '-10 minute')))";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 

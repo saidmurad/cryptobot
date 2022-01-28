@@ -3,13 +3,13 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
-import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -20,7 +20,6 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -52,17 +51,14 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
-    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
+    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
-    long tenCandleStickTime = currentTime.getTime() + TimeUnit.MINUTES.toMillis(150);
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setPrice("6000");
-    List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
-        .thenReturn(tradesList);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("6000");
+    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
     priceTargetCheckerTask.performPriceTargetChecks();
 
@@ -70,19 +66,16 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.SELL)
         .build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
-    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
+    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
-    long tenCandleStickTime = currentTime.getTime() + TimeUnit.MINUTES.toMillis(150);
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setPrice("6000");
-    List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
-        .thenReturn(tradesList);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("6000");
+    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
     priceTargetCheckerTask.performPriceTargetChecks();
 
@@ -93,14 +86,11 @@ public class PriceTargetCheckerTaskTest {
   public void testPerformPriceTargetChecks_timeFrame_hour() throws InterruptedException, ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.HOUR).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
-    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
+    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
-    long tenCandleStickTime = currentTime.getTime() + TimeUnit.HOURS.toMillis(10);
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setPrice("6000");
-    List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
-        .thenReturn(tradesList);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("6000");
+    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
     priceTargetCheckerTask.performPriceTargetChecks();
 
@@ -108,17 +98,14 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_4hour() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_4hour() throws ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FOUR_HOURS).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
-    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
+    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
-    long tenCandleStickTime = currentTime.getTime() + TimeUnit.HOURS.toMillis(40);
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setPrice("6000");
-    List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
-        .thenReturn(tradesList);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("6000");
+    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
     priceTargetCheckerTask.performPriceTargetChecks();
 
@@ -129,18 +116,14 @@ public class PriceTargetCheckerTaskTest {
   public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException, ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.DAY).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
-    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatReachedTenCandleStickTime())
+    when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
-    long tenCandleStickTime = currentTime.getTime() + TimeUnit.DAYS.toMillis(10);
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setPrice("6000");
-    List<AggTrade> tradesList = Lists.newArrayList(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1, tenCandleStickTime, tenCandleStickTime + TIME_RANGE_AGG_TRADES))
-        .thenReturn(tradesList);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("6000");
+    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
     priceTargetCheckerTask.performPriceTargetChecks();
 
-    // TODO: Fix the stupid error happening below.
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, 50.0);
   }
 

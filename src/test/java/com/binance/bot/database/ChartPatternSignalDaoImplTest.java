@@ -1,27 +1,20 @@
 package com.binance.bot.database;
 
-import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.domain.market.Candlestick;
-import com.binance.bot.altfins.AltfinPatternsReader;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -130,13 +123,13 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
 
     assertThat(ret).hasSize(0);
   }
 
   @Test
-  public void testChatPatternSignalsThatReachedTenCandleStickTime_fifteenMinute_TimeFrame() {
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_fifteenMinute_TimeFrame_justExpired() {
     Date currentTime = new Date();
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("ETHUSDT")
@@ -149,7 +142,26 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_fifteenMinute_TimeFrame_expiredWithinGracePeriod() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(161)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(155)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
     assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
   }
@@ -170,7 +182,28 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_Hour_TimeFrame_expiredWithinGracePeriod() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(11)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(10) - TimeUnit.MINUTES.toMillis(5)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
     assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
   }
@@ -191,7 +224,28 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_FourHour_TimeFrame_GracePeriod() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(41)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40) - TimeUnit.MINUTES.toMillis(5)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
     assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
   }
@@ -201,18 +255,39 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     Date currentTime = new Date();
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("ETHUSDT")
-        .setTimeFrame(TimeFrame.FOUR_HOURS)
-        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(39)))
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(9)))
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
         .setCoinPair("BTCUSDT")
-        .setTimeFrame(TimeFrame.FOUR_HOURS)
-        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.HOURS.toMillis(40)))
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(10)))
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatReachedTenCandleStickTime();
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  @Test
+  public void testChatPatternSignalsThatReachedTenCandleStickTime_Daily_TimeFrame_GracePeriod() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(11)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(10) - TimeUnit.MINUTES.toMillis(5)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     assertThat(ret).hasSize(1);
     assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
   }

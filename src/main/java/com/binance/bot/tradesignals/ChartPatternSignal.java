@@ -56,6 +56,10 @@ public abstract class ChartPatternSignal {
 
   public abstract double priceAtTimeOfSignal();
 
+  // What we saw after receiving    the signal since price may have already moved significantly.
+  @Nullable
+  public abstract Double priceAtTimeOfSignalReal();
+
   public abstract Date priceTargetTime();
 
   public abstract double priceRelatedToPattern();
@@ -128,6 +132,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setPriceAtTimeOfSignal(double priceAtTimeOfSignal);
 
+    public abstract Builder setPriceAtTimeOfSignalReal(Double priceAtTimeOfSignalReal);
+
     public abstract Builder setPriceTargetTime(Date priceTargetTime);
 
     public abstract Builder setTimeOfSignal(Date timeOfSignal);
@@ -181,6 +187,7 @@ public abstract class ChartPatternSignal {
           .setTradeType(that.tradeType())
           .setPattern(that.pattern())
           .setPriceAtTimeOfSignal(that.priceAtTimeOfSignal())
+          .setPriceAtTimeOfSignalReal(that.priceAtTimeOfSignalReal())
           .setPriceTargetTime(that.priceTargetTime())
           .setTimeOfSignal(that.timeOfSignal())
           .setPriceRelatedToPattern(that.priceRelatedToPattern())

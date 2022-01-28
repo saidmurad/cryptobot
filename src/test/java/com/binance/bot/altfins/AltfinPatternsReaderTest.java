@@ -1,7 +1,9 @@
 package com.binance.bot.altfins;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
+import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -35,11 +37,14 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Mock
   private GetVolumeProfile mockGetVolumeProfile;
   @Mock private ChartPatternSignalDaoImpl dao;
+  @Mock private BinanceApiClientFactory mockApiClientFactory;
+  @Mock private BinanceApiRestClient mockRestClient;
 
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
-    altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao);
+    when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
+    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, dao);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -225,8 +230,11 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testInsertChartPatternSignal() throws IOException {
+  public void testInsertChartPatternSignal() throws IOException, ParseException {
     ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("1,111.12");
+    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100");
     VolumeProfile volProfile = VolumeProfile.newBuilder()
@@ -246,6 +254,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volProfile));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
+    assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
     assertThat(insertedVal.isInsertedLate()).isTrue();
   }

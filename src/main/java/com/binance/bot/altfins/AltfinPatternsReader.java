@@ -170,10 +170,11 @@ public class AltfinPatternsReader implements Runnable {
     }
   }
 
-  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) {
+  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException {
     Date currTime = new Date();
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
+        .setPriceAtTimeOfSignalReal(numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue())
         .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime))
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());

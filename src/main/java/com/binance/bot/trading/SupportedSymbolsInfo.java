@@ -30,9 +30,9 @@ public class SupportedSymbolsInfo {
       return symbolInfoMap;
     }
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-      if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
+      //if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
         symbolInfoMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());
-      }
+      //}
     });
     logger.info(String.format("Returning symbol map with %d symbols.", symbolInfoMap.size()));
     return symbolInfoMap;

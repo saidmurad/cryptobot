@@ -102,12 +102,14 @@ public class AltfinPatternsReader implements Runnable {
             logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
             patternFromAltfins = makeUnique(patternFromAltfins);
             int origSize = patternFromAltfins.size();
-            patternFromAltfins = patternFromAltfins.stream()
+            List<ChartPatternSignal> temp = patternFromAltfins.stream()
                 .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair()))
                 .collect(Collectors.toList());
             if (patternFromAltfins.size() < origSize) {
-              logger.info(String.format("Filtered out %d symbols not supported on Binance.", (origSize - patternFromAltfins.size())));
+              logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
+                  getCoinPairsInDifferenceBetween(patternFromAltfins, temp)));
             }
+            patternFromAltfins = temp;
             lastProcessedTimes[i] = file.lastModified();
             if (patternFromAltfins.size() == 0) {
               logger.info("Left with empty patterns list now.");
@@ -151,6 +153,17 @@ public class AltfinPatternsReader implements Runnable {
         throw new RuntimeException(ex);
       }
     }
+  }
+
+  private String getCoinPairsInDifferenceBetween(List<ChartPatternSignal> patternFromAltfins, List<ChartPatternSignal> postFilterPatterns) {
+    StringBuilder stringBuilder = new StringBuilder();
+    Set<ChartPatternSignal> postFilterPatternsSet = new HashSet<>();
+    postFilterPatternsSet.addAll(postFilterPatterns);
+    patternFromAltfins.stream().filter(chartPatternSignal -> !postFilterPatternsSet.contains(chartPatternSignal))
+        .forEach(chartPatternSignal -> {
+          stringBuilder.append(chartPatternSignal.coinPair() + ", ");
+        });
+    return stringBuilder.toString();
   }
 
   private void printPatterns(List<ChartPatternSignal> patterns, String s, LogLevel logLevel) {

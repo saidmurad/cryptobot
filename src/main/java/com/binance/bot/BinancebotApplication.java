@@ -16,17 +16,13 @@ public class BinancebotApplication implements CommandLineRunner {
 	@Autowired
 	private AltfinPatternsReader altfinPatternsReader;
 
-	@Autowired
-	private CheckSymbolInfoCorrectness checkSymbolInfoCorrectness;
-
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
 	}
 
 	@Override
 	public void run(String... args) {
-		//new Thread(altfinPatternsReader).start();
-		checkSymbolInfoCorrectness.checkSymbols();
+		new Thread(altfinPatternsReader).start();
 	}
 }
 

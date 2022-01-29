@@ -7,6 +7,8 @@ import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
 import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.TradeType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +20,7 @@ import static com.binance.bot.common.Constants.USDT;
 
 @Component
 public class GetVolumeProfile {
+    private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BinanceApiRestClient binanceApiRestClient;
     private final Clock clock = Clock.systemDefaultZone();
 
@@ -36,6 +39,10 @@ public class GetVolumeProfile {
         long currentTimeMillis = clock.millis();
         // Look from 2:30 hours past till 30 min ago
         List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(coinPair, CandlestickInterval.FIFTEEN_MINUTES, 1000, currentTimeMillis - 150 * 60 * 1000, currentTimeMillis - 30 * 60 * 100);
+        if (candlesticks.isEmpty()) {
+            logger.warn("Got 0 klines for " + coinPair + " so volume data is missing");
+            return null;
+        }
         double totVol = 0;
         double minVol = Double.parseDouble(candlesticks.get(0).getVolume());
         double maxVol = 0;

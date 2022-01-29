@@ -97,6 +97,16 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   }
 
   @Test
+  public void testInsertChartPatternSignal_nullVolumeProfile() {
+    assertTrue(dao.insertChartPatternSignal(getChartPatternSignal().setIsSignalOn(true).build(), null));
+    List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES);
+    assertTrue(chartPatternSignals.size() == 1);
+    assertThat(chartPatternSignals.get(0).isVolumeSurge()).isFalse();
+    assertThat(chartPatternSignals.get(0).volumeAverage()).isEqualTo(0.0);
+    assertThat(chartPatternSignals.get(0).volumeAtSignalCandlestick()).isEqualTo(0);
+  }
+
+  @Test
   public void testInvalidateChartPatternSignal() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true).build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);

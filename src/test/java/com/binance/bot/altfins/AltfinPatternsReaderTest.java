@@ -264,6 +264,27 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
   }
 
+  public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException {
+    ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
+    TickerPrice tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("1,111.12");
+    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
+    when(mockGetVolumeProfile.getVolumeProfile(pattern.coinPair())).thenReturn(null);
+
+    altfinPatternsReader.insertNewChartPatternSignal(pattern);
+
+    ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
+//    verify(mockBinanceTradingBot).placeTrade(pattern);
+    verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(null));
+    ChartPatternSignal insertedVal = patternArgCatcher.getValue();
+    assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
+    assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
+    assertThat(insertedVal.timeOfInsertion()).isNotNull();
+    assertThat(insertedVal.isInsertedLate()).isTrue();
+    // First pattern in test file is a 15 min timeframe signal.
+    assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
+  }
+
   private TimeFrame changeTimeFrame(TimeFrame timeFrame) {
     switch (timeFrame) {
       case FIFTEEN_MINUTES:

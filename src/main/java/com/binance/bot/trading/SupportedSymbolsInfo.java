@@ -19,6 +19,7 @@ public class SupportedSymbolsInfo {
   private BinanceApiRestClient binanceApiRestClient;
   private Map<String, List<OrderType>> symbolInfoMap = new HashMap<>();
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  private Long lastFetched = null;
 
   @Autowired
   public SupportedSymbolsInfo(BinanceApiClientFactory binanceApiClientFactory) {
@@ -26,13 +27,15 @@ public class SupportedSymbolsInfo {
   }
 
   public Map<String, List<OrderType>> getSupportedSymbols() {
-    if (!symbolInfoMap.isEmpty()) {
+    if (!symbolInfoMap.isEmpty() && (System.currentTimeMillis() - lastFetched) < 60000) {
       return symbolInfoMap;
     }
+    symbolInfoMap = new HashMap<>();
+    lastFetched = System.currentTimeMillis();
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-      //if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
+      if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
         symbolInfoMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());
-      //}
+      }
     });
     logger.info(String.format("Returning symbol map with %d symbols.", symbolInfoMap.size()));
     return symbolInfoMap;

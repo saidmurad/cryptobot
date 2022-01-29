@@ -83,7 +83,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_hour() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_hour() throws ParseException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.HOUR).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())

@@ -47,9 +47,7 @@ class PriceTargetCheckerTask {
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
       if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
-        logger.warn("Symbol unsupported: " + chartPatternSignal.coinPair());
-        boolean ret = dao.invalidateChartPatternSignal(chartPatternSignal, 0.0, ReasonForSignalInvalidation.SYMBOL_NOT_SUPPORTED);
-        logger.warn("Ret val: " + ret);
+        logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
         continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);

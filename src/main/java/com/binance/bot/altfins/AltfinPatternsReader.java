@@ -2,6 +2,7 @@ package com.binance.bot.altfins;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
@@ -179,6 +180,7 @@ public class AltfinPatternsReader implements Runnable {
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setPriceAtTimeOfSignalReal(numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue())
+        .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))
         .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime))
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());

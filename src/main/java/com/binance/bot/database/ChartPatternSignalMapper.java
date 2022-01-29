@@ -53,7 +53,8 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setProfitPercentAtTenCandlestickTime(rs.getDouble("ProfitPercentAtTenCandlestickTime"))
           .setPriceBestReached(rs.getDouble("PriceBestReached"))
           .setPriceCurrent(rs.getDouble("PriceCurrent"))
-          .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null);
+          .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null)
+          .setTenCandlestickTime(rs.getString("TenCandlestickTime") != null? dateFormat.parse(rs.getString("TenCandlestickTime")) : null);
      /* if (rs.getString("entryOrderId") != null) {
         chartPatternSignalBuilder.setEntryTrade(
           ChartPatternSignal.Trade.create(

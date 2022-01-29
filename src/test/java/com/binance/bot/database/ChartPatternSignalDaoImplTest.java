@@ -49,6 +49,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    PriceAtTimeOfSignalInvalidation REAL,\n" +
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
+      "    TenCandlestickTime TEXT,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
       "    FailedToGetPriceAtTenCandlestickTime INTEGER,\n" +
       "    ProfitPercentAtTenCandlestickTime REAL,\n" +
@@ -465,7 +466,37 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
 
     List<ChartPatternSignal> patternsToInvalidate = dao.getChartPatternSignalsToInvalidate();
 
-    assertThat(patternsToInvalidate).hasSize(1);
+    assertThat(patternsToInvalidate).hasSize(2);
     assertThat(patternsToInvalidate.get(0)).isEqualTo(chartPatternSignalInDB);
+  }
+
+  public void testSetTenCandlestickTime_beforePriceTargetTime_doesntNullifyTenCandlestickPrice() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal()
+        // After 150 minutes of 10 candlestick time.
+        .setPriceTargetTime(new Date(currentTimeMillis + TimeUnit.MINUTES.toMillis(151)))
+        .setPriceAtTenCandlestickTime(200)
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setTenCandleSticktime(chartPatternSignalInDB)).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.tenCandlestickTime().getTime()).isEqualTo(currentTimeMillis + TimeUnit.MINUTES.toMillis(150));
+    assertThat(chartPatternSignalInDB.priceAtTenCandlestickTime()).isEqualTo(200.0);
+  }
+
+  public void testSetTenCandlestickTime_afterPriceTargetTime_nullifiesTenCandlestickPrice() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal()
+        // Before the 150 minutes of 10 candlestick time.
+        .setPriceTargetTime(new Date(currentTimeMillis + TimeUnit.MINUTES.toMillis(149)))
+        .setPriceAtTenCandlestickTime(200)
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setTenCandleSticktime(chartPatternSignalInDB)).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.tenCandlestickTime().getTime()).isEqualTo(currentTimeMillis + TimeUnit.MINUTES.toMillis(149));
+    assertThat(chartPatternSignalInDB.priceAtTenCandlestickTime()).isZero();
   }
 }

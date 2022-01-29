@@ -101,6 +101,9 @@ public abstract class ChartPatternSignal {
 
   public abstract int numTimesMissingInInput();
 
+  @Nullable
+  public abstract Date tenCandlestickTime();
+
   @AutoValue
   public abstract static class Trade {
     public abstract long orderId();
@@ -203,6 +206,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setExitTrade(Trade exitTrade);
 
+    public abstract Builder setTenCandlestickTime(Date tenCandlestickTime);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -233,7 +238,8 @@ public abstract class ChartPatternSignal {
           .setTimeOfInsertion(that.timeOfInsertion())
           .setIsInsertedLate(that.isInsertedLate())
           .setEntryTrade(that.entryTrade())
-          .setExitTrade(that.exitTrade());
+          .setExitTrade(that.exitTrade())
+          .setTenCandlestickTime(that.tenCandlestickTime());
     }
   }
 }

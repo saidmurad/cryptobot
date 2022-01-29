@@ -12,9 +12,12 @@ import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+
+import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Repository
 public class ChartPatternSignalDaoImpl {
@@ -32,8 +35,10 @@ public class ChartPatternSignalDaoImpl {
 
   public boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, PriceAtTimeOfSignalReal," +
-        "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, IsSignalOn, FailedToGetPriceAtTenCandlestickTime)" +
-        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, " +
+        "VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, " +
+        "IsSignalOn, TenCandlestickTime, FailedToGetPriceAtTenCandlestickTime)" +
+        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     Object params[] = new Object[]{chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
@@ -52,6 +57,7 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.priceTargetTime()),
         chartPatternSignal.profitPotentialPercent(),
         chartPatternSignal.isSignalOn(),
+        chartPatternSignal.tenCandlestickTime() == null? null : df.format(chartPatternSignal.tenCandlestickTime()),
         chartPatternSignal.failedToGetPriceAtTenCandlestickTime()? 1:0
     };
 
@@ -77,6 +83,15 @@ public class ChartPatternSignalDaoImpl {
   // TODO: Think of a way how we can trim the data considered.
   public List<ChartPatternSignal> getAllChartPatterns(TimeFrame timeFrame) {
     return jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + timeFrame.name() + "'", new ChartPatternSignalMapper());
+  }
+
+  public List<ChartPatternSignal> getAllChartPatterns() {
+    List<ChartPatternSignal> allPatterns = new ArrayList<>();
+    allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.FIFTEEN_MINUTES.name() + "'", new ChartPatternSignalMapper()));
+    allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.HOUR.name() + "'", new ChartPatternSignalMapper()));
+    allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.FOUR_HOURS.name() + "'", new ChartPatternSignalMapper()));
+    allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.DAY.name() + "'", new ChartPatternSignalMapper()));
+    return allPatterns;
   }
 
   // intented for test use.
@@ -184,7 +199,27 @@ public class ChartPatternSignalDaoImpl {
     if (ret == 1) {
       logger.info(String.format("Updated chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
     } else {
-      logger.info(String.format("Failed to update chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
+      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
     }
+  }
+
+  // As the column is a late addition, this is for backfilling the column.
+  public boolean setTenCandleSticktime(ChartPatternSignal chartPatternSignal) {
+    Date tenCandlestickTime = new Date(chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal));
+    boolean shouldEraseSuperflousTenCandlestickPrice = tenCandlestickTime.after(chartPatternSignal.priceTargetTime());
+    if (shouldEraseSuperflousTenCandlestickPrice) {
+      tenCandlestickTime = chartPatternSignal.priceTargetTime();
+    }
+    String updateSql = "update ChartPatternSignal set TenCandlestickTime=?, PriceAtTenCandlestickTime=? " +
+        "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    boolean ret = jdbcTemplate.update(updateSql, df.format(tenCandlestickTime),
+        shouldEraseSuperflousTenCandlestickPrice? null : chartPatternSignal.priceAtTenCandlestickTime(),
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal())) == 1;
+    if (!ret) {
+      logger.error(String.format("Failed to update ten candlestick time for chart pattern signal \n%s.", chartPatternSignal.toString()));
+    }
+    return ret;
   }
 }

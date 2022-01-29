@@ -260,6 +260,8 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
     assertThat(insertedVal.isInsertedLate()).isTrue();
+    // First pattern in test file is a 15 min timeframe signal.
+    assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
   }
 
   private TimeFrame changeTimeFrame(TimeFrame timeFrame) {

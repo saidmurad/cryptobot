@@ -2,7 +2,6 @@ package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.market.AggTrade;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
@@ -19,10 +18,9 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
-import static com.binance.bot.signalsuccessfailure.Util.getProfitPercentAtTenCandlestickTime;
-import static com.binance.bot.signalsuccessfailure.Util.getTenCandleStickTimeIncrementMillis;
+import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
+import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
 class PriceTargetCheckerTask {

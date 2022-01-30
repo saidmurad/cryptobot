@@ -65,6 +65,10 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    ExitLimitOrderExecutedQty REAL, \n" +
       "    ExitLimitOrderAvgPrice REAL, \n" +
       "    ExitLimitOrderStatus TEXT, \n" +
+      "    ExitMarketOrderId INTEGER, \n" +
+      "    ExitMarketOrderExecutedQty REAL, \n" +
+      "    ExitMarketOrderAvgPrice REAL, \n" +
+      "    ExitMarketOrderStatus TEXT, \n" +
       "    Realized REAL, \n" +
       "    RealizedPercent REAL, \n" +
       "    UnRealized REAL, \n" +
@@ -622,4 +626,73 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
   }
 
-}
+  public void testUpdateExitMarketOrder_tradeTypeBUY() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.BUY)
+        // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
+        .setRealized(10.0)
+        .setRealizedPercent(1.0)
+        .setUnRealized(15.0)
+        .setUnRealizedPercent(2.0)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 100.0, 200.0, OrderStatus.FILLED))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.FILLED))).isTrue();
+
+    ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.25);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+  }
+
+  public void testUpdateExitMarketOrder_tradeTypeSELL() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.SELL)
+        // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
+        .setRealized(10.0)
+        .setRealizedPercent(1.0)
+        .setUnRealized(15.0)
+        .setUnRealizedPercent(2.0)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 100.0, 200.0, OrderStatus.FILLED))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED))).isTrue();
+
+    ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(195.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.25);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+  }
+
+  public void testGetActivePositions() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.BUY).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+    dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 1.1, 2.2, OrderStatus.FILLED));
+    chartPatternSignalInDB = getChartPatternSignal().setTimeFrame(TimeFrame.HOUR)
+        .setTradeType(TradeType.BUY).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+    dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 1.2, 2.2, OrderStatus.FILLED));
+
+    List<ChartPatternSignal> activePositions = dao.getChartPatternsWithActiveTradePositions(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY);
+
+    assertThat(activePositions).hasSize(1);
+    assertThat(activePositions.get(0).entryOrder().executedQty()).isEqualTo(1.1);
+  }
+  }

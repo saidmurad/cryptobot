@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.logging.LogLevel;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
  * Reads the patterns output by the Python code.
  */
 @Component
-public class AltfinPatternsReader implements Runnable {
+public class AltfinPatternsReader {
 
   static final String[] patternsFiles = {"data_patterns1.txt",
       "data_patterns2.txt",
@@ -83,7 +84,7 @@ public class AltfinPatternsReader implements Runnable {
     this.binanceTradingBot = binanceTradingBot;
   }
 
-  @Override
+  @Scheduled(fixedDelay = 60000)
   // TODO: Add unit tests.
   public void run() {
     Date[] earliestChartPatternTimesInThisRun = new Date[4];
@@ -157,8 +158,7 @@ public class AltfinPatternsReader implements Runnable {
             }
           }
         }
-        Thread.sleep(60000);
-      } catch (InterruptedException | IOException |ParseException ex) {
+      } catch (IOException |ParseException ex) {
         logger.error("Exception.", ex);
         throw new RuntimeException(ex);
       }

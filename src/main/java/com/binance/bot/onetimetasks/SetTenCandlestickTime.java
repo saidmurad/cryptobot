@@ -1,4 +1,4 @@
-package com.binance.bot.signalsuccessfailure.onetimetasks;
+package com.binance.bot.onetimetasks;
 
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;

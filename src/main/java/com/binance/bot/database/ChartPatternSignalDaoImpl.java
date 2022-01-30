@@ -87,6 +87,12 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + timeFrame.name() + "'", new ChartPatternSignalMapper());
   }
 
+  public List<ChartPatternSignal> getChartPatternsWithActiveTradePositions(TimeFrame timeFrame, TradeType tradeType) {
+    String sql = String.format("select * from ChartPatternSignal where TimeFrame='%s' and TradeType='%s' " +
+        "and IsPositionExited=0 and EntryExecutedQty>0", timeFrame.name(), tradeType.name());
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
   public List<ChartPatternSignal> getAllChartPatterns() {
     List<ChartPatternSignal> allPatterns = new ArrayList<>();
     allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.FIFTEEN_MINUTES.name() + "'", new ChartPatternSignalMapper()));
@@ -211,7 +217,7 @@ public class ChartPatternSignalDaoImpl {
   // them anyway as it is fetched from binance.
   public boolean setExitLimitOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
     ChartPatternSignal chartPatternSignalInDB = getChartPattern(chartPatternSignal);
-    Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(chartPatternSignalInDB, exitLimitOrder);
+    Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(chartPatternSignalInDB, exitLimitOrder.executedQty(), exitLimitOrder.avgPrice());
     double realizedPercent = realizedUnRealized.getFirst() /
         (chartPatternSignalInDB.entryOrder().executedQty() * chartPatternSignalInDB.entryOrder().avgPrice()) * 100;
     double unRealizedPercent = realizedUnRealized.getSecond() /
@@ -227,20 +233,50 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignalInDB.timeFrame().name(), chartPatternSignalInDB.tradeType().name(), chartPatternSignalInDB.pattern(),
         df.format(chartPatternSignalInDB.timeOfSignal()));
     if (ret == 1) {
-      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith exit limit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
+      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit limit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
     } else {
-      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith exit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
+      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith exit limit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
     }
     return ret == 1;
   }
 
-  private Pair<Double, Double> getRealizedUnRealized(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
-    double realized = exitLimitOrder.executedQty() *
+  public boolean setExitMarketOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder) {
+    // Assumes that the pattern is already uptodate with the DB value, so doesn't query for it.
+    Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(
+        chartPatternSignal, exitMarketOrder.executedQty(), exitMarketOrder.avgPrice());
+    double realized = realizedUnRealized.getFirst();
+    double unRealized = realizedUnRealized.getSecond();
+    double realizedPercent = realizedUnRealized.getFirst() /
+        (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
+    if (chartPatternSignal.realized() != null) {
+      realized += chartPatternSignal.realized();
+      realizedPercent += chartPatternSignal.realizedPercent();
+    }
+    String sql = "update ChartPatternSignal set ExitMarketOrderId=?, ExitMarketOrderExecutedQty=?, " +
+        "ExitMarketOrderAvgPrice=?, ExitMarketOrderStatus=?, " +
+        "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=1 where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    int ret = jdbcTemplate.update(sql, exitMarketOrder.orderId(), exitMarketOrder.executedQty(), exitMarketOrder.avgPrice(),
+        exitMarketOrder.status().name(),
+        realized, realizedPercent, 0.0, 0.0,
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()));
+    if (ret == 1) {
+      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith exit market order id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+    } else {
+      logger.error(String.format("Failed to update chart pattern signal \n%s\nwith exit marketorder id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+    }
+    return ret == 1;
+  }
+
+  private Pair<Double, Double> getRealizedUnRealized(ChartPatternSignal chartPatternSignal, double exitQty, double exitPrice) {
+    double realized = exitQty *
         (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
-        (exitLimitOrder.avgPrice() - chartPatternSignal.entryOrder().avgPrice());
-    double unRealized = (chartPatternSignal.entryOrder().executedQty() - exitLimitOrder.executedQty()) *
+        (exitPrice - chartPatternSignal.entryOrder().avgPrice());
+    double unRealized = (chartPatternSignal.entryOrder().executedQty() - exitQty) *
         (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
-        (exitLimitOrder.avgPrice() - chartPatternSignal.entryOrder().avgPrice());
+        (exitPrice - chartPatternSignal.entryOrder().avgPrice());
     return Pair.of(realized, unRealized);
   }
 
@@ -263,6 +299,4 @@ public class ChartPatternSignalDaoImpl {
     }
     return ret;
   }
-
-
 }

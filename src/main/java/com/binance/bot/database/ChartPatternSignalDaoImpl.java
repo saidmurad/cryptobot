@@ -93,6 +93,12 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
+  public List<ChartPatternSignal> getAllChartPatternsWithActiveTradePositions() {
+    String sql = String.format("select * from ChartPatternSignal where" +
+        " IsPositionExited=0 and EntryExecutedQty>0");
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
   public List<ChartPatternSignal> getAllChartPatterns() {
     List<ChartPatternSignal> allPatterns = new ArrayList<>();
     allPatterns.addAll(jdbcTemplate.query("select * from ChartPatternSignal where TimeFrame='" + TimeFrame.FIFTEEN_MINUTES.name() + "'", new ChartPatternSignalMapper()));

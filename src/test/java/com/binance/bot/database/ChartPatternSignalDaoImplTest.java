@@ -1,5 +1,6 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
@@ -55,7 +56,20 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    ProfitPercentAtTenCandlestickTime REAL,\n" +
       "    PriceBestReached REAL,\n" +
       "    PriceCurrent REAL,\n" +
-      "    CurrentTime TEXT" +
+      "    CurrentTime TEXT, \n" +
+      "    EntryOrderId INTEGER, \n" +
+      "    EntryExecutedQty REAL, \n" +
+      "    EntryAvgPrice REAL, \n" +
+      "    EntryOrderStatus TEXT, \n" +
+      "    ExitLimitOrderId INTEGER, \n" +
+      "    ExitLimitOrderExecutedQty REAL, \n" +
+      "    ExitLimitOrderAvgPrice REAL, \n" +
+      "    ExitLimitOrderStatus TEXT, \n" +
+      "    Realized REAL, \n" +
+      "    RealizedPercent REAL, \n" +
+      "    UnRealized REAL, \n" +
+      "    UnRealizedPercent REAL,\n" +
+      "    IsPositionExited INTEGER \n" +
       ");";
 
   /*
@@ -509,4 +523,103 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.tenCandlestickTime().getTime()).isEqualTo(currentTimeMillis + TimeUnit.MINUTES.toMillis(149));
     assertThat(chartPatternSignalInDB.priceAtTenCandlestickTime()).isZero();
   }
+
+  public void testUpdateEntryOrder() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 1.1, 2.2, OrderStatus.FILLED))).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.entryOrder().orderId()).isEqualTo(1);
+    assertThat(chartPatternSignalInDB.entryOrder().executedQty()).isEqualTo(1.1);
+    assertThat(chartPatternSignalInDB.entryOrder().avgPrice()).isEqualTo(2.2);
+    assertThat(chartPatternSignalInDB.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
+  }
+
+  public void testUpdateExitLimitOrder_tradeTypeBUY_fullyExitsPosition() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 100, 200, OrderStatus.FILLED))).isTrue();
+    assertThat(dao.setExitLimitOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(2, 100, 205, OrderStatus.FILLED))).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().executedQty()).isEqualTo(100.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(500.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.5);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+  }
+
+  public void testUpdateExitLimitOrder_tradeTypeBUY_partiallyExitsPosition() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 100, 200, OrderStatus.FILLED))).isTrue();
+    assertThat(dao.setExitLimitOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.FILLED))).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(250.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.25);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(250.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(1.25);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+  }
+
+  public void testUpdateExitLimitOrder_tradeTypeSELL_fullyExitsPosition() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.SELL).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 100, 200, OrderStatus.FILLED))).isTrue();
+    assertThat(dao.setExitLimitOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(2, 100, 195, OrderStatus.FILLED))).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().executedQty()).isEqualTo(100.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().avgPrice()).isEqualTo(195.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(500.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.5);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+  }
+
+  public void testUpdateExitLimitOrder_tradeTypeSELL_partiallyExitsPosition() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.SELL).build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    assertThat(dao.setEntryOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(1, 100, 200, OrderStatus.FILLED))).isTrue();
+    assertThat(dao.setExitLimitOrder(chartPatternSignalInDB,
+        ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED))).isTrue();
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().avgPrice()).isEqualTo(195.0);
+    assertThat(chartPatternSignalInDB.exitLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(250.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.25);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(250.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(1.25);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+  }
+
 }

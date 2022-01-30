@@ -1,5 +1,6 @@
 package com.binance.bot.tradesignals;
 
+import com.binance.api.client.domain.OrderStatus;
 import com.google.auto.value.AutoValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,23 +106,48 @@ public abstract class ChartPatternSignal {
   public abstract Date tenCandlestickTime();
 
   @AutoValue
-  public abstract static class Trade {
+  public abstract static class Order {
     public abstract long orderId();
+    public abstract double executedQty();
 
-    public abstract double price();
+    public abstract double avgPrice();
 
-    public abstract double qty();
+    public abstract OrderStatus status();
 
-    public static AutoValue_ChartPatternSignal_Trade create(long orderId, double price, double qty) {
-      return new AutoValue_ChartPatternSignal_Trade(orderId, price, qty);
+    public static AutoValue_ChartPatternSignal_Order create(long orderId, double executedQty, double avgPrice, OrderStatus status) {
+      return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice, status);
+    }
+
+    @Override
+    public String toString() {
+      return String.format("Order Id: %d Executed Qty: %f Average Price: %f Order Status: %s.",
+          orderId(), executedQty(), avgPrice(), status().name());
     }
   }
 
   @Nullable
-  public abstract Trade entryTrade();
+  public abstract Order entryOrder();
 
   @Nullable
-  public abstract Trade exitTrade();
+  public abstract Order exitLimitOrder();
+
+  @Nullable
+  public abstract Order exitMarketOrder();
+
+  @Nullable
+  public abstract Boolean isPositionExited();
+
+  @Nullable
+  public abstract Double realized();
+
+  @Nullable
+  public abstract Double realizedPercent();
+
+  @Nullable
+  public abstract Double unRealized();
+
+  @Nullable
+  public abstract Double unRealizedPercent();
 
   public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
@@ -202,11 +228,23 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setProfitPercentAtTenCandlestickTime(double profitPercentAtTenCandlestickTime);
 
-    public abstract Builder setEntryTrade(Trade entryTrade);
+    public abstract Builder setEntryOrder(Order entryOrder);
 
-    public abstract Builder setExitTrade(Trade exitTrade);
+    public abstract Builder setExitLimitOrder(Order exitLimitOrder);
+
+    public abstract Builder setExitMarketOrder(Order exitMarketOrder);
+
+    public abstract Builder setIsPositionExited(Boolean isPositionExited);
 
     public abstract Builder setTenCandlestickTime(Date tenCandlestickTime);
+
+    public abstract Builder setRealized(Double realized);
+
+    public abstract Builder setRealizedPercent(Double realizedPercent);
+
+    public abstract Builder setUnRealized(Double unRealized);
+
+    public abstract Builder setUnRealizedPercent(Double unRealizedPercent);
 
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
@@ -237,8 +275,10 @@ public abstract class ChartPatternSignal {
           .setCurrentTime(that.currentTime())
           .setTimeOfInsertion(that.timeOfInsertion())
           .setIsInsertedLate(that.isInsertedLate())
-          .setEntryTrade(that.entryTrade())
-          .setExitTrade(that.exitTrade())
+          .setEntryOrder(that.entryOrder())
+          .setExitLimitOrder(that.exitLimitOrder())
+          .setExitMarketOrder(that.exitMarketOrder())
+          .setIsPositionExited(that.isPositionExited())
           .setTenCandlestickTime(that.tenCandlestickTime());
     }
   }

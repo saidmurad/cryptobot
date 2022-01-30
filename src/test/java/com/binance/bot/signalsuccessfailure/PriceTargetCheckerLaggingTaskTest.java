@@ -1,5 +1,6 @@
 package com.binance.bot.signalsuccessfailure;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -18,9 +19,11 @@ public class PriceTargetCheckerLaggingTaskTest extends TestCase {
   public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock
   private ChartPatternSignalDaoImpl mockDao;
+  @Mock private BinanceApiClientFactory binanceApiClientFactory;
 
+  private final PriceTargetCheckerLaggingTask priceTargetCheckerLaggingTask = new PriceTargetCheckerLaggingTask(binanceApiClientFactory, mockDao);
   public void testPerformIteration_roundRobin() {
-    ChartPatternSignal pattern1 = getChartPatternSignal().build();
+    ChartPatternSignal pattern1 = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     ChartPatternSignal pattern2 = getChartPatternSignal().setCoinPair("BTCUSDT").build();
 
 

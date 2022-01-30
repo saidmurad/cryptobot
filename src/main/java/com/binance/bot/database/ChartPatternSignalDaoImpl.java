@@ -3,10 +3,12 @@ package com.binance.bot.database;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
+import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.VolumeProfile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -189,18 +191,57 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
-  public void setEntryTrade(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Trade entryTrade) {
-    String sql = "update ChartPatternSignal set EntryOrderId=?, EntryPrice=?, Qty=? where " +
+  public boolean setEntryOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order entryOrder) {
+    String sql = "update ChartPatternSignal set EntryOrderId=?, EntryExecutedQty=?, EntryAvgPrice=?, EntryOrderStatus=?, " +
+        "IsPositionExited=0 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
-    int ret = jdbcTemplate.update(sql, entryTrade.orderId(), entryTrade.price(), entryTrade.qty(),
-        chartPatternSignal.coinPair(),
+    int ret = jdbcTemplate.update(sql, entryOrder.orderId(), entryOrder.executedQty(), entryOrder.avgPrice(),
+        entryOrder.status().name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal()));
     if (ret == 1) {
-      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
+      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryOrder.orderId()));
     } else {
-      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryTrade.orderId()));
+      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryOrder.orderId()));
     }
+    return ret == 1;
+  }
+
+  // No need to consider previously updated partial execution values if any, a the current order update should include
+  // them anyway as it is fetched from binance.
+  public boolean setExitLimitOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
+    ChartPatternSignal chartPatternSignalInDB = getChartPattern(chartPatternSignal);
+    Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(chartPatternSignalInDB, exitLimitOrder);
+    double realizedPercent = realizedUnRealized.getFirst() /
+        (chartPatternSignalInDB.entryOrder().executedQty() * chartPatternSignalInDB.entryOrder().avgPrice()) * 100;
+    double unRealizedPercent = realizedUnRealized.getSecond() /
+        (chartPatternSignalInDB.entryOrder().executedQty() * chartPatternSignalInDB.entryOrder().avgPrice()) * 100;
+    boolean isPositionExited = (chartPatternSignalInDB.entryOrder().executedQty() - exitLimitOrder.executedQty()) < 1E-10;
+    String sql = "update ChartPatternSignal set ExitLimitOrderId=?, ExitLimitOrderExecutedQty=?, ExitLimitOrderAvgPrice=?, ExitLimitOrderStatus=?, " +
+        "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=? where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    int ret = jdbcTemplate.update(sql, exitLimitOrder.orderId(), exitLimitOrder.executedQty(), exitLimitOrder.avgPrice(),
+        exitLimitOrder.status().name(),
+        realizedUnRealized.getFirst(), realizedPercent, realizedUnRealized.getSecond(), unRealizedPercent,
+        isPositionExited, chartPatternSignalInDB.coinPair(),
+        chartPatternSignalInDB.timeFrame().name(), chartPatternSignalInDB.tradeType().name(), chartPatternSignalInDB.pattern(),
+        df.format(chartPatternSignalInDB.timeOfSignal()));
+    if (ret == 1) {
+      logger.info(String.format("Updated chart pattern sgnal \n%s\nwith exit limit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
+    } else {
+      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith exit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
+    }
+    return ret == 1;
+  }
+
+  private Pair<Double, Double> getRealizedUnRealized(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
+    double realized = exitLimitOrder.executedQty() *
+        (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
+        (exitLimitOrder.avgPrice() - chartPatternSignal.entryOrder().avgPrice());
+    double unRealized = (chartPatternSignal.entryOrder().executedQty() - exitLimitOrder.executedQty()) *
+        (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
+        (exitLimitOrder.avgPrice() - chartPatternSignal.entryOrder().avgPrice());
+    return Pair.of(realized, unRealized);
   }
 
   // As the column is a late addition, this is for backfilling the column.
@@ -222,4 +263,6 @@ public class ChartPatternSignalDaoImpl {
     }
     return ret;
   }
+
+
 }

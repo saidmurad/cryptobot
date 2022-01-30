@@ -1,5 +1,6 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.domain.OrderStatus;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -55,11 +56,24 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setPriceCurrent(rs.getDouble("PriceCurrent"))
           .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null)
           .setTenCandlestickTime(rs.getString("TenCandlestickTime") != null? dateFormat.parse(rs.getString("TenCandlestickTime")) : null);
-     /* if (rs.getString("entryOrderId") != null) {
-        chartPatternSignalBuilder.setEntryTrade(
-          ChartPatternSignal.Trade.create(
-              rs.getInt("entryOrderId"), rs.getDouble("entryPrice"), rs.getDouble("entryQty")));
-      }*/
+      if (rs.getString("entryOrderId") != null) {
+        chartPatternSignalBuilder.setEntryOrder(
+          ChartPatternSignal.Order.create(
+              rs.getInt("entryOrderId"), rs.getDouble("entryExecutedQty"), rs.getDouble("entryAvgPrice"),
+              OrderStatus.valueOf(rs.getString("entryOrderStatus"))));
+      }
+      if (rs.getString("exitLimitOrderId") != null) {
+        chartPatternSignalBuilder.setExitLimitOrder(
+            ChartPatternSignal.Order.create(
+                rs.getInt("exitLimitOrderId"), rs.getDouble("exitLimitOrderExecutedQty"),
+                rs.getDouble("exitLimitOrderAvgPrice"),
+                OrderStatus.valueOf(rs.getString("exitLimitOrderStatus"))));
+      }
+      chartPatternSignalBuilder.setRealized(rs.getDouble("Realized"));
+      chartPatternSignalBuilder.setRealizedPercent(rs.getDouble("RealizedPercent"));
+      chartPatternSignalBuilder.setUnRealized(rs.getDouble("UnRealized"));
+      chartPatternSignalBuilder.setUnRealizedPercent(rs.getDouble("UnRealizedPercent"));
+      chartPatternSignalBuilder.setIsPositionExited(rs.getInt("IsPositionExited") == 1);
       return chartPatternSignalBuilder.build();
     } catch (ParseException e) {
       throw new RuntimeException(e);

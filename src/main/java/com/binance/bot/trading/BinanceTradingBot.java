@@ -47,13 +47,18 @@ public class BinanceTradingBot {
                 NewOrder buyOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.BUY, OrderType.MARKET, TimeInForce.FOK, String.format("%.2f", usdtBalance / chartPatternSignal.priceAtTimeOfSignalReal()));
                 NewOrderResponse buyOrderResp = binanceApiRestClient.newOrder(buyOrder);
                 logger.info(String.format("Placed market buy order %s with status %s for chart pattern signal\n%s.", buyOrderResp.toString(), buyOrderResp.getStatus().name(), chartPatternSignal.toString()));
-                dao.setEntryTrade(chartPatternSignal,
-                    ChartPatternSignal.Trade.create(
-                        buyOrderResp.getOrderId(), numberFormat.parse(buyOrderResp.getPrice()).doubleValue(), numberFormat.parse(buyOrderResp.getExecutedQty()).doubleValue()));
+                dao.setEntryOrder(chartPatternSignal,
+                    ChartPatternSignal.Order.create(
+                        buyOrderResp.getOrderId(), numberFormat.parse(buyOrderResp.getPrice()).doubleValue(),
+                        numberFormat.parse(buyOrderResp.getExecutedQty()).doubleValue(), buyOrderResp.getStatus()));
 
                 NewOrder sellLimitOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.SELL, OrderType.LIMIT, TimeInForce.GTC, buyOrderResp.getExecutedQty(), String.format("%.2f", chartPatternSignal.priceTarget()));
                 NewOrderResponse sellLimitOrderResp = binanceApiRestClient.newOrder(sellLimitOrder);
                 logger.info(String.format("Placed sell limit order %s with status %s for chart pattern signal\n%s.", sellLimitOrderResp.toString(), sellLimitOrderResp.getStatus().name(), chartPatternSignal.toString()));
+
+/*                dao.setExitLimitOrder(chartPatternSignal,
+                    ChartPatternSignal.Trade.create(
+                        sellLimitOrderResp.getOrderId(), numberFormat.parse(sellLimitOrderResp.getPrice()).doubleValue(), numberFormat.parse(sellLimitOrderResp.getExecutedQty()).doubleValue()));*/
 
                 break;
             default:

@@ -366,4 +366,76 @@ public class AltfinPatternsReaderTest extends TestCase {
   private String getPatternsFileContents_nonMatchingNightmare() throws IOException {
     return new String(getClass().getResourceAsStream("/unmatching_nightmare.txt").readAllBytes());
   }
+
+  public void testIsTradingAllowed_none() {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "NONE";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "NONE";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "NONE";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "NONE";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isFalse();
+  }
+
+  public void testIsTradingAllowed_buyOnly() {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BUY";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BUY";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isFalse();
+
+    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BUY";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isFalse();
+  }
+
+  public void testIsTradingAllowed_sellOnly() {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "SELL";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "SELL";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "SELL";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "SELL";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isFalse();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isTrue();
+  }
+
+  public void testIsTradingAllowed_both() {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isTrue();
+
+    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isTrue();
+    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isTrue();
+  }
 }

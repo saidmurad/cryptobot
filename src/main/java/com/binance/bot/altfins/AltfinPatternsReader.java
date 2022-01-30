@@ -7,6 +7,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
+import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
@@ -17,6 +18,7 @@ import com.google.gson.JsonSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.stereotype.Component;
 
@@ -58,6 +60,14 @@ public class AltfinPatternsReader implements Runnable {
   @Autowired
   private SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
+  @Value("${fifteen_minute_timeframe}")
+  String fifteenMinuteTimeFrameAllowedTradeTypeConfig;
+  @Value("${hourly_timeframe}")
+  String hourlyTimeFrameAllowedTradeTypeConfig;
+  @Value("${four_hourly_timeframe}")
+  String fourHourlyTimeFrameAllowedTradeTypeConfig;
+  @Value("${daily_timeframe}")
+  String dailyTimeFrameAllowedTradeTypeConfig;
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile, ChartPatternSignalDaoImpl chartPatternSignalDao, BinanceTradingBot binanceTradingBot) {
@@ -155,6 +165,34 @@ public class AltfinPatternsReader implements Runnable {
     }
   }
 
+  boolean isTradingAllowed(TimeFrame timeFrame, TradeType tradeType) {
+    String configForTimeFrame;
+    switch (timeFrame) {
+      case FIFTEEN_MINUTES:
+        configForTimeFrame = fifteenMinuteTimeFrameAllowedTradeTypeConfig;
+        break;
+      case HOUR:
+        configForTimeFrame = hourlyTimeFrameAllowedTradeTypeConfig;
+        break;
+      case FOUR_HOURS:
+        configForTimeFrame = fourHourlyTimeFrameAllowedTradeTypeConfig;
+        break;
+      default:
+        configForTimeFrame = dailyTimeFrameAllowedTradeTypeConfig;
+    }
+    switch (configForTimeFrame) {
+      case "NONE":
+        return false;
+      case "BOTH":
+        return true;
+      case "BUY":
+        return tradeType == TradeType.BUY;
+      case "SELL":
+      default:
+        return tradeType == TradeType.SELL;
+    }
+  }
+
   private String getCoinPairsInDifferenceBetween(List<ChartPatternSignal> patternFromAltfins, List<ChartPatternSignal> postFilterPatterns) {
     StringBuilder stringBuilder = new StringBuilder();
     Set<ChartPatternSignal> postFilterPatternsSet = new HashSet<>();
@@ -190,16 +228,21 @@ public class AltfinPatternsReader implements Runnable {
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException {
     Date currTime = new Date();
+    boolean isInsertedLate = isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime);
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setPriceAtTimeOfSignalReal(numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue())
         .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))
-        .setIsInsertedLate(isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime))
+        .setIsInsertedLate(isInsertedLate)
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
     //logger.info("Inserting chart pattern signal " + chartPatternSignal);
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
     //logger.info("Ret value: " + ret);
+    // TODO: Unit test.
+    if (!isInsertedLate && isTradingAllowed(chartPatternSignal.timeFrame(), chartPatternSignal.tradeType())) {
+      binanceTradingBot.placeTrade(chartPatternSignal);
+    }
   }
 
   // TODO: Unit test

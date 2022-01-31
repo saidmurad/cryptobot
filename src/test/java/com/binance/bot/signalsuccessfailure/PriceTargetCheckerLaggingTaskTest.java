@@ -120,12 +120,14 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_noAggTradesReturned_endTimeWindowCappedAtCurrTime_notRequeued() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_startTimeCappedToCurrTime_notRequeuedIfNoAggTrades() throws ParseException, InterruptedException, IOException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
-    when(mockClock.millis()).thenReturn(timeOfSignal + 151 * 60000 - 1);
+    long tenCandlestickTime = timeOfSignal + 150 * 60000;
+    long currTime = tenCandlestickTime - 60000;
+    when(mockClock.millis()).thenReturn(currTime);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
         // Ten candle window is at 2.5 hours, and we get agg trades using a minute window at first.
-        timeOfSignal + 150 * 60000, timeOfSignal + 151 * 60000 - 1))
+        currTime, currTime + 60000))
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
@@ -136,21 +138,27 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_noAggTradesReturned_endTimeWindowCappedAtProfitTargetTime_notRequeued() throws ParseException, InterruptedException, IOException {
+  // In this test requeue occurring is independent of the start time getting capped. Requeue or not is determined
+  // by the window end time crossing the current time alone.
+  public void testPerformIteration_startTimeCappedToSignalTargetTime() throws ParseException, InterruptedException, IOException {
+    long tenCandlestickTime = timeOfSignal + 150 * 60000;
+    long priceTargetTime = tenCandlestickTime - 60000;
+    long currTime = timeOfSignal + 300 * 60000;
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT")
-        .setPriceTargetTime(new Date(timeOfSignal + 151 * 60000 - 1))
+        .setPriceTargetTime(new Date(priceTargetTime))
         .build();
-    when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
+    when(mockClock.millis()).thenReturn(currTime);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
         // Ten candle window is at 2.5 hours, and we get agg trades using a minute window at first.
-        timeOfSignal + 150 * 60000, timeOfSignal + 151 * 60000 - 1))
+        priceTargetTime, priceTargetTime + 60000))
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
     priceTargetCheckerLaggingTask.performIteration(patternsQueue);
 
-    verify(mockDao).failedToGetPriceAtTenCandlestickTime(pattern);
-    assertThat(patternsQueue).isEmpty();
+    verifyNoInteractions(mockDao);
+    assertThat(patternsQueue).hasSize(1);
+    assertThat(patternsQueue.get(0).getValue()).isEqualTo(2);
   }
 
   @Test

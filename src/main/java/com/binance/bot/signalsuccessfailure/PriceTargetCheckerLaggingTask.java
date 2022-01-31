@@ -65,7 +65,7 @@ public class PriceTargetCheckerLaggingTask {
   }
 
   // Caution: Not unit tested nor found worth the trouble.
-  //@Scheduled(fixedDelay = 600000)
+  @Scheduled(fixedDelay = 600000)
   public void perform() throws InterruptedException, ParseException, IOException {
     List<ChartPatternSignal> patterns = dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();

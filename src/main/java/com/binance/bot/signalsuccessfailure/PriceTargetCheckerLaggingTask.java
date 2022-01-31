@@ -23,24 +23,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
-import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
-@Component
-public class PriceTargetCheckerLaggingTask {
+public abstract class PriceTargetCheckerLaggingTask {
 
   enum TargetTimeType {
     TEN_CANDLESTICK,
     END
   }
 
-  private TargetTimeType targetTimeType;
+  protected TargetTimeType targetTimeType;
   static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
-  private ChartPatternSignalDaoImpl dao;
+  protected ChartPatternSignalDaoImpl dao;
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -49,7 +46,6 @@ public class PriceTargetCheckerLaggingTask {
   private final static NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   long requestCount = 0;
 
-  @Autowired
   PriceTargetCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                 ChartPatternSignalDaoImpl dao,
                                 SupportedSymbolsInfo supportedSymbolsInfo) {
@@ -57,19 +53,14 @@ public class PriceTargetCheckerLaggingTask {
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    targetTimeType = TargetTimeType.TEN_CANDLESTICK;
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
 
-  public void setTargetTimeType(TargetTimeType targetTime){
-    this.targetTimeType = targetTimeType;
-  }
-
   // Caution: Not unit tested nor found worth the trouble.
   @Scheduled(fixedDelay = 600000)
   public void perform() throws InterruptedException, ParseException, IOException {
-    List<ChartPatternSignal> patterns = dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
+    List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
     for (ChartPatternSignal pattern: patterns) {
       attemptedPatterns.add(Pair.of(pattern, 1));
@@ -79,6 +70,8 @@ public class PriceTargetCheckerLaggingTask {
     }
     logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");
   }
+
+  protected abstract List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime();
 
   void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException {
     Pair<ChartPatternSignal, Integer> patternPair = attemptedPatterns.remove(0);
@@ -95,31 +88,29 @@ public class PriceTargetCheckerLaggingTask {
       Thread.sleep(60000);
     }
     long currTime = clock.millis();
-    long tenCandleStickTime = Math.min(chartPatternSignal.timeOfSignal().getTime()
-        + getTenCandleStickTimeIncrementMillis(chartPatternSignal),
-            Math.min(currTime, chartPatternSignal.priceTargetTime().getTime()));
-    long endTimeWindow = tenCandleStickTime + TIME_RANGE_AGG_TRADES * attemptCount;
+    long startTimeWindow = getStartTimeWindow(chartPatternSignal);
+    long endTimeWindow = startTimeWindow + TIME_RANGE_AGG_TRADES * attemptCount;
 
     boolean windowAtCurrTimeItself = false;
     if (endTimeWindow >= currTime) {
       windowAtCurrTimeItself = true;
     }
-    List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, endTimeWindow);
+    List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, startTimeWindow, endTimeWindow);
 
     if (!tradesList.isEmpty()) {
       double tenCandleStickTimePrice = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
       boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-      logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: aggTrades. Ret val=" + ret);
+      logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
     }
     else {
       attemptCount++;
       logger.error(String.format("Could not get agg trades for '%s' for '%s' with end window at price target time %s, " +
-              "after %d attempts. Api args used - Ten candle stick time = %d and window end = %d",
+              "after %d attempts. Api args used - window start time = %d and window end = %d",
           chartPatternSignal, targetTimeTypeName(), dateFormat.format(chartPatternSignal.priceTargetTime()),
-          attemptCount - 1, tenCandleStickTime, endTimeWindow));
+          attemptCount - 1, startTimeWindow, endTimeWindow));
       if (attemptCount > MAX_WINDOW_MINS) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
-        dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
+        markFailedToGetTargetPrice(chartPatternSignal);
       } else if (windowAtCurrTimeItself) {
         logger.error(String.format("As end window crosses current time, skipping it for it to be retried in future attempts.", chartPatternSignal.toString(), targetTimeTypeName()));
       } else {
@@ -128,6 +119,10 @@ public class PriceTargetCheckerLaggingTask {
     }
     HeartBeatChecker.logHeartBeat(getClass());
   }
+
+  protected abstract void markFailedToGetTargetPrice(ChartPatternSignal chartPatternSignal);
+
+  protected abstract long getStartTimeWindow(ChartPatternSignal chartPatternSignal);
 
   private String targetTimeTypeName() {
     return targetTimeType == TargetTimeType.TEN_CANDLESTICK? "Ten Candlestick time" : "Price target time";

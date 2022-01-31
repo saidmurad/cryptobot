@@ -34,8 +34,10 @@ public abstract class ChartPatternSignal {
   @Override
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f",
-        coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget());
+    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f " +
+            "Price Target Time: %s",
+        coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget(),
+        dateFormat.format(priceTargetTime()));
   }
   @Override
   public boolean equals(Object that) {

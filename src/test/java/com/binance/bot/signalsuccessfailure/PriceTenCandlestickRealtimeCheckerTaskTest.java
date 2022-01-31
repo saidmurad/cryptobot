@@ -2,7 +2,6 @@ package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.market.AggTrade;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -24,14 +23,12 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static com.binance.bot.signalsuccessfailure.PriceTargetCheckerTask.TIME_RANGE_AGG_TRADES;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(JUnit4.class)
-public class PriceTargetCheckerTaskTest {
+public class PriceTenCandlestickRealtimeCheckerTaskTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock
@@ -41,13 +38,13 @@ public class PriceTargetCheckerTaskTest {
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private Date currentTime = new Date();
 
-  private PriceTargetCheckerTask priceTargetCheckerTask;
+  private PriceTenCandlestickRealtimeCheckerTask priceTenCandlestickRealtimeCheckerTask;
 
   @Before
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
-    priceTargetCheckerTask = new PriceTargetCheckerTask(
+    priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(
         mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
   }
 
@@ -61,7 +58,7 @@ public class PriceTargetCheckerTaskTest {
     tickerPrice.setPrice("6000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, 50.0);
   }
@@ -78,7 +75,7 @@ public class PriceTargetCheckerTaskTest {
     tickerPrice.setPrice("6000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, -50.0);
   }
@@ -93,7 +90,7 @@ public class PriceTargetCheckerTaskTest {
     tickerPrice.setPrice("6000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, 50.0);
   }
@@ -108,7 +105,7 @@ public class PriceTargetCheckerTaskTest {
     tickerPrice.setPrice("6000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, 50.0);
   }
@@ -123,7 +120,7 @@ public class PriceTargetCheckerTaskTest {
     tickerPrice.setPrice("6000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
     verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(chartPatternSignal, 6000, 50.0);
   }
@@ -136,7 +133,7 @@ public class PriceTargetCheckerTaskTest {
         .setTradeType(TradeType.BUY)
         .setPriceAtTimeOfSignal(4000)
         .setTimeOfSignal(currentTime)
-        .setPriceTargetTime(currentTime)
+        .setPriceTargetTime(new Date(currentTime.getTime() + 11 * 24 * 60 * 60 * 1000)) // 11 days
         .setPriceTarget(6000)
         .setProfitPotentialPercent(2.3);
   }

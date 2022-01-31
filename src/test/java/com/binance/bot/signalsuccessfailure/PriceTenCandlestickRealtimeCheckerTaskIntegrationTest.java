@@ -28,17 +28,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(JUnit4.class)
-public class PriceTargetCheckerTaskIntegrationTest {
+public class PriceTenCandlestickRealtimeCheckerTaskIntegrationTest {
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
   @Mock private ChartPatternSignalDaoImpl mockChartPatternSignalDaoImpl;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private Date currentTime = new Date();
-  private PriceTargetCheckerTask priceTargetCheckerTask;
+  private PriceTenCandlestickRealtimeCheckerTask priceTenCandlestickRealtimeCheckerTask;
 
   @Before
   public void setUp() {
-    priceTargetCheckerTask = new PriceTargetCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
+    priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
   }
 
   @Test
@@ -48,7 +48,7 @@ public class PriceTargetCheckerTaskIntegrationTest {
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
         .thenReturn(chartPatternSignals);
 
-    priceTargetCheckerTask.performPriceTargetChecks();
+    priceTenCandlestickRealtimeCheckerTask.performPriceTargetChecks();
 
 //    verify(mockChartPatternSignalDaoImpl).setTenCandleStickTimePrice(eq(chartPatternSignal), any(), any());
   }

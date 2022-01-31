@@ -128,12 +128,20 @@ public class ChartPatternSignalDaoImpl {
 
   public List<ChartPatternSignal> getChatPatternSignalsThatLongSinceReachedTenCandleStickTime() {
     String sql = "select * from ChartPatternSignal \n" +
-        "    where PriceAtTenCandlestickTime is null\n" +
+        "    where (PriceAtTenCandlestickTime is null or PriceAtTenCandlestickTime = 0)\n" +
         "    and FailedToGetPriceAtTenCandlestickTime = 0\n" +
         "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'DAY' and DATETIME(TimeOfSignal, '+10 day') <= DATETIME('now', '-10 minute')))";
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
+  public List<ChartPatternSignal> getChatPatternSignalsThatLongSinceReachedTargetTime() {
+    String sql = "select * from ChartPatternSignal \n" +
+        "    where (PriceAtSignalTargetTime is null or PriceAtSignalTargetTime = 0)\n" +
+        "    and FailedToGetPriceAtSignalTargetTime = 0\n" +
+        "    and DATETIME(PriceTargetTime) <= DATETIME('now', '-10 minute')";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
@@ -143,6 +151,16 @@ public class ChartPatternSignalDaoImpl {
     String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
     return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal())) == 1;
+  }
+
+  public boolean setSignalTargetTimePrice(ChartPatternSignal chartPatternSignal,
+                                            double price,
+                                            double profitPercent) {
+    String sql = "update ChartPatternSignal set PriceAtSignalTargetTime=?, ProfitPercentAtSignalTargetTime=? where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    return jdbcTemplate.update(sql, price, profitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal())) == 1;
   }
@@ -195,6 +213,19 @@ public class ChartPatternSignalDaoImpl {
       logger.info("Updated FailedToGetPriceAtTenCandlestickTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
     } else {
       logger.error("Failed to update FailedToGetPriceAtTenCandlestickTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
+    }
+  }
+
+  public void failedToGetPriceAtSignalTargetTime(ChartPatternSignal chartPatternSignal) {
+    String sql = "update ChartPatternSignal set FailedToGetPriceAtSignalTargetTime = 1 where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()));
+    if (ret == 1) {
+      logger.info("Updated FailedToGetPriceAtSignalTargetTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
+    } else {
+      logger.error("Failed to update FailedToGetPriceAtSignalTargetTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
     }
   }
 

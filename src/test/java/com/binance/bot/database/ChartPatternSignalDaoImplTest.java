@@ -53,6 +53,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    TenCandlestickTime TEXT,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
       "    FailedToGetPriceAtTenCandlestickTime INTEGER,\n" +
+      "    FailedToGetPriceAtSignalTargetTime INTEGER,\n" +
       "    ProfitPercentAtTenCandlestickTime REAL,\n" +
       "    PriceBestReached REAL,\n" +
       "    PriceCurrent REAL,\n" +
@@ -215,6 +216,21 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
+    assertThat(ret).hasSize(1);
+    assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
+  }
+
+  public void testChatPatternSignalsThatLongSinceReachedTenCandleStickTime_findsZeroRowsTooNotJustNull() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("BTCUSDT")
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.MINUTES.toMillis(165)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    dao.setTenCandleStickTimePrice(chartPatternSignal, 0, 0);
+
+    List<ChartPatternSignal> ret = dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
+
     assertThat(ret).hasSize(1);
     assertThat(ret.get(0).coinPair()).isEqualTo("BTCUSDT");
   }

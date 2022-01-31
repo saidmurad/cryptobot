@@ -26,7 +26,7 @@ import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
-public class PriceTargetCheckerTask {
+public class PriceTenCandlestickRealtimeCheckerTask {
 
   static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
@@ -36,8 +36,8 @@ public class PriceTargetCheckerTask {
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   @Autowired
-  PriceTargetCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
-                         ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo) {
+  PriceTenCandlestickRealtimeCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
+                                         ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;

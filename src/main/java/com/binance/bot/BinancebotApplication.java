@@ -1,6 +1,7 @@
 package com.binance.bot;
 
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
+import com.binance.bot.signalsuccessfailure.PriceTargetCheckerLaggingTask;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -17,6 +18,7 @@ public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
+
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
 	}

@@ -25,8 +25,7 @@ import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
-public
-class PriceTargetCheckerTask {
+public class PriceTargetCheckerTask {
 
   static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
@@ -55,9 +54,14 @@ class PriceTargetCheckerTask {
         continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
-      double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-      boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-      logger.info("Set 10 candlestick tnime price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
+      if (tenCandleStickTime > chartPatternSignal.priceTargetTime().getTime()) {
+        // TODO: Unit test this.
+        logger.info("Not setting 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' since it falls after target time.");
+      } else {
+        double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+        boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
+      }
     }
   }
 }

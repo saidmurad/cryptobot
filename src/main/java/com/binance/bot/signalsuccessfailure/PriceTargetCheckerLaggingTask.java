@@ -120,8 +120,9 @@ public class PriceTargetCheckerLaggingTask {
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
       } else if (windowAtPriceTargetTime) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at price target time %s, " +
-            "after %d attempts. Marking as failed in DB.", chartPatternSignal, targetTimeTypeName(), dateFormat.format(chartPatternSignal.priceTargetTime()),
-            attemptCount - 1));
+            "after %d attempts. Marking as failed in DB. Api args used - Ten candle stick time = %d and window end = %d",
+            chartPatternSignal, targetTimeTypeName(), dateFormat.format(chartPatternSignal.priceTargetTime()),
+            attemptCount - 1, tenCandleStickTime, endTimeWindow));
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
       } else if (windowAtCurrTimeItself) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at current time. Skipping for now to retry later.", chartPatternSignal.toString(), targetTimeTypeName()));

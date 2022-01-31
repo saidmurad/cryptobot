@@ -5,7 +5,6 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
+import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
@@ -62,7 +61,7 @@ public class PriceTenCandlestickRealtimeCheckerTask {
             dateFormat.format(new Date(tenCandleStickTime)), chartPatternSignal));
       } else {
         double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-        boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+        boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtWithPrice(chartPatternSignal, tenCandleStickTimePrice));
         logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
       }
     }

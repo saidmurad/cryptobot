@@ -73,6 +73,7 @@ public class BinanceTradingBotTest {
   ArgumentCaptor<NewOrder> buyOrderCaptor;
   @Captor
   ArgumentCaptor<NewOrder> sellOrderCaptor;
+
   @Test
   public void testPlaceBuyTrade() throws ParseException {
     setUsdtBalance(PER_TRADE_AMOUNT + 100);

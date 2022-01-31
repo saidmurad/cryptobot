@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -41,7 +42,7 @@ public class PriceTargetCheckerTaskIntegrationTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())

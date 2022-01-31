@@ -3,6 +3,7 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.trading.SupportedSymbolsInfo;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -23,6 +25,7 @@ import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
+public
 class PriceTargetCheckerTask {
 
   static final long TIME_RANGE_AGG_TRADES = 60000;
@@ -42,7 +45,8 @@ class PriceTargetCheckerTask {
   }
 
   @Scheduled(fixedDelay = 60000)
-  public void performPriceTargetChecks() throws ParseException {
+  public void performPriceTargetChecks() throws ParseException, IOException {
+    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
@@ -53,7 +57,7 @@ class PriceTargetCheckerTask {
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
       double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
       boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-      logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
+      logger.info("Set 10 candlestick tnime price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
     }
   }
 }

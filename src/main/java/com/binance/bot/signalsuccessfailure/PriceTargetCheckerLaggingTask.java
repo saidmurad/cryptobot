@@ -35,6 +35,7 @@ public class PriceTargetCheckerLaggingTask {
     TEN_CANDLESTICK,
     END
   }
+
   private TargetTimeType targetTimeType;
   static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
@@ -56,6 +57,7 @@ public class PriceTargetCheckerLaggingTask {
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    targetTimeType = TargetTimeType.TEN_CANDLESTICK;
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
@@ -92,8 +94,8 @@ public class PriceTargetCheckerLaggingTask {
     if (requestCount % (REQUEST_WEIGHT_1_MIN_LIMIT / 2) == 0) {
       Thread.sleep(60000);
     }
-    long timePointOfInterest = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
-    long endTimeWindow = timePointOfInterest + TIME_RANGE_AGG_TRADES * attemptCount;
+    long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
+    long endTimeWindow = tenCandleStickTime + TIME_RANGE_AGG_TRADES * attemptCount;
     long currTime = clock.millis();
     boolean windowAtCurrTimeItself = false;
     boolean windowAtPriceTargetTime = false;
@@ -104,12 +106,12 @@ public class PriceTargetCheckerLaggingTask {
       windowAtPriceTargetTime = true;
       endTimeWindow = chartPatternSignal.priceTargetTime().getTime();
     }
-    List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, timePointOfInterest, endTimeWindow);
+    List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, tenCandleStickTime, endTimeWindow);
 
     if (!tradesList.isEmpty()) {
       double tenCandleStickTimePrice = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
       boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
-      logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(timePointOfInterest) + "' using api: aggTrades. Ret val=" + ret);
+      logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: aggTrades. Ret val=" + ret);
     }
     else {
       attemptCount++;
@@ -117,7 +119,9 @@ public class PriceTargetCheckerLaggingTask {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
       } else if (windowAtPriceTargetTime) {
-        logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at price target time, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
+        logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at price target time %s, " +
+            "after %d attempts. Marking as failed in DB.", chartPatternSignal.toString(), dateFormat.format(chartPatternSignal.priceTargetTime()),
+            attemptCount - 1, targetTimeTypeName()));
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
       } else if (windowAtCurrTimeItself) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at current time. Skipping for now to retry later.", chartPatternSignal.toString(), targetTimeTypeName()));

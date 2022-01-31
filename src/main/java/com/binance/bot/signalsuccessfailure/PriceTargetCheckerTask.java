@@ -42,6 +42,7 @@ public class PriceTargetCheckerTask {
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
   }
 
   @Scheduled(fixedDelay = 60000)

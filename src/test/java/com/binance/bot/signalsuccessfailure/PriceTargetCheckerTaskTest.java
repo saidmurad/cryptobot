@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -51,7 +52,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -66,7 +67,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.SELL)
         .build();
@@ -83,7 +84,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_hour() throws ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_hour() throws ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.HOUR).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -98,7 +99,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_4hour() throws ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_4hour() throws ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FOUR_HOURS).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -113,7 +114,7 @@ public class PriceTargetCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException, ParseException {
+  public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException, ParseException, IOException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.DAY).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())

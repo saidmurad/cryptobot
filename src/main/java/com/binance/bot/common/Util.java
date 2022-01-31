@@ -30,7 +30,7 @@ public class Util {
       return null;
   }
 
-  public static double getProfitPercentAtTenCandlestickTime(ChartPatternSignal chartPatternSignal, double tenCandleStickTimePrice) {
+  public static double getProfitPercentAtWithPrice(ChartPatternSignal chartPatternSignal, double tenCandleStickTimePrice) {
     switch (chartPatternSignal.tradeType()) {
       case BUY:
         return (tenCandleStickTimePrice - chartPatternSignal.priceAtTimeOfSignal()) / chartPatternSignal.priceAtTimeOfSignal() * 100;

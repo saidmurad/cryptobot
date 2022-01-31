@@ -50,6 +50,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    PriceAtTimeOfSignalInvalidation REAL,\n" +
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
+      "    ProfitPercentAtSignalTargetTime REAL,\n" +
       "    TenCandlestickTime TEXT,\n" +
       "    PriceAtTenCandlestickTime REAL,\n" +
       "    FailedToGetPriceAtTenCandlestickTime INTEGER,\n" +

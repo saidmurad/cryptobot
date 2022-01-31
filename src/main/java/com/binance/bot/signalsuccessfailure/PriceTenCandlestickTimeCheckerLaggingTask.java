@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
@@ -24,6 +25,12 @@ public class PriceTenCandlestickTimeCheckerLaggingTask extends PriceTargetChecke
   @Override
   protected List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime() {
     return dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
+  }
+
+  @Override
+  protected boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double tenCandleStickTimePrice) {
+    return dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice,
+        getProfitPercentAtWithPrice(chartPatternSignal, tenCandleStickTimePrice));
   }
 
   @Override

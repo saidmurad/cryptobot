@@ -10,9 +10,7 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.text.NumberFormat;
@@ -24,7 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-import static com.binance.bot.common.Util.getProfitPercentAtTenCandlestickTime;
+import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
 
 public abstract class PriceTargetCheckerLaggingTask {
 
@@ -61,6 +59,7 @@ public abstract class PriceTargetCheckerLaggingTask {
   @Scheduled(fixedDelay = 600000)
   public void perform() throws InterruptedException, ParseException, IOException {
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
+    logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
     for (ChartPatternSignal pattern: patterns) {
       attemptedPatterns.add(Pair.of(pattern, 1));
@@ -98,8 +97,8 @@ public abstract class PriceTargetCheckerLaggingTask {
     List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, startTimeWindow, endTimeWindow);
 
     if (!tradesList.isEmpty()) {
-      double tenCandleStickTimePrice = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
-      boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));
+      double price = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
+      boolean ret = setTargetPrice(chartPatternSignal, price);
       logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
     }
     else {
@@ -119,6 +118,8 @@ public abstract class PriceTargetCheckerLaggingTask {
     }
     HeartBeatChecker.logHeartBeat(getClass());
   }
+
+  protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price);
 
   protected abstract void markFailedToGetTargetPrice(ChartPatternSignal chartPatternSignal);
 

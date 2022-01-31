@@ -117,8 +117,19 @@ public class ChartPatternSignalDaoImpl {
 
   public List<ChartPatternSignal> getChatPatternSignalsThatJustReachedTenCandleStickTime() {
     String sql = "select * from ChartPatternSignal \n" +
-        "    where PriceAtTenCandlestickTime is null\n" +
+        "    where (PriceAtTenCandlestickTime is null or PriceAtTenCandlestickTime = 0)\n" +
         "    and FailedToGetPriceAtTenCandlestickTime = 0\n" +
+        "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now') and DATETIME(TimeOfSignal, '+150 minute') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+10 hour') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+40 hour') >= DATETIME('now', '-10 minute'))\n" +
+        "    or (TimeFrame = 'DAY' and DATETIME(TimeOfSignal, '+10 day') <= DATETIME('now') and DATETIME(TimeOfSignal, '+10 day') >= DATETIME('now', '-10 minute')))";
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
+
+  public List<ChartPatternSignal> getChatPatternSignalsThatJustReachedTargetTime() {
+    String sql = "select * from ChartPatternSignal \n" +
+        "    where (PriceAtSignalTargetTime is null or PriceAtSignalTargetTime = 0)\n" +
+        "    and FailedToGetPriceAtSignalTime = 0\n" +
         "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now') and DATETIME(TimeOfSignal, '+150 minute') >= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+10 hour') >= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now') and DATETIME(TimeOfSignal, '+40 hour') >= DATETIME('now', '-10 minute'))\n" +
@@ -129,7 +140,7 @@ public class ChartPatternSignalDaoImpl {
   public List<ChartPatternSignal> getChatPatternSignalsThatLongSinceReachedTenCandleStickTime() {
     String sql = "select * from ChartPatternSignal \n" +
         "    where (PriceAtTenCandlestickTime is null or PriceAtTenCandlestickTime = 0)\n" +
-        "    and FailedToGetPriceAtTenCandlestickTime = 0\n" +
+        "    and (FailedToGetPriceAtTenCandlestickTime is null or FailedToGetPriceAtTenCandlestickTime = 0)\n" +
         "    and ((TimeFrame = 'FIFTEEN_MINUTES' and DATETIME(TimeOfSignal, '+150 minute') <= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'HOUR' and DATETIME(TimeOfSignal, '+10 hour') <= DATETIME('now', '-10 minute'))\n" +
         "    or (TimeFrame = 'FOUR_HOURS' and DATETIME(TimeOfSignal, '+40 hour') <= DATETIME('now', '-10 minute'))\n" +
@@ -140,7 +151,7 @@ public class ChartPatternSignalDaoImpl {
   public List<ChartPatternSignal> getChatPatternSignalsThatLongSinceReachedTargetTime() {
     String sql = "select * from ChartPatternSignal \n" +
         "    where (PriceAtSignalTargetTime is null or PriceAtSignalTargetTime = 0)\n" +
-        "    and FailedToGetPriceAtSignalTargetTime = 0\n" +
+        "    and (FailedToGetPriceAtSignalTargetTime is null or FailedToGetPriceAtSignalTargetTime = 0)\n" +
         "    and DATETIME(PriceTargetTime) <= DATETIME('now', '-10 minute')";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }

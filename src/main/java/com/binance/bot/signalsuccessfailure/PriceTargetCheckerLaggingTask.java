@@ -43,7 +43,7 @@ public class PriceTargetCheckerLaggingTask {
   private Logger logger = LoggerFactory.getLogger(getClass());
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-  private final Clock clock;
+  Clock clock = Clock.systemDefaultZone();
   private final static int MAX_WINDOW_MINS = 60;
   private final static NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   long requestCount = 0;
@@ -51,11 +51,9 @@ public class PriceTargetCheckerLaggingTask {
   @Autowired
   PriceTargetCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                 ChartPatternSignalDaoImpl dao,
-                                Clock clock,
                                 SupportedSymbolsInfo supportedSymbolsInfo) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
-    this.clock = clock;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }

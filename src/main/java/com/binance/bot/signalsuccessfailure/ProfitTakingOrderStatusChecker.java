@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.BinanceTradingBot;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.List;
@@ -28,7 +30,8 @@ public class ProfitTakingOrderStatusChecker {
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   @Scheduled(fixedDelay = 60000)
-  public void perform() throws ParseException {
+  public void perform() throws ParseException, IOException {
+    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     BinanceApiRestClient restClient = binanceApiRestClientFactory.newRestClient();
     for (ChartPatternSignal activePosition: activePositions) {

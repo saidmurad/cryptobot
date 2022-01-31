@@ -95,12 +95,13 @@ public class PriceTargetCheckerLaggingTask {
     long timePointOfInterest = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
     long endTimeWindow = timePointOfInterest + TIME_RANGE_AGG_TRADES * attemptCount;
     long currTime = clock.millis();
-    boolean maxWindowReached = false;
+    boolean windowAtCurrTimeItself = false;
+    boolean windowAtPriceTargetTime = false;
     if (endTimeWindow > currTime) {
-      maxWindowReached = true;
+      windowAtCurrTimeItself = true;
       endTimeWindow = currTime;
     } else if (endTimeWindow > chartPatternSignal.priceTargetTime().getTime()) {
-      maxWindowReached = true;
+      windowAtPriceTargetTime = true;
       endTimeWindow = chartPatternSignal.priceTargetTime().getTime();
     }
     List<AggTrade> tradesList = restClient.getAggTrades(chartPatternSignal.coinPair(), null, 1, timePointOfInterest, endTimeWindow);
@@ -115,9 +116,11 @@ public class PriceTargetCheckerLaggingTask {
       if (attemptCount > MAX_WINDOW_MINS) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
-      } else if (maxWindowReached) {
-        logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at present time or crossing price target time, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
+      } else if (windowAtPriceTargetTime) {
+        logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at price target time, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
         dao.failedToGetPriceAtTenCandlestickTime(chartPatternSignal);
+      } else if (windowAtCurrTimeItself) {
+        logger.error(String.format("Could not get agg trades for '%s' for '%s' even with end window at current time. Skipping for now to retry later.", chartPatternSignal.toString(), targetTimeTypeName()));
       }
       else {
         attemptedPatterns.add(Pair.of(chartPatternSignal, attemptCount));

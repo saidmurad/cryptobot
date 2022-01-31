@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -56,7 +57,8 @@ public class PriceTargetCheckerTask {
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
       if (tenCandleStickTime > chartPatternSignal.priceTargetTime().getTime()) {
         // TODO: Unit test this.
-        logger.info("Not setting 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' since it falls after target time.");
+        logger.info(String.format("Not setting 10 candlestick time %s price for %s since it falls after target time.",
+            dateFormat.format(new Date(tenCandleStickTime)), chartPatternSignal));
       } else {
         double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
         boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtTenCandlestickTime(chartPatternSignal, tenCandleStickTimePrice));

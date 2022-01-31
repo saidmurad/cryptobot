@@ -131,7 +131,7 @@ public class PriceTargetCheckerLaggingTaskTest {
 
     priceTargetCheckerLaggingTask.performIteration(patternsQueue);
 
-    verify(mockDao).failedToGetPriceAtTenCandlestickTime(pattern);
+    verifyNoInteractions(mockDao);
     assertThat(patternsQueue).isEmpty();
   }
 
@@ -140,6 +140,7 @@ public class PriceTargetCheckerLaggingTaskTest {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT")
         .setPriceTargetTime(new Date(timeOfSignal + 151 * 60000 - 1))
         .build();
+    when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
         // Ten candle window is at 2.5 hours, and we get agg trades using a minute window at first.
         timeOfSignal + 150 * 60000, timeOfSignal + 151 * 60000 - 1))

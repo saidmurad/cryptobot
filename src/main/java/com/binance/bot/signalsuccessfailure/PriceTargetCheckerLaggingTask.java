@@ -67,7 +67,7 @@ public class PriceTargetCheckerLaggingTask {
   }
 
   // Caution: Not unit tested nor found worth the trouble.
-  @Scheduled(fixedDelay = 600000)
+  //@Scheduled(fixedDelay = 600000)
   public void perform() throws InterruptedException, ParseException, IOException {
     List<ChartPatternSignal> patterns = dao.getChatPatternSignalsThatLongSinceReachedTenCandleStickTime();
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
@@ -94,15 +94,17 @@ public class PriceTargetCheckerLaggingTask {
     if (requestCount % (REQUEST_WEIGHT_1_MIN_LIMIT / 2) == 0) {
       Thread.sleep(60000);
     }
-    long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
+    long tenCandleStickTime = Math.min(chartPatternSignal.timeOfSignal().getTime()
+        + getTenCandleStickTimeIncrementMillis(chartPatternSignal),
+            chartPatternSignal.priceTargetTime().getTime());
     long endTimeWindow = tenCandleStickTime + TIME_RANGE_AGG_TRADES * attemptCount;
     long currTime = clock.millis();
     boolean windowAtCurrTimeItself = false;
     boolean windowAtPriceTargetTime = false;
-    if (endTimeWindow > currTime) {
+    if (endTimeWindow >= currTime) {
       windowAtCurrTimeItself = true;
       endTimeWindow = currTime;
-    } else if (endTimeWindow > chartPatternSignal.priceTargetTime().getTime()) {
+    } else if (endTimeWindow >= chartPatternSignal.priceTargetTime().getTime()) {
       windowAtPriceTargetTime = true;
       endTimeWindow = chartPatternSignal.priceTargetTime().getTime();
     }

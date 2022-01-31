@@ -95,12 +95,17 @@ public class AltfinPatternsReader {
           if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
             byte[] fileBytes = Files.readAllBytes(file.toPath());
             if (fileBytes == null) {
+              //TODO: Send an email, as this should never happen but happened.
               // Read file at the wrong time.
               logger.warn("Read an empty file. Ignoring.");
               continue;
             }
             String altfinPatternsStr = new String(fileBytes);
             List<ChartPatternSignal> patternFromAltfins = readPatterns(altfinPatternsStr);
+            if (patternFromAltfins == null) {
+              logger.error("Got null from reading patterns from altfinPatternsStr: " + altfinPatternsStr);
+              continue;
+            }
             if (patternFromAltfins.size() == 0) {
               logger.warn("Read empty array. Ignoring");
               continue;

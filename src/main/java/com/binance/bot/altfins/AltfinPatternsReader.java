@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -86,88 +87,85 @@ public class AltfinPatternsReader {
 
   @Scheduled(fixedDelay = 60000)
   // TODO: Add unit tests.
-  public void run() {
+  public void run() throws IOException {
     Date[] earliestChartPatternTimesInThisRun = new Date[4];
-    while (true) {
-      try {
-        for (int i =0; i < 4; i++) {
-          File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
-          if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
-            byte[] fileBytes = Files.readAllBytes(file.toPath());
-            if (fileBytes == null) {
-              //TODO: Send an email, as this should never happen but happened.
-              // Read file at the wrong time.
-              logger.warn("Read an empty file. Ignoring.");
-              continue;
-            }
-            String altfinPatternsStr = new String(fileBytes);
-            List<ChartPatternSignal> patternFromAltfins = readPatterns(altfinPatternsStr);
-            if (patternFromAltfins == null) {
-              logger.error("Got null from reading patterns from altfinPatternsStr: " + altfinPatternsStr);
-              continue;
-            }
-            if (patternFromAltfins.size() == 0) {
-              logger.warn("Read empty array. Ignoring");
-              continue;
-            }
-            String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()));
-            if (Files.exists(Path.of(tmpAltfinsPatternsFilePath))) {
-              Files.delete(Path.of(tmpAltfinsPatternsFilePath));
-            }
-            Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
-            logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
-            patternFromAltfins = makeUnique(patternFromAltfins);
-            int origSize = patternFromAltfins.size();
-            List<ChartPatternSignal> temp = patternFromAltfins.stream()
-                .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair()))
-                .collect(Collectors.toList());
-            if (patternFromAltfins.size() < origSize) {
-              logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
-                  getCoinPairsInDifferenceBetween(patternFromAltfins, temp)));
-            }
-            patternFromAltfins = temp;
-            lastProcessedTimes[i] = file.lastModified();
-            if (patternFromAltfins.size() == 0) {
-              logger.info("Left with empty patterns list now.");
-              continue;
-            }
-            List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
-            List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
-            printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
-            chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternsWronglyInvalidated);
-            List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
-            if (!newChartPatternSignals.isEmpty()) {
-              logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
-              for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
-                insertNewChartPatternSignal(chartPatternSignal);
-                if (earliestChartPatternTimesInThisRun[i] == null || earliestChartPatternTimesInThisRun[i].after(chartPatternSignal.timeOfSignal())) {
-                  earliestChartPatternTimesInThisRun[i] = chartPatternSignal.timeOfSignal();
-                }
-              }
-            }
-
-            List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr, tmpAltfinsPatternsFilePath);
-            if (!invalidatedChartPatternSignals.isEmpty()) {
-              logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
-              for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
-                ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
-                    earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
-                double priceAtTimeOfInvalidation = 0;
-                if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
-                  priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-                  logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
-                }
-                boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
-                logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
+    try {
+      for (int i =0; i < 4; i++) {
+        File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
+        if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
+          byte[] fileBytes = Files.readAllBytes(file.toPath());
+          if (fileBytes == null) {
+            logger.warn("Read an empty file. Ignoring.");
+            continue;
+          }
+          String altfinPatternsStr = new String(fileBytes);
+          List<ChartPatternSignal> patternFromAltfins = readPatterns(altfinPatternsStr);
+          if (patternFromAltfins == null) {
+            logger.error("Got null from reading patterns from altfinPatternsStr: " + altfinPatternsStr);
+            continue;
+          }
+          if (patternFromAltfins.size() == 0) {
+            logger.warn("Read empty array. Ignoring");
+            continue;
+          }
+          String tmpAltfinsPatternsFilePath = "/tmp/" + patternsFiles[i] + dateFormat.format(new Date(file.lastModified()));
+          if (Files.exists(Path.of(tmpAltfinsPatternsFilePath))) {
+            Files.delete(Path.of(tmpAltfinsPatternsFilePath));
+          }
+          Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
+          logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
+          patternFromAltfins = makeUnique(patternFromAltfins);
+          int origSize = patternFromAltfins.size();
+          List<ChartPatternSignal> temp = patternFromAltfins.stream()
+              .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair()))
+              .collect(Collectors.toList());
+          if (patternFromAltfins.size() < origSize) {
+            logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
+                getCoinPairsInDifferenceBetween(patternFromAltfins, temp)));
+          }
+          patternFromAltfins = temp;
+          lastProcessedTimes[i] = file.lastModified();
+          if (patternFromAltfins.size() == 0) {
+            logger.info("Left with empty patterns list now.");
+            continue;
+          }
+          List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
+          List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
+          printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
+          chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternsWronglyInvalidated);
+          List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
+          if (!newChartPatternSignals.isEmpty()) {
+            logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
+            for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
+              insertNewChartPatternSignal(chartPatternSignal);
+              if (earliestChartPatternTimesInThisRun[i] == null || earliestChartPatternTimesInThisRun[i].after(chartPatternSignal.timeOfSignal())) {
+                earliestChartPatternTimesInThisRun[i] = chartPatternSignal.timeOfSignal();
               }
             }
           }
+
+          List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr, tmpAltfinsPatternsFilePath);
+          if (!invalidatedChartPatternSignals.isEmpty()) {
+            logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
+            for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
+              ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
+                  earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
+              double priceAtTimeOfInvalidation = 0;
+              if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
+                priceAtTimeOfInvalidation = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+                logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
+              }
+              boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
+              logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
+            }
+          }
         }
-      } catch (IOException |ParseException ex) {
-        logger.error("Exception.", ex);
-        throw new RuntimeException(ex);
       }
+    } catch (IOException |ParseException ex) {
+      logger.error("Exception.", ex);
+      throw new RuntimeException(ex);
     }
+    HeartBeatChecker.logHeartBeat(getClass());
   }
 
   boolean isTradingAllowed(TimeFrame timeFrame, TradeType tradeType) {

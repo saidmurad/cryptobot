@@ -58,6 +58,7 @@ public abstract class PriceTargetCheckerLaggingTask {
   // Caution: Not unit tested nor found worth the trouble.
   @Scheduled(fixedDelay = 600000)
   public void perform() throws InterruptedException, ParseException, IOException {
+    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
     logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
@@ -116,7 +117,6 @@ public abstract class PriceTargetCheckerLaggingTask {
         attemptedPatterns.add(Pair.of(chartPatternSignal, attemptCount));
       }
     }
-    HeartBeatChecker.logHeartBeat(getClass());
   }
 
   protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price);

@@ -51,6 +51,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setPriceAtSignalTargetTime(rs.getDouble("PriceAtSignalTargetTime"))
           .setPriceAtTenCandlestickTime(rs.getDouble("PriceAtTenCandlestickTime"))
           .setFailedToGetPriceAtTenCandlestickTime(rs.getInt("FailedToGetPriceAtTenCandlestickTime") == 1)
+          .setFailedToGetPriceAtSignalTargetTime(rs.getInt("FailedToGetPriceAtSignalTargetTime") == 1)
           .setProfitPercentAtTenCandlestickTime(rs.getDouble("ProfitPercentAtTenCandlestickTime"))
           .setPriceBestReached(rs.getDouble("PriceBestReached"))
           .setPriceCurrent(rs.getDouble("PriceCurrent"))

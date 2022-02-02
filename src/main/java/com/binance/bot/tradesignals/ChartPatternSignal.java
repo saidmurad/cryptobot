@@ -91,11 +91,15 @@ public abstract class ChartPatternSignal {
 
   public abstract double profitPercentAtTenCandlestickTime();
 
+  public abstract Double profitPercentAtSignalTargetTime();
+
   public abstract double priceBestReached();
 
   public abstract double priceCurrent();
 
   public abstract boolean failedToGetPriceAtTenCandlestickTime();
+
+  public abstract boolean failedToGetPriceAtSignalTargetTime();
 
   @Nullable
   public abstract Date currentTime();
@@ -162,6 +166,7 @@ public abstract class ChartPatternSignal {
         .setPriceAtSignalTargetTime(0)
         .setPriceAtTenCandlestickTime(0)
         .setFailedToGetPriceAtTenCandlestickTime(false)
+        .setFailedToGetPriceAtSignalTargetTime(false)
         .setProfitPercentAtTenCandlestickTime(0)
         .setPriceBestReached(0)
         .setPriceCurrent(0)
@@ -220,6 +225,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setFailedToGetPriceAtTenCandlestickTime(boolean failedToGetPriceAtTenCandlestickTime);
 
+    public abstract Builder setFailedToGetPriceAtSignalTargetTime(boolean failedToGetPriceAtSignalTargetTime);
+
     public abstract Builder setPriceBestReached(double priceBestReached);
 
     public abstract Builder setPriceCurrent(double priceCurrent);
@@ -229,6 +236,8 @@ public abstract class ChartPatternSignal {
     public abstract ChartPatternSignal build();
 
     public abstract Builder setProfitPercentAtTenCandlestickTime(double profitPercentAtTenCandlestickTime);
+
+    public abstract Builder setProfitPercentAtSignalTargetTime(Double profitPercentAtSignalTargetTime);
 
     public abstract Builder setEntryOrder(Order entryOrder);
 
@@ -262,6 +271,8 @@ public abstract class ChartPatternSignal {
           .setNumTimesMissingInInput(that.numTimesMissingInInput())
           .setPriceTarget(that.priceTarget())
           .setProfitPotentialPercent(that.profitPotentialPercent())
+          .setProfitPercentAtTenCandlestickTime(that.profitPercentAtTenCandlestickTime())
+          .setProfitPercentAtSignalTargetTime(that.priceAtSignalTargetTime())
           .setIsSignalOn(that.isSignalOn())
           .setVolumeAtSignalCandlestick(that.volumeAtSignalCandlestick())
           .setVolumeAverage(that.volumeAverage())
@@ -272,6 +283,7 @@ public abstract class ChartPatternSignal {
           .setPriceAtSignalTargetTime(that.priceAtSignalTargetTime())
           .setPriceAtTenCandlestickTime(that.priceAtTenCandlestickTime())
           .setFailedToGetPriceAtTenCandlestickTime(that.failedToGetPriceAtTenCandlestickTime())
+          .setFailedToGetPriceAtSignalTargetTime(that.failedToGetPriceAtSignalTargetTime())
           .setPriceBestReached(that.priceBestReached())
           .setPriceCurrent(that.priceCurrent())
           .setCurrentTime(that.currentTime())

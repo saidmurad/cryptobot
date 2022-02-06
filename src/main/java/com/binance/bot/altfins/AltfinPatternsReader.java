@@ -133,6 +133,10 @@ public class AltfinPatternsReader {
           List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
           printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
           chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternsWronglyInvalidated);
+          if (!chartPatternsWronglyInvalidated.isEmpty()) {
+            // TODO: Avoid double read from DB. difficulty is cloing and marking IsSignalOn to 1 for the wrongly invalidated signals.
+            chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrames[i]);
+          }
           List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(chartPatternsInDB, patternFromAltfins);
           if (!newChartPatternSignals.isEmpty()) {
             logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrames[i].name()));
@@ -147,6 +151,7 @@ public class AltfinPatternsReader {
           List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(patternFromAltfins, chartPatternsInDB, altfinPatternsStr, tmpAltfinsPatternsFilePath);
           if (!invalidatedChartPatternSignals.isEmpty()) {
             logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.", invalidatedChartPatternSignals.size(), timeFrames[i].name()));
+
             for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
               ReasonForSignalInvalidation reasonForInvalidation = chartPatternSignal.timeOfSignal().equals(earliestChartPatternTimesInThisRun[i]) ||
                   earliestChartPatternTimesInThisRun[i] != null && chartPatternSignal.timeOfSignal().after(earliestChartPatternTimesInThisRun[i]) ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS : ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;

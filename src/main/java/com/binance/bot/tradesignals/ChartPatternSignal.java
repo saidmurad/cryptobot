@@ -91,6 +91,7 @@ public abstract class ChartPatternSignal {
 
   public abstract double profitPercentAtTenCandlestickTime();
 
+  @Nullable
   public abstract Double profitPercentAtSignalTargetTime();
 
   public abstract double priceBestReached();

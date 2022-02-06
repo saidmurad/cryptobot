@@ -48,7 +48,7 @@ public class PriceTargetRealtimeCheckerTask {
     List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();
     for (int i = 0; i < signalsTargetTime.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTargetTime.get(i);
-      if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair())) {
+      if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
         continue;
       }

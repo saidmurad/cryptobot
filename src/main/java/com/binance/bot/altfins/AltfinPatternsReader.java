@@ -117,7 +117,7 @@ public class AltfinPatternsReader {
           patternFromAltfins = makeUnique(patternFromAltfins);
           int origSize = patternFromAltfins.size();
           List<ChartPatternSignal> temp = patternFromAltfins.stream()
-              .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().containsKey(chartPatternSignal.coinPair()))
+              .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().contains(chartPatternSignal.coinPair()))
               .collect(Collectors.toList());
           if (patternFromAltfins.size() < origSize) {
             logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),

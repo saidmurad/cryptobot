@@ -512,7 +512,6 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     List<ChartPatternSignal> patternsToInvalidate = dao.getChartPatternSignalsToInvalidate();
 
     assertThat(patternsToInvalidate).hasSize(2);
-    assertThat(patternsToInvalidate.get(0)).isEqualTo(chartPatternSignalInDB);
   }
 
   public void testSetTenCandlestickTime_beforePriceTargetTime_doesntNullifyTenCandlestickPrice() {

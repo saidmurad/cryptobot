@@ -75,7 +75,7 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException {
     Pair<ChartPatternSignal, Integer> patternPair = attemptedPatterns.remove(0);
-    if (!supportedSymbolsInfo.getSupportedSymbols().containsKey(patternPair.getKey().coinPair())) {
+    if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(patternPair.getKey().coinPair())) {
       logger.warn(String.format("Skipping chart pattern signal %s not in supported symbols at the moment.", patternPair.getKey().toString()));
       return;
     }

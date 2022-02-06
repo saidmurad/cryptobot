@@ -204,8 +204,13 @@ public class AltfinPatternsReaderTest extends TestCase {
 
   public void testFilterPatternsToInvalidate_allPatternsInDBStillOnAltfins_noneToInvalidate() throws IOException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    patternsFromAltfins.set(0, ChartPatternSignal.newBuilder()
+        .copy(patternsFromAltfins.get(0))
+        .setPriceTargetTime(new Date(System.currentTimeMillis() + 500000))
+        .build());
 
-    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDb, patternsInDb, "", "");
+    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDb, "", "");
 
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }

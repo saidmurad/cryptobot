@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Component
@@ -21,6 +22,8 @@ public class SupportedSymbolsInfo {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Map<String, List<OrderType>> tradingSymbolsMap = new HashMap<>();
   private long lastFetchTime = 0;
+
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   @Autowired
   public SupportedSymbolsInfo(BinanceApiClientFactory binanceApiClientFactory) {
@@ -43,6 +46,7 @@ public class SupportedSymbolsInfo {
       return tradingSymbolsMap;
     }
     tradingSymbolsMap = new HashMap();
+    logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date()));
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
         tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());

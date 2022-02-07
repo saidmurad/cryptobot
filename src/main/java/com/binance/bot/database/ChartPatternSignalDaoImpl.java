@@ -36,15 +36,16 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
-    String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, PriceAtTimeOfSignal, PriceAtTimeOfSignalReal," +
+    String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, Attempt, PriceAtTimeOfSignal, PriceAtTimeOfSignalReal," +
         "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, " +
         "VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, " +
         "IsSignalOn, TenCandlestickTime, FailedToGetPriceAtTenCandlestickTime)" +
-        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     Object params[] = new Object[]{chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
         chartPatternSignal.pattern(),
+        chartPatternSignal.attempt(),
         chartPatternSignal.priceAtTimeOfSignal(),
         chartPatternSignal.priceAtTimeOfSignalReal(),
         chartPatternSignal.priceRelatedToPattern(),
@@ -69,10 +70,11 @@ public class ChartPatternSignalDaoImpl {
   public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation, ReasonForSignalInvalidation reasonForSignalInvalidation) {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
         "PriceAtTimeOfSignalInvalidation=?, ReasonForSignalInvalidation=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     boolean ret1 = jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation), reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal())) == 1;
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
     String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +
         "values(?, ?, ?, ?, ?, ?, ?)";
 
@@ -110,9 +112,10 @@ public class ChartPatternSignalDaoImpl {
 
   // intented for test use.
   public ChartPatternSignal getChartPattern(ChartPatternSignal chartPatternSignal) {
-    String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
-    return jdbcTemplate.queryForObject(sql, new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal())}, new ChartPatternSignalMapper());
+    String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and Attempt=?";
+    return jdbcTemplate.queryForObject(sql, new Object[]{chartPatternSignal.coinPair(), chartPatternSignal.timeFrame().name(),
+        chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()}, new ChartPatternSignalMapper());
   }
 
   public List<ChartPatternSignal> getChatPatternSignalsThatJustReachedTenCandleStickTime() {
@@ -157,29 +160,32 @@ public class ChartPatternSignalDaoImpl {
                                             double tenCandleStickTimePrice,
                                             double tenCandleStickTimeProfitPercent) {
     String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     return jdbcTemplate.update(sql, tenCandleStickTimePrice, tenCandleStickTimeProfitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal())) == 1;
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
   }
 
   public boolean setSignalTargetTimePrice(ChartPatternSignal chartPatternSignal,
                                             double price,
                                             double profitPercent) {
     String sql = "update ChartPatternSignal set PriceAtSignalTargetTime=?, ProfitPercentAtSignalTargetTime=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     return jdbcTemplate.update(sql, price, profitPercent, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal())) == 1;
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
   }
 
   public void incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
     String sql = "update ChartPatternSignal set NumTimesMissingInInput = NumTimesMissingInInput + 1 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
+        "Attempt=?";
     for (ChartPatternSignal chartPatternSignal: chartPatternsMissingInInput) {
       int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-          df.format(chartPatternSignal.timeOfSignal()));
+          df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
       if (ret == 1) {
         logger.info("Updated chart pattern signal missing count to " + (chartPatternSignal.numTimesMissingInInput() + 1) + " for chart pattern signal: " + chartPatternSignal.toString());
       } else {
@@ -190,13 +196,14 @@ public class ChartPatternSignalDaoImpl {
 
   public void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {
     String sql = "update ChartPatternSignal set NumTimesMissingInInput = 0, IsSignalOn=1 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +
         "values(?, ?, ?, ?, ?, ?, ?)";
     for (ChartPatternSignal chartPatternSignal: chartPatternSignalsReappearedInTime) {
       int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-          df.format(chartPatternSignal.timeOfSignal()));
+          df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
       if (ret == 1) {
         logger.info("Updated chart pattern signal missing count to 0 for chart pattern signal: " + chartPatternSignal.toString());
       } else {
@@ -213,10 +220,11 @@ public class ChartPatternSignalDaoImpl {
 
   public void failedToGetPriceAtTenCandlestickTime(ChartPatternSignal chartPatternSignal) {
     String sql = "update ChartPatternSignal set FailedToGetPriceAtTenCandlestickTime = 1 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-          df.format(chartPatternSignal.timeOfSignal()));
+          df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
       logger.info("Updated FailedToGetPriceAtTenCandlestickTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
     } else {
@@ -226,10 +234,11 @@ public class ChartPatternSignalDaoImpl {
 
   public void failedToGetPriceAtSignalTargetTime(ChartPatternSignal chartPatternSignal) {
     String sql = "update ChartPatternSignal set FailedToGetPriceAtSignalTargetTime = 1 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal()));
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
       logger.info("Updated FailedToGetPriceAtSignalTargetTime to 1 for chart pattern signal: " + chartPatternSignal.toString());
     } else {
@@ -245,11 +254,12 @@ public class ChartPatternSignalDaoImpl {
   public boolean setEntryOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order entryOrder) {
     String sql = "update ChartPatternSignal set EntryOrderId=?, EntryExecutedQty=?, EntryAvgPrice=?, EntryOrderStatus=?, " +
         "IsPositionExited=0 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     int ret = jdbcTemplate.update(sql, entryOrder.orderId(), entryOrder.executedQty(), entryOrder.avgPrice(),
         entryOrder.status().name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal()));
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
       logger.info(String.format("Updated chart pattern sgnal \n%s\nwith entry order id %d.", chartPatternSignal.toString(), entryOrder.orderId()));
     } else {
@@ -270,13 +280,14 @@ public class ChartPatternSignalDaoImpl {
     boolean isPositionExited = (chartPatternSignalInDB.entryOrder().executedQty() - exitLimitOrder.executedQty()) < 1E-10;
     String sql = "update ChartPatternSignal set ExitLimitOrderId=?, ExitLimitOrderExecutedQty=?, ExitLimitOrderAvgPrice=?, ExitLimitOrderStatus=?, " +
         "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=? where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     int ret = jdbcTemplate.update(sql, exitLimitOrder.orderId(), exitLimitOrder.executedQty(), exitLimitOrder.avgPrice(),
         exitLimitOrder.status().name(),
         realizedUnRealized.getFirst(), realizedPercent, realizedUnRealized.getSecond(), unRealizedPercent,
         isPositionExited, chartPatternSignalInDB.coinPair(),
         chartPatternSignalInDB.timeFrame().name(), chartPatternSignalInDB.tradeType().name(), chartPatternSignalInDB.pattern(),
-        df.format(chartPatternSignalInDB.timeOfSignal()));
+        df.format(chartPatternSignalInDB.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
       logger.info(String.format("Updated chart pattern signal \n%s\nwith exit limit order id %d.", chartPatternSignalInDB.toString(), exitLimitOrder.orderId()));
     } else {
@@ -300,13 +311,14 @@ public class ChartPatternSignalDaoImpl {
     String sql = "update ChartPatternSignal set ExitMarketOrderId=?, ExitMarketOrderExecutedQty=?, " +
         "ExitMarketOrderAvgPrice=?, ExitMarketOrderStatus=?, " +
         "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=1 where " +
-        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
     int ret = jdbcTemplate.update(sql, exitMarketOrder.orderId(), exitMarketOrder.executedQty(), exitMarketOrder.avgPrice(),
         exitMarketOrder.status().name(),
         realized, realizedPercent, 0.0, 0.0,
         chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-        df.format(chartPatternSignal.timeOfSignal()));
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
       logger.info(String.format("Updated chart pattern sgnal \n%s\nwith exit market order id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
     } else {

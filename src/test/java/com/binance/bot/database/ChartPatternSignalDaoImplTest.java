@@ -32,6 +32,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    TimeFrame TEXT NOT NULL,\n" +
       "    TradeType TEXT NOT NULL,\n" +
       "    Pattern TEXT NOT NULL,\n" +
+      "    Attempt INTEGER NOT NULL,\n" +
       "    PriceAtTimeOfSignal REAL NOT NULL,\n" +
       "    PriceAtTimeOfSignalReal REAL,\n" +
       "    PriceRelatedToPattern REAL,\n" +
@@ -77,7 +78,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    UnRealizedPercent REAL,\n" +
       "    IsPositionExited INTEGER \n" +
       ");";
-
+/*
+create table ChartPatternSignal2 as select * from ChartPatternSignal;
+drop table ChartPatternSignal;
+create table ChartPatternSignal as select * from ChartPatternSignal2;
+ */
   /*
   create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);
    */

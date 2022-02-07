@@ -30,6 +30,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setTradeType(TradeType.valueOf(rs.getString("TradeType")))
           .setCoinPair(rs.getString("CoinPair"))
           .setPattern(rs.getString("Pattern"))
+          .setAttempt(rs.getInt("Attempt"))
           .setPriceAtTimeOfSignal(rs.getDouble("PriceAtTimeOfSignal"))
           .setPriceAtTimeOfSignalReal(rs.getDouble("PriceAtTimeOfSignalReal"))
           .setTimeOfSignal(dateFormat.parse(rs.getString("TimeOfSignal")))

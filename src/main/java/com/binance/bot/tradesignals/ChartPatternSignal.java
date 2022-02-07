@@ -36,16 +36,19 @@ public abstract class ChartPatternSignal {
   @Override
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f " +
+    return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, " +
+            "Attempt: %d, Price Target: %f " +
             "Price Target Time: %s, Attempt: %d",
-        coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget(),
+        coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()),
+        attempt(), priceTarget(),
         dateFormat.format(priceTargetTime()), attempt());
   }
   @Override
   public boolean equals(Object that) {
     ChartPatternSignal other = (ChartPatternSignal) that;
     boolean ret= this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
-        && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
+        && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal()) &&
+        this.attempt() == other.attempt();
     /*if (this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern())) {
       logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
@@ -55,7 +58,8 @@ public abstract class ChartPatternSignal {
 
   @Override
   public int hashCode() {
-    int hash = Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(), this.timeOfSignal());
+    int hash = Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(),
+        this.timeOfSignal(), this.attempt());
     return hash;
   }
 

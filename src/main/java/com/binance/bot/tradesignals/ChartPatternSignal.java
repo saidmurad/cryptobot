@@ -26,6 +26,8 @@ public abstract class ChartPatternSignal {
 
   public abstract Date timeOfSignal();
 
+  public abstract int attempt();
+
   @Nullable
   public abstract Date timeOfInsertion();
 
@@ -35,9 +37,9 @@ public abstract class ChartPatternSignal {
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     return String.format("CoinPair: %s, TimeFrame: %s, TradeType: %s, Pattern: %s, Time of signal: %s, Price Target: %f " +
-            "Price Target Time: %s",
+            "Price Target Time: %s, Attempt: %d",
         coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()), priceTarget(),
-        dateFormat.format(priceTargetTime()));
+        dateFormat.format(priceTargetTime()), attempt());
   }
   @Override
   public boolean equals(Object that) {
@@ -158,6 +160,7 @@ public abstract class ChartPatternSignal {
 
   public static Builder newBuilder() {
     return new AutoValue_ChartPatternSignal.Builder()
+        .setAttempt(1)
         .setPriceRelatedToPattern(0)
         .setIsSignalOn(true)
         .setVolumeAtSignalCandlestick(0)
@@ -185,6 +188,8 @@ public abstract class ChartPatternSignal {
     public abstract Builder setTradeType(TradeType tradeType);
 
     public abstract Builder setPattern(String pattern);
+
+    public abstract Builder setAttempt(int attempt);
 
     public abstract Builder setPriceAtTimeOfSignal(double priceAtTimeOfSignal);
 
@@ -264,6 +269,7 @@ public abstract class ChartPatternSignal {
           .setTimeFrame(that.timeFrame())
           .setTradeType(that.tradeType())
           .setPattern(that.pattern())
+          .setAttempt(that.attempt())
           .setPriceAtTimeOfSignal(that.priceAtTimeOfSignal())
           .setPriceAtTimeOfSignalReal(that.priceAtTimeOfSignalReal())
           .setPriceTargetTime(that.priceTargetTime())

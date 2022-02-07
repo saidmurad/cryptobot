@@ -5,6 +5,7 @@ import com.binance.api.client.config.BinanceApiConfig;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.api.client.security.AuthenticationInterceptor;
 import okhttp3.Dispatcher;
+import okhttp3.Headers;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
@@ -101,7 +102,15 @@ public class BinanceApiServiceGenerator {
      * Extracts and converts the response error body into an object.
      */
     public static BinanceApiError getBinanceApiError(Response<?> response) throws IOException, BinanceApiException {
-        return errorBodyConverter.convert(response.errorBody());
+        //return errorBodyConverter.convert(response.errorBody());
+        BinanceApiError binanceApiError = new BinanceApiError();
+        binanceApiError.setCode(response.code());
+        binanceApiError.setMsg(response.errorBody().string());
+        if (response.code() == 418 || response.code() == 429) {
+            String retryAfter = response.headers().get("Retry-After");
+            binanceApiError.setMsg(response.errorBody().string() + "\nRetry-After: " + retryAfter);
+        }
+        return binanceApiError;
     }
 
     /**

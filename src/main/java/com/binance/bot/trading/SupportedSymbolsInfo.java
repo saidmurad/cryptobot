@@ -46,7 +46,8 @@ public class SupportedSymbolsInfo {
       return tradingSymbolsMap;
     }
     tradingSymbolsMap = new HashMap();
-    logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date()));
+    lastFetchTime = System.currentTimeMillis();
+    logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date(lastFetchTime)));
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
         tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());

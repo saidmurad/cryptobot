@@ -54,7 +54,6 @@ public class AltfinPatternsReaderTest extends TestCase {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
     altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockBinanceTradingBot, mockSupportedSymbolsInfo);
-    altfinPatternsReader.bookkeeping = new AltfinPatternsReaderBookkeeping();
     altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
     altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
     altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
@@ -446,42 +445,10 @@ public class AltfinPatternsReaderTest extends TestCase {
 
     verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
     verify(mockDao).invalidateChartPatternSignal(
-        eq(chartPatternSignal), eq(0.0), any());
+        eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()), any());
   }
 
-  public void testChartPatternSignalsToInvalidate_backlogFromColdstart() throws ParseException {
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
-    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
-    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
-    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
-
-    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
-    verify(mockDao).invalidateChartPatternSignal(
-        eq(chartPatternSignal), eq(0.0), eq(ReasonForSignalInvalidation.BACKLOG_AND_COLD_START));
-  }
-
-  public void testChartPatternSignalsToInvalidate_backlogFromColdstart2_olderThanCurrentRunStartTime() throws ParseException {
-    Date currTime = new Date();
-    Date olderOccurTimeForSignal = new Date(currTime.getTime() - 10000);
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
-        .setTimeOfSignal(olderOccurTimeForSignal)
-        .build();
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
-    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
-    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
-    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
-    altfinPatternsReader.bookkeeping.earliestChartPatternTimesInThisRun[0] = currTime;
-    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
-    verify(mockDao).invalidateChartPatternSignal(
-        eq(chartPatternSignal), eq(0.0), eq(ReasonForSignalInvalidation.BACKLOG_AND_COLD_START));
-  }
-
-  public void testChartPatternSignalsToInvalidate_removedFromAltfins_newerThanCurrentRunStartTime_priceIsObtained()
+  public void testChartPatternSignalsToInvalidate_removedFromAltfins__priceIsObtained()
       throws ParseException {
     Date currTime = new Date();
     Date newerOccurTimeForSignal = new Date(currTime.getTime() + 10000);
@@ -492,7 +459,6 @@ public class AltfinPatternsReaderTest extends TestCase {
     when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
     when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
     when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
-    altfinPatternsReader.bookkeeping.earliestChartPatternTimesInThisRun[0] = currTime;
     altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
 
     verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));

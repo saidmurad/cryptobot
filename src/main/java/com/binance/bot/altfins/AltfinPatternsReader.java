@@ -57,8 +57,6 @@ public class AltfinPatternsReader {
   private final BinanceApiRestClient restClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
-  @Autowired
-  AltfinPatternsReaderBookkeeping bookkeeping;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   @Value("${fifteen_minute_timeframe}")
@@ -154,9 +152,6 @@ public class AltfinPatternsReader {
     if (!newChartPatternSignals.isEmpty()) {
       for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
         insertNewChartPatternSignal(chartPatternSignal);
-        if (bookkeeping.earliestChartPatternTimesInThisRun[ti] == null || bookkeeping.earliestChartPatternTimesInThisRun[ti].after(chartPatternSignal.timeOfSignal())) {
-          bookkeeping.earliestChartPatternTimesInThisRun[ti] = chartPatternSignal.timeOfSignal();
-        }
       }
     }
 
@@ -167,21 +162,10 @@ public class AltfinPatternsReader {
           invalidatedChartPatternSignals.size(), timeFrame.name()));
 
       for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
-        ReasonForSignalInvalidation reasonForInvalidation =
-            // For comeback signals we don't know when they got resurrected by Altfins if that time occurred prior to
-            // the program started running.
-            chartPatternSignal.attempt() > 1 ||
-            bookkeeping.earliestChartPatternTimesInThisRun[ti] != null &&
-                (chartPatternSignal.timeOfSignal().equals(bookkeeping.earliestChartPatternTimesInThisRun[ti]) ||
-                chartPatternSignal.timeOfSignal().after(bookkeeping.earliestChartPatternTimesInThisRun[ti]))
-            ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS :
-                ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
-        double priceAtTimeOfInvalidation = 0;
-        if (reasonForInvalidation == ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS) {
-          priceAtTimeOfInvalidation = numberFormat.parse(
+        ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
+        double priceAtTimeOfInvalidation = numberFormat.parse(
               restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
           logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
-        }
         boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
         logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);

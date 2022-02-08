@@ -112,6 +112,9 @@ public abstract class ChartPatternSignal {
 
   public abstract double priceAtTimeOfSignalInvalidation();
 
+  @Nullable
+  public abstract Double profitPercentAtTimeOfSignalInvalidation();
+
   public abstract int numTimesMissingInInput();
 
   @Nullable
@@ -226,6 +229,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setPriceAtTimeOfSignalInvalidation(double priceAtTimeOfSignalInvalidation);
 
+    public abstract Builder setProfitPercentAtTimeOfSignalInvalidation(Double profitPercentAtTimeOfSignalInvalidation);
+
     public abstract Builder setReasonForSignalInvalidation(ReasonForSignalInvalidation reasonForSignalInvalidation);
 
     public abstract Builder setPriceAtSignalTargetTime(double priceAtSignalTargetTime);
@@ -289,6 +294,7 @@ public abstract class ChartPatternSignal {
           .setIsVolumeSurge(that.isVolumeSurge())
           .setTimeOfSignalInvalidation(that.timeOfSignalInvalidation())
           .setPriceAtTimeOfSignalInvalidation(that.priceAtTimeOfSignalInvalidation())
+          .setProfitPercentAtTimeOfSignalInvalidation(that.profitPercentAtTimeOfSignalInvalidation())
           .setReasonForSignalInvalidation(that.reasonForSignalInvalidation())
           .setPriceAtSignalTargetTime(that.priceAtSignalTargetTime())
           .setPriceAtTenCandlestickTime(that.priceAtTenCandlestickTime())

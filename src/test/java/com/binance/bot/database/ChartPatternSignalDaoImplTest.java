@@ -49,6 +49,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    IsVolumeSurge INTEGER,\n" +
       "    TimeOfSignalInvalidation TEXT,\n" +
       "    PriceAtTimeOfSignalInvalidation REAL,\n" +
+      "    ProfitPercentAtTimeOfSignalInvalidation REAL,\n" +
       "    ReasonForSignalInvalidation TEXT,\n" +
       "    PriceAtSignalTargetTime REAL,\n" +
       "    ProfitPercentAtSignalTargetTime REAL,\n" +
@@ -141,7 +142,7 @@ create table ChartPatternSignal as select * from ChartPatternSignal2;
         .build();
     dao.insertChartPatternSignal(unrelatedChartPatternSignal, volProfile);
 
-    final double priceAtTimeOfInvalidation = 100.01;
+    final double priceAtTimeOfInvalidation = 5000;
     assertThat(dao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS))
         .isTrue();
 
@@ -152,6 +153,7 @@ create table ChartPatternSignal as select * from ChartPatternSignal2;
     assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
     assertThat(updatedChartPatternSignal.timeOfSignalInvalidation().getTime() - currentTime).isLessThan(5000L);
     assertThat(updatedChartPatternSignal.priceAtTimeOfSignalInvalidation()).isEqualTo(priceAtTimeOfInvalidation);
+    assertThat(updatedChartPatternSignal.profitPercentAtTimeOfSignalInvalidation()).isEqualTo(25.0);
   }
 
   @Test

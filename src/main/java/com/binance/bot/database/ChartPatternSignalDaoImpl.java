@@ -1,5 +1,6 @@
 package com.binance.bot.database;
 
+import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -70,10 +71,13 @@ public class ChartPatternSignalDaoImpl {
   public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation,
                                               ReasonForSignalInvalidation reasonForSignalInvalidation) {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
-        "PriceAtTimeOfSignalInvalidation=?, ReasonForSignalInvalidation=? where " +
+        "PriceAtTimeOfSignalInvalidation=?, ProfitPercentAtTimeOfSignalInvalidation=?, " +
+        "ReasonForSignalInvalidation=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
-    boolean ret1 = jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation), reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
+    boolean ret1 = jdbcTemplate.update(sql, df.format(new Date()), Double.toString(priceAtTimeOfInvalidation),
+        Util.getProfitPercentAtWithPrice(chartPatternSignal, priceAtTimeOfInvalidation),
+        reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
     String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +

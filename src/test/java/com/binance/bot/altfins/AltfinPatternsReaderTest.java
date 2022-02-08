@@ -148,6 +148,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.processPaterns(Lists.newArrayList(patternFromAltfins), TimeFrame.FIFTEEN_MINUTES);
 
     assertThat(patternArgCaptor.getValue().coinPair()).isEqualTo(patternFromAltfins.coinPair());
+    assertThat(patternArgCaptor.getValue().isSignalOn()).isTrue();
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(2);
   }
 

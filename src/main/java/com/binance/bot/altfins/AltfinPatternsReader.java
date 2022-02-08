@@ -142,7 +142,6 @@ public class AltfinPatternsReader {
     List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
     List<ChartPatternSignal> chartPatternsThatAreBack = getChartPatternSignalsThatAreBack(patternFromAltfins, chartPatternsInDB);
     printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
-    int ti = getTimeframeIndex(timeFrame);
     List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(
         chartPatternsInDB, patternFromAltfins);
     if (!newChartPatternSignals.isEmpty()) {
@@ -170,20 +169,6 @@ public class AltfinPatternsReader {
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
         logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
       }
-    }
-  }
-
-  private int getTimeframeIndex(TimeFrame timeFrame) {
-    switch (timeFrame) {
-      case FIFTEEN_MINUTES:
-        return 0;
-      case HOUR:
-        return 1;
-      case FOUR_HOURS:
-        return 2;
-      case DAY:
-      default:
-        return 3;
     }
   }
 
@@ -362,7 +347,7 @@ public class AltfinPatternsReader {
     for (ChartPatternSignal patternFromAltfins : patternsFromAltfins) {
       if (comebackPatternsMap.containsKey(patternFromAltfins)) {
         ChartPatternSignal highestAttemptedPrev = comebackPatternsMap.get(patternFromAltfins);
-        comebackPatterns.add(ChartPatternSignal.newBuilder().copy(highestAttemptedPrev)
+        comebackPatterns.add(ChartPatternSignal.newBuilder().copy(patternFromAltfins)
             .setAttempt(highestAttemptedPrev.attempt() + 1)
             .build());
       }

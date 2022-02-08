@@ -40,7 +40,7 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized ExchangeInfo getExchangeInfo() {
+	public ExchangeInfo getExchangeInfo() {
 		return executeSync(binanceApiService.getExchangeInfo());
 	}
 
@@ -68,24 +68,24 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized List<AggTrade> getAggTrades(String symbol, String fromId, Integer limit, Long startTime, Long endTime) {
+	public List<AggTrade> getAggTrades(String symbol, String fromId, Integer limit, Long startTime, Long endTime) {
 		return executeSync(binanceApiService.getAggTrades(symbol, fromId, limit, startTime, endTime));
 	}
 
 	@Override
-	public synchronized List<AggTrade> getAggTrades(String symbol) {
+	public List<AggTrade> getAggTrades(String symbol) {
 		return getAggTrades(symbol, null, null, null, null);
 	}
 
 	@Override
-	public synchronized List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval, Integer limit,
+	public List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval, Integer limit,
 			Long startTime, Long endTime) {
 		return executeSync(
 				binanceApiService.getCandlestickBars(symbol, interval.getIntervalId(), limit, startTime, endTime));
 	}
 
 	@Override
-	public synchronized List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval) {
+	public List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval) {
 		return getCandlestickBars(symbol, interval, null, null, null);
 	}
 
@@ -100,7 +100,7 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized TickerPrice getPrice(String symbol) {
+	public TickerPrice getPrice(String symbol) {
 		return executeSync(binanceApiService.getLatestPrice(symbol));
 	}
 
@@ -115,7 +115,7 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized NewOrderResponse newOrder(NewOrder order) {
+	public NewOrderResponse newOrder(NewOrder order) {
 		final Call<NewOrderResponse> call;
 		if (order.getQuoteOrderQty() == null) {
 			call = binanceApiService.newOrder(order.getSymbol(), order.getSide(), order.getType(),
@@ -142,14 +142,14 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	// Account endpoints
 
 	@Override
-	public synchronized Order getOrderStatus(OrderStatusRequest orderStatusRequest) {
+	public Order getOrderStatus(OrderStatusRequest orderStatusRequest) {
 		return executeSync(binanceApiService.getOrderStatus(orderStatusRequest.getSymbol(),
 				orderStatusRequest.getOrderId(), orderStatusRequest.getOrigClientOrderId(),
 				orderStatusRequest.getRecvWindow(), orderStatusRequest.getTimestamp()));
 	}
 
 	@Override
-	public synchronized CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) {
+	public CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) {
 		return executeSync(
 				binanceApiService.cancelOrder(cancelOrderRequest.getSymbol(), cancelOrderRequest.getOrderId(),
 						cancelOrderRequest.getOrigClientOrderId(), cancelOrderRequest.getNewClientOrderId(),
@@ -157,13 +157,13 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized List<Order> getOpenOrders(OrderRequest orderRequest) {
+	public List<Order> getOpenOrders(OrderRequest orderRequest) {
 		return executeSync(binanceApiService.getOpenOrders(orderRequest.getSymbol(), orderRequest.getRecvWindow(),
 				orderRequest.getTimestamp()));
 	}
 
 	@Override
-	public synchronized List<Order> getAllOrders(AllOrdersRequest orderRequest) {
+	public List<Order> getAllOrders(AllOrdersRequest orderRequest) {
 		return executeSync(binanceApiService.getAllOrders(orderRequest.getSymbol(), orderRequest.getOrderId(),
 				orderRequest.getLimit(), orderRequest.getRecvWindow(), orderRequest.getTimestamp()));
 	}
@@ -196,12 +196,12 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public synchronized Account getAccount(Long recvWindow, Long timestamp) {
+	public Account getAccount(Long recvWindow, Long timestamp) {
 		return executeSync(binanceApiService.getAccount(recvWindow, timestamp));
 	}
 
 	@Override
-	public synchronized Account getAccount() {
+	public Account getAccount() {
 		return getAccount(BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, System.currentTimeMillis());
 	}
 

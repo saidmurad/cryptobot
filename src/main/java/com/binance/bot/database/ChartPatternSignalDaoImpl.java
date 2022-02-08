@@ -67,7 +67,8 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.update(sql, params) > 0;
   }
 
-  public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation, ReasonForSignalInvalidation reasonForSignalInvalidation) {
+  public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation,
+                                              ReasonForSignalInvalidation reasonForSignalInvalidation) {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
         "PriceAtTimeOfSignalInvalidation=?, ReasonForSignalInvalidation=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
@@ -178,10 +179,11 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
   }
 
-  public void incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
+  public boolean incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
     String sql = "update ChartPatternSignal set NumTimesMissingInInput = NumTimesMissingInInput + 1 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
         "Attempt=?";
+    boolean retVal = true;
     for (ChartPatternSignal chartPatternSignal: chartPatternsMissingInInput) {
       int ret = jdbcTemplate.update(sql, chartPatternSignal.coinPair(),
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
@@ -191,7 +193,9 @@ public class ChartPatternSignalDaoImpl {
       } else {
         logger.error("Failed to increment numTimesMissingInInput for chart pattern signal: " + chartPatternSignal.toString());
       }
+      retVal &= (ret == 1);
     }
+    return retVal;
   }
 
   public void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {

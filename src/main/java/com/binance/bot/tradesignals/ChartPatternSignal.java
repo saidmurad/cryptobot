@@ -47,8 +47,7 @@ public abstract class ChartPatternSignal {
   public boolean equals(Object that) {
     ChartPatternSignal other = (ChartPatternSignal) that;
     boolean ret= this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
-        && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal()) &&
-        this.attempt() == other.attempt();
+        && this.pattern().equals(other.pattern()) && this.timeOfSignal().equals(other.timeOfSignal());
     /*if (this.coinPair().equals(other.coinPair()) && this.timeFrame() == other.timeFrame() && this.tradeType() == other.tradeType()
         && this.pattern().equals(other.pattern())) {
       logger.info("equals returning " + ret + " for comparison of \n" + toString() + "\nand \n" + that.toString());
@@ -59,7 +58,7 @@ public abstract class ChartPatternSignal {
   @Override
   public int hashCode() {
     int hash = Objects.hash(this.coinPair(), this.timeFrame(), this.tradeType(), this.pattern(),
-        this.timeOfSignal(), this.attempt());
+        this.timeOfSignal());
     return hash;
   }
 

@@ -27,7 +27,6 @@ import org.springframework.stereotype.Component;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
@@ -59,10 +58,8 @@ public class AltfinPatternsReader {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
   @Autowired
-  private AltfinPatternsReaderBookkeeping bookkeeping;
-
-  @Autowired
-  private SupportedSymbolsInfo supportedSymbolsInfo;
+  AltfinPatternsReaderBookkeeping bookkeeping;
+  private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   @Value("${fifteen_minute_timeframe}")
   String fifteenMinuteTimeFrameAllowedTradeTypeConfig;
@@ -75,8 +72,9 @@ public class AltfinPatternsReader {
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
-                              ChartPatternSignalDaoImpl chartPatternSignalDao, BinanceTradingBot binanceTradingBot
-                              ) {
+                              ChartPatternSignalDaoImpl chartPatternSignalDao, BinanceTradingBot binanceTradingBot,
+                              SupportedSymbolsInfo supportedSymbolsInfo) {
+    this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     if (new File(PROD_MACHINE_DIR).exists()) {
       ALTFINS_PATTERNS_DIR = PROD_MACHINE_DIR;
@@ -142,21 +140,18 @@ public class AltfinPatternsReader {
     patternFromAltfins = temp;
     if (patternFromAltfins.size() == 0) {
       logger.info("Left with empty patterns list now.");
-      return;
     }
     List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
-    List<ChartPatternSignal> chartPatternsWronglyInvalidated = getChartPatternSignalsWronglyInvalidated(patternFromAltfins, chartPatternsInDB);
-    printPatterns(chartPatternsWronglyInvalidated, "Chart Patterns wrongly invalidated", LogLevel.ERROR);
-    chartPatternSignalDao.resetNumTimesMissingInInput(chartPatternsWronglyInvalidated);
-    if (!chartPatternsWronglyInvalidated.isEmpty()) {
-      // TODO: Avoid double read from DB. difficulty is cloing and marking IsSignalOn to 1 for the wrongly invalidated signals.
-      chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
-    }
+    List<ChartPatternSignal> chartPatternsThatAreBack = getChartPatternSignalsThatAreBack(patternFromAltfins, chartPatternsInDB);
+    printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
     int ti = getTimeframeIndex(timeFrame);
     List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(
         chartPatternsInDB, patternFromAltfins);
     if (!newChartPatternSignals.isEmpty()) {
       logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrame.name()));
+    }
+    newChartPatternSignals.addAll(chartPatternsThatAreBack);
+    if (!newChartPatternSignals.isEmpty()) {
       for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
         insertNewChartPatternSignal(chartPatternSignal);
         if (bookkeeping.earliestChartPatternTimesInThisRun[ti] == null || bookkeeping.earliestChartPatternTimesInThisRun[ti].after(chartPatternSignal.timeOfSignal())) {
@@ -173,9 +168,12 @@ public class AltfinPatternsReader {
 
       for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
         ReasonForSignalInvalidation reasonForInvalidation =
-            chartPatternSignal.timeOfSignal().equals(bookkeeping.earliestChartPatternTimesInThisRun[ti]) ||
+            // For comeback signals we don't know when they got resurrected by Altfins if that time occurred prior to
+            // the program started running.
+            chartPatternSignal.attempt() > 1 ||
             bookkeeping.earliestChartPatternTimesInThisRun[ti] != null &&
-                chartPatternSignal.timeOfSignal().after(bookkeeping.earliestChartPatternTimesInThisRun[ti])
+                (chartPatternSignal.timeOfSignal().equals(bookkeeping.earliestChartPatternTimesInThisRun[ti]) ||
+                chartPatternSignal.timeOfSignal().after(bookkeeping.earliestChartPatternTimesInThisRun[ti]))
             ? ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS :
                 ReasonForSignalInvalidation.BACKLOG_AND_COLD_START;
         double priceAtTimeOfInvalidation = 0;
@@ -268,7 +266,13 @@ public class AltfinPatternsReader {
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException {
     Date currTime = new Date();
-    boolean isInsertedLate = isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime);
+    boolean isInsertedLate;
+    if (chartPatternSignal.attempt() > 1) {
+      // For comeeback signals we don't have a reliable way of detecting that we caught the comeback late.
+      isInsertedLate = false;
+    } else {
+      isInsertedLate = isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime);
+    }
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setPriceAtTimeOfSignalReal(numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue())
@@ -350,11 +354,36 @@ public class AltfinPatternsReader {
   }
 
   // Which chart pattern signals I marked as invalidated again comes in the input with the same time of occurence of signal.
-  List<ChartPatternSignal> getChartPatternSignalsWronglyInvalidated(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {
-    Set<ChartPatternSignal> signalsInTableSet = new HashSet<>();
-    signalsInTableSet.addAll(patternsFromAltfins);
-    return allPatternsInDB.stream().filter(chartPatternSignal -> !chartPatternSignal.isSignalOn() && signalsInTableSet.contains(chartPatternSignal))
+  List<ChartPatternSignal> getChartPatternSignalsThatAreBack(List<ChartPatternSignal> patternsFromAltfins,
+                                                             List<ChartPatternSignal> allPatternsInDB) {
+    Set<ChartPatternSignal> altfinPaternSignals = new HashSet<>();
+    altfinPaternSignals.addAll(patternsFromAltfins);
+    List<ChartPatternSignal> invalidatedPatternsInDBThatHaveComeBack = allPatternsInDB.stream().filter(
+        chartPatternSignal -> !chartPatternSignal.isSignalOn() &&
+            altfinPaternSignals.contains(chartPatternSignal))
         .collect(Collectors.toList());
+    // Calculate the highest attempt count for each comeback pattern in the DB.
+    Map<ChartPatternSignal, ChartPatternSignal> comebackPatternsMap = new HashMap<>();
+    invalidatedPatternsInDBThatHaveComeBack.forEach(comebackPattern -> {
+      if (comebackPatternsMap.containsKey(comebackPattern)) {
+        if (comebackPattern.attempt() > comebackPatternsMap.get(comebackPattern).attempt()) {
+          comebackPatternsMap.put(comebackPattern, comebackPattern);
+        }
+      } else {
+        comebackPatternsMap.put(comebackPattern, comebackPattern);
+      }
+    });
+    // Iterate over the altfin patterns again to pick comeback patterns with previous count in db + 1.
+    List<ChartPatternSignal> comebackPatterns = new ArrayList<>();
+    for (ChartPatternSignal patternFromAltfins : patternsFromAltfins) {
+      if (comebackPatternsMap.containsKey(patternFromAltfins)) {
+        ChartPatternSignal highestAttemptedPrev = comebackPatternsMap.get(patternFromAltfins);
+        comebackPatterns.add(ChartPatternSignal.newBuilder().copy(highestAttemptedPrev)
+            .setAttempt(highestAttemptedPrev.attempt() + 1)
+            .build());
+      }
+    }
+    return comebackPatterns;
   }
 
   List<ChartPatternSignal> getChartPatternSignalsToInvalidate(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> allPatternsInDB) {

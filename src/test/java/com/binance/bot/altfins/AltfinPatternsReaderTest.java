@@ -6,48 +6,75 @@ import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
+import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 public class AltfinPatternsReaderTest extends TestCase {
 
   private static final String TEST_PATTERNS_FILE = "/test_data_patterns1.txt";
+  private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private AltfinPatternsReader altfinPatternsReader;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private VolumeProfile volumeProfile;
+  private TickerPrice tickerPrice;
   @Mock
   private GetVolumeProfile mockGetVolumeProfile;
-  @Mock private ChartPatternSignalDaoImpl dao;
+  @Mock private ChartPatternSignalDaoImpl mockDao;
   @Mock private BinanceApiClientFactory mockApiClientFactory;
   @Mock private BinanceApiRestClient mockRestClient;
   @Mock private BinanceTradingBot mockBinanceTradingBot;
+  @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
+  @Captor
+  private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
 
   @Before
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
-    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, dao, mockBinanceTradingBot);
+    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockBinanceTradingBot, mockSupportedSymbolsInfo);
+    altfinPatternsReader.bookkeeping = new AltfinPatternsReaderBookkeeping();
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
+    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of("ORNUSDT", "ORNUSDTXYZ", "RSRUSDT", "BTCUSDT", "ETHUSDT"));
+    Candlestick currentCandlestick = new Candlestick();
+    currentCandlestick.setVolume("100");
+    volumeProfile = VolumeProfile.newBuilder()
+        .setCurrentCandlestick(currentCandlestick)
+        .setMinVol(49)
+        .setMaxVol(51)
+        .setIsVolAtleastMaintained(true)
+        .setAvgVol(50)
+        .setIsVolSurged(true)
+        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
+        .build();
+    when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
+    tickerPrice = new TickerPrice();
+    tickerPrice.setPrice("1,111.12");
   }
 
   public void testReadPatterns() throws IOException {
@@ -84,16 +111,74 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns.get(5).priceTarget()).isEqualTo(5000.0);
   }
 
-  public void testFilterNewPatterns() throws IOException {
-    List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
-    // Without any change
-    assertThat(newPatterns).hasSize(0);
+  public void testFilterProcessPatterns_noNewPatterns() throws ParseException {
+    List<ChartPatternSignal> patterns = Lists.newArrayList(getChartPatternSignal().build());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patterns);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException {
+  public void testFilterProcessPatterns_dedupesDuplicates() throws ParseException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao).insertChartPatternSignal(chartPatternSignal, volumeProfile);
+  }
+
+  public void testFilterProcessPatterns_comebackChartPattern() throws ParseException {
+    ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
+        .setIsSignalOn(false)
+        .setAttempt(1)
+        .build();
+    ChartPatternSignal patternFromAltfins = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal)
+            .setIsSignalOn(true)
+                .setAttempt(1)
+                    .build();
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES))
+        .thenReturn(Lists.newArrayList(invalidatedChartPatternSignal));
+    when(mockDao.insertChartPatternSignal(patternArgCaptor.capture(), eq(volumeProfile))).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(patternFromAltfins), TimeFrame.FIFTEEN_MINUTES);
+
+    assertThat(patternArgCaptor.getValue().coinPair()).isEqualTo(patternFromAltfins.coinPair());
+    assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(2);
+  }
+
+  public void testFilterProcessPatterns_comebackChartPattern_secondComeback() throws ParseException {
+    ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
+        .setIsSignalOn(false)
+        .setAttempt(1)
+        .build();
+    ChartPatternSignal invalidatedChartPatternSignal2 = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal1)
+        .setIsSignalOn(false)
+        .setAttempt(2)
+        .build();
+    ChartPatternSignal patternFromAltfins = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal1)
+        .setIsSignalOn(true)
+        .setAttempt(1)
+        .build();
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES))
+        .thenReturn(Lists.newArrayList(invalidatedChartPatternSignal1, invalidatedChartPatternSignal2));
+    when(mockDao.insertChartPatternSignal(patternArgCaptor.capture(), eq(volumeProfile))).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(patternFromAltfins), TimeFrame.FIFTEEN_MINUTES);
+
+    assertThat(patternArgCaptor.getValue().coinPair()).isEqualTo(patternFromAltfins.coinPair());
+    assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(3);
+  }
+
+  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
     // With changes in non-primary keys
     ChartPatternSignal modifiedChartPatternSignal = ChartPatternSignal.newBuilder()
@@ -109,16 +194,18 @@ public class AltfinPatternsReaderTest extends TestCase {
         .build();
     patternsFromAltfins.set(0, modifiedChartPatternSignal);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
+    altfinPatternsReader.processPaterns(patternsFromAltfins, TimeFrame.FIFTEEN_MINUTES);
 
-    assertThat(newPatterns).hasSize(0);
+    verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException {
+  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    String newCoinPair = patternsFromAltfins.get(0).coinPair() + "XYZ";
     ChartPatternSignal modifiedChartPatternSignal = ChartPatternSignal.newBuilder()
-        .setCoinPair(patternsFromAltfins.get(0).coinPair() + "XYZ")
+        .setCoinPair(newCoinPair)
         .setTimeFrame(patternsFromAltfins.get(0).timeFrame())
         .setTradeType(patternsFromAltfins.get(0).tradeType())
         .setPattern(patternsFromAltfins.get(0).pattern())
@@ -129,15 +216,16 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setProfitPotentialPercent(0.001)
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
+    when(mockRestClient.getPrice(newCoinPair)).thenReturn(tickerPrice);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
+    altfinPatternsReader.processPaterns(patternsFromAltfins, TimeFrame.FIFTEEN_MINUTES);
 
-    assertThat(newPatterns).hasSize(1);
-    assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
+    verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException {
+  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
     ChartPatternSignal modifiedChartPatternSignal = ChartPatternSignal.newBuilder()
         .setCoinPair(patternsFromAltfins.get(0).coinPair())
@@ -151,15 +239,16 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setProfitPotentialPercent(0.001)
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
+    when(mockRestClient.getPrice(patternsFromAltfins.get(0).coinPair())).thenReturn(tickerPrice);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
+    altfinPatternsReader.processPaterns(patternsFromAltfins, TimeFrame.FIFTEEN_MINUTES);
 
-    assertThat(newPatterns).hasSize(1);
-    assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
+    verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException {
+  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
     ChartPatternSignal modifiedChartPatternSignal = ChartPatternSignal.newBuilder()
         .setCoinPair(patternsFromAltfins.get(0).coinPair())
@@ -173,15 +262,16 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setProfitPotentialPercent(0.001)
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
+    when(mockRestClient.getPrice(patternsFromAltfins.get(0).coinPair())).thenReturn(tickerPrice);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
+    altfinPatternsReader.processPaterns(patternsFromAltfins, TimeFrame.FIFTEEN_MINUTES);
 
-    assertThat(newPatterns).hasSize(1);
-    assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
+    verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException {
+  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
     ChartPatternSignal modifiedChartPatternSignal = ChartPatternSignal.newBuilder()
         .setCoinPair(patternsFromAltfins.get(0).coinPair())
@@ -195,11 +285,11 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setProfitPotentialPercent(0.001)
         .build();
     patternsFromAltfins.add(modifiedChartPatternSignal);
+    when(mockRestClient.getPrice(patternsFromAltfins.get(0).coinPair())).thenReturn(tickerPrice);
 
-    List<ChartPatternSignal> newPatterns = altfinPatternsReader.getNewChartPatternSignals(patternsInDb, patternsFromAltfins);
+    altfinPatternsReader.processPaterns(patternsFromAltfins, TimeFrame.FIFTEEN_MINUTES);
 
-    assertThat(newPatterns).hasSize(1);
-    assertThat(newPatterns.get(0)).isEqualTo(modifiedChartPatternSignal);
+    verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
   public void testFilterPatternsToInvalidate_allPatternsInDBStillOnAltfins_noneToInvalidate() throws IOException {
@@ -237,36 +327,74 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testInsertChartPatternSignal() throws IOException, ParseException {
+  public void testInsertChartPatternSignal_priceAtTimeOfSignalReal_and_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException {
     ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
-    TickerPrice tickerPrice = new TickerPrice();
-    tickerPrice.setPrice("1,111.12");
-    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
-    Candlestick currentCandlestick = new Candlestick();
-    currentCandlestick.setVolume("100");
-    VolumeProfile volProfile = VolumeProfile.newBuilder()
-        .setCurrentCandlestick(currentCandlestick)
-        .setMinVol(49)
-        .setMaxVol(51)
-        .setIsVolAtleastMaintained(true)
-        .setAvgVol(50)
-        .setIsVolSurged(true)
-        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
-        .build();
-    when(mockGetVolumeProfile.getVolumeProfile(pattern.coinPair())).thenReturn(volProfile);
 
-    altfinPatternsReader.insertNewChartPatternSignal(pattern);
+    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(pattern), TimeFrame.FIFTEEN_MINUTES);
 
     ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
 //    verify(mockBinanceTradingBot).placeTrade(pattern);
-    verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volProfile));
+    verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volumeProfile));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
     assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
-    assertThat(insertedVal.isInsertedLate()).isTrue();
     // First pattern in test file is a 15 min timeframe signal.
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
+  }
+
+  // More than 15 minutes.
+  public void testInsertChartPatternSignal_InsertedLate_fifteenMinuteTimeFrame() throws ParseException {
+    ChartPatternSignal pattern = getChartPatternSignal()
+        .setTimeOfSignal(new Date(System.currentTimeMillis() - 16 * 60 * 1000))
+        .build();
+
+    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(pattern), TimeFrame.FIFTEEN_MINUTES);
+
+    ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
+//    verify(mockBinanceTradingBot).placeTrade(pattern);
+    verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volumeProfile));
+    ChartPatternSignal insertedVal = patternArgCatcher.getValue();
+    assertThat(insertedVal.isInsertedLate()).isTrue();
+  }
+
+  public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException {
+    ChartPatternSignal pattern = getChartPatternSignal().build();
+
+    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(pattern), TimeFrame.FIFTEEN_MINUTES);
+
+    ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
+//    verify(mockBinanceTradingBot).placeTrade(pattern);
+    verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volumeProfile));
+    ChartPatternSignal insertedVal = patternArgCatcher.getValue();
+    assertThat(insertedVal.isInsertedLate()).isFalse();
+  }
+
+  public void testFilterProcessPatterns_comebackChartPattern_neverMarkedInsertedLate() throws ParseException {
+    ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
+        .setIsSignalOn(false)
+        .setTimeOfSignal(new Date(System.currentTimeMillis() - 16 * 60 * 1000))
+        .build();
+    ChartPatternSignal patternFromAltfins = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal)
+        .setIsSignalOn(true)
+        .setAttempt(1)
+        .build();
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES))
+        .thenReturn(Lists.newArrayList(invalidatedChartPatternSignal));
+    when(mockDao.insertChartPatternSignal(patternArgCaptor.capture(), eq(volumeProfile))).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(patternFromAltfins), TimeFrame.FIFTEEN_MINUTES);
+
+    assertThat(patternArgCaptor.getValue().coinPair()).isEqualTo(patternFromAltfins.coinPair());
+    assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(2);
+    assertThat(patternArgCaptor.getValue().isInsertedLate()).isFalse();
   }
 
   public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException {
@@ -276,11 +404,11 @@ public class AltfinPatternsReaderTest extends TestCase {
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
     when(mockGetVolumeProfile.getVolumeProfile(pattern.coinPair())).thenReturn(null);
 
-    altfinPatternsReader.insertNewChartPatternSignal(pattern);
+    altfinPatternsReader.processPaterns(Lists.newArrayList(pattern), TimeFrame.FIFTEEN_MINUTES);
 
     ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
 //    verify(mockBinanceTradingBot).placeTrade(pattern);
-    verify(dao).insertChartPatternSignal(patternArgCatcher.capture(), eq(null));
+    verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(null));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
     assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
@@ -307,69 +435,90 @@ public class AltfinPatternsReaderTest extends TestCase {
     return new String(getClass().getResourceAsStream(TEST_PATTERNS_FILE).readAllBytes());
   }
 
-  public void testGetChartPatternSignalsToInvalidate_incrementsNumTimesMissing() throws IOException {
-    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    ChartPatternSignal patternMissingInInput = patternsFromAltfins.remove(0);
+  public void testChartPatternSignalsToInvalidate() throws ParseException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
 
-    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDB);
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
 
-    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList(patternMissingInInput));
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(0.0), any());
   }
 
-  public void testGetChartPatternSignalsToInvalidate_patternReappearedInTheNickOfTime() throws IOException {
-    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    patternsInDB.set(0, ChartPatternSignal.newBuilder().copy(patternsInDB.get(0)).setNumTimesMissingInInput(4).build());
-    List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
+  public void testChartPatternSignalsToInvalidate_backlogFromColdstart() throws ParseException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
 
-    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDB);
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
 
-    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
-//    verify(dao).resetNumTimesMissingInInput(Lists.newArrayList(patternsInDB.get(0)));
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(0.0), eq(ReasonForSignalInvalidation.BACKLOG_AND_COLD_START));
   }
 
-  public void testGetChartPatternSignalsToInvalidate_getsPatternsToInvalidate() throws IOException {
-    List<ChartPatternSignal> patternsInDB = altfinPatternsReader.readPatterns(getPatternsFileContents());
-
-    altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsInDB, patternsInDB);
-
-    verify(dao).incrementNumTimesMissingInInput(Lists.newArrayList());
-    //verify(dao).resetNumTimesMissingInInput(Lists.newArrayList());
-    verify(dao).getChartPatternSignalsToInvalidate();
-  }
-
-  public void testUnmatchingNightmare() throws ParseException, IOException {
-    AltfinPatternsReader altfinPatternsReader = new AltfinPatternsReader(new BinanceApiClientFactory(true, null, null), mockGetVolumeProfile, dao, mockBinanceTradingBot);
-    List<ChartPatternSignal> altfinPatterns = altfinPatternsReader.readPatterns(getPatternsFileContents_nonMatchingNightmare());
-    ChartPatternSignal chartPatternSignalInDB = ChartPatternSignal.newBuilder()
-        .setCoinPair("FTMUSDT")
-        .setTimeFrame(TimeFrame.FOUR_HOURS)
-        .setTradeType(TradeType.SELL)
-        .setPattern("Support")
-        .setPriceAtTimeOfSignal(1.999)
-        .setTimeOfSignal(dateFormat.parse("2022-01-22 08:00"))
-        .setPriceTarget(1.3567)
-        .setPriceTargetTime(dateFormat.parse("2022-02-04 08:16"))
-        .setProfitPotentialPercent(32.13)
+  public void testChartPatternSignalsToInvalidate_backlogFromColdstart2_olderThanCurrentRunStartTime() throws ParseException {
+    Date currTime = new Date();
+    Date olderOccurTimeForSignal = new Date(currTime.getTime() - 10000);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeOfSignal(olderOccurTimeForSignal)
         .build();
-    Candlestick currentCandlestick = new Candlestick();
-    currentCandlestick.setVolume("100");
-    VolumeProfile volProfile = VolumeProfile.newBuilder()
-        .setCurrentCandlestick(currentCandlestick)
-        .setMinVol(49)
-        .setMaxVol(51)
-        .setIsVolAtleastMaintained(true)
-        .setAvgVol(50)
-        .setIsVolSurged(true)
-        .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
-        .build();
-    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
-    List<ChartPatternSignal> allChartPatternsInDB = dao.getAllChartPatterns(TimeFrame.FOUR_HOURS);
-    List<ChartPatternSignal> patternsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(altfinPatterns, allChartPatternsInDB);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    altfinPatternsReader.bookkeeping.earliestChartPatternTimesInThisRun[0] = currTime;
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(0.0), eq(ReasonForSignalInvalidation.BACKLOG_AND_COLD_START));
   }
 
-  private String getPatternsFileContents_nonMatchingNightmare() throws IOException {
-    return new String(getClass().getResourceAsStream("/unmatching_nightmare.txt").readAllBytes());
+  public void testChartPatternSignalsToInvalidate_removedFromAltfins_newerThanCurrentRunStartTime_priceIsObtained()
+      throws ParseException {
+    Date currTime = new Date();
+    Date newerOccurTimeForSignal = new Date(currTime.getTime() + 10000);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeOfSignal(newerOccurTimeForSignal)
+        .build();
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    altfinPatternsReader.bookkeeping.earliestChartPatternTimesInThisRun[0] = currTime;
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()),
+        eq(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS));
+  }
+
+  public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException {
+    Date currTime = new Date();
+    Date olderOccurTimeForSignal = new Date(currTime.getTime() - 10000);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeOfSignal(olderOccurTimeForSignal)
+        .setAttempt(2)
+        .build();
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()),
+        eq(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS));
+
   }
 
   public void testIsTradingAllowed_none() {
@@ -442,5 +591,21 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
     assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isTrue();
     assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isTrue();
+  }
+
+  private ChartPatternSignal.Builder getChartPatternSignal() {
+    long currentTimeMillis = System.currentTimeMillis();
+    return ChartPatternSignal.newBuilder()
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setPattern("Resistance")
+        .setTradeType(TradeType.BUY)
+        .setPriceAtTimeOfSignal(4000)
+        .setTimeOfSignal(new Date(currentTimeMillis))
+        .setTimeOfInsertion(new Date(currentTimeMillis))
+        .setIsInsertedLate(false)
+        .setPriceTarget(6000)
+        .setPriceTargetTime(new Date(currentTimeMillis + 360000))
+        .setProfitPotentialPercent(2.3);
   }
 }

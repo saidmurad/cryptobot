@@ -343,13 +343,19 @@ public class AltfinPatternsReader {
       }
     });
     // Iterate over the altfin patterns again to pick comeback patterns with previous count in db + 1.
+    Set<ChartPatternSignal> patternsInDB = new HashSet<>();
+    patternsInDB.addAll(allPatternsInDB.stream().filter(chartPatternSignal ->
+        chartPatternSignal.isSignalOn()).collect(Collectors.toList()));
     List<ChartPatternSignal> comebackPatterns = new ArrayList<>();
     for (ChartPatternSignal patternFromAltfins : patternsFromAltfins) {
       if (comebackPatternsMap.containsKey(patternFromAltfins)) {
         ChartPatternSignal highestAttemptedPrev = comebackPatternsMap.get(patternFromAltfins);
-        comebackPatterns.add(ChartPatternSignal.newBuilder().copy(patternFromAltfins)
+        ChartPatternSignal mayBeComeback = ChartPatternSignal.newBuilder().copy(patternFromAltfins)
             .setAttempt(highestAttemptedPrev.attempt() + 1)
-            .build());
+            .build();
+        if (!patternsInDB.contains(mayBeComeback)) {
+          comebackPatterns.add(mayBeComeback);
+        }
       }
     }
     return comebackPatterns;

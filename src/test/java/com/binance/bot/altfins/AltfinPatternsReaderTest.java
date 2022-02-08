@@ -176,6 +176,28 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(3);
   }
 
+  public void testFilterProcessPatterns_comebackTest_someSignal0_noCountingAsSecondComeback() throws ParseException {
+    ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
+        .setIsSignalOn(false)
+        .setAttempt(1)
+        .build();
+    ChartPatternSignal invalidatedChartPatternSignal2 = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal1)
+        .setIsSignalOn(true)
+        .setAttempt(2)
+        .build();
+    ChartPatternSignal patternFromAltfins = ChartPatternSignal.newBuilder().copy(invalidatedChartPatternSignal1)
+        .setIsSignalOn(true)
+        .setAttempt(1)
+        .build();
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES))
+        .thenReturn(Lists.newArrayList(invalidatedChartPatternSignal1, invalidatedChartPatternSignal2));
+
+    altfinPatternsReader.processPaterns(Lists.newArrayList(patternFromAltfins), TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao, never()).insertChartPatternSignal(any(), any());
+  }
+
   public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);

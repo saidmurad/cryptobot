@@ -58,7 +58,12 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setPriceBestReached(rs.getDouble("PriceBestReached"))
           .setPriceCurrent(rs.getDouble("PriceCurrent"))
           .setCurrentTime(rs.getString("CurrentTime") != null? dateFormat.parse(rs.getString("CurrentTime")) : null)
-          .setTenCandlestickTime(rs.getString("TenCandlestickTime") != null? dateFormat.parse(rs.getString("TenCandlestickTime")) : null);
+          .setTenCandlestickTime(rs.getString("TenCandlestickTime") != null? dateFormat.parse(rs.getString("TenCandlestickTime")) : null)
+          .setMaxLoss(rs.getDouble("MaxLoss"))
+          .setMaxLossPercent(rs.getDouble("MaxLossPercent"))
+          .setMaxLossTime(rs.getString("MaxLossTime") != null? dateFormat.parse(rs.getString("MaxLossTime")): null)
+          .setIsPriceTargetMet(rs.getInt("IsPriceTargetMet") == 1)
+          .setPriceTargetMetTime(rs.getString("PriceTargetMetTime") != null? dateFormat.parse(rs.getString("PriceTargetMetTime")): null);
       if (rs.getString("entryOrderId") != null) {
         chartPatternSignalBuilder.setEntryOrder(
           ChartPatternSignal.Order.create(

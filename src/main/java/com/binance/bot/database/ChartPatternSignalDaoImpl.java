@@ -115,6 +115,10 @@ public class ChartPatternSignalDaoImpl {
     return allPatterns;
   }
 
+  /*public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
+    String sql = "select * from ChartPatternSignal where MaxLoss is null order by datetime(TimeOfSignal), TimeFrame";
+  }*/
+
   // intented for test use.
   public ChartPatternSignal getChartPattern(ChartPatternSignal chartPatternSignal) {
     String sql = "select * from ChartPatternSignal where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and Attempt=?";

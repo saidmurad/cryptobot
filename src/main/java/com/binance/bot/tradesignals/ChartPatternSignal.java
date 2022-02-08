@@ -120,6 +120,21 @@ public abstract class ChartPatternSignal {
   @Nullable
   public abstract Date tenCandlestickTime();
 
+  @Nullable
+  public abstract Double maxLoss();
+
+  @Nullable
+  public abstract Double maxLossPercent();
+
+  @Nullable
+  public abstract Date maxLossTime();
+
+  @Nullable
+  public abstract Boolean isPriceTargetMet();
+
+  @Nullable
+  public abstract Date priceTargetMetTime();
+
   @AutoValue
   public abstract static class Order {
     public abstract long orderId();
@@ -271,6 +286,16 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setUnRealizedPercent(Double unRealizedPercent);
 
+    public abstract Builder setMaxLoss(Double maxLoss);
+
+    public abstract Builder setMaxLossPercent(Double maxLossPercent);
+
+    public abstract Builder setMaxLossTime(Date maxLossTime);
+
+    public abstract Builder setIsPriceTargetMet(Boolean isPriceTargetMet);
+
+    public abstract Builder setPriceTargetMetTime(Date priceTargetMetTime);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -309,7 +334,12 @@ public abstract class ChartPatternSignal {
           .setExitLimitOrder(that.exitLimitOrder())
           .setExitMarketOrder(that.exitMarketOrder())
           .setIsPositionExited(that.isPositionExited())
-          .setTenCandlestickTime(that.tenCandlestickTime());
+          .setTenCandlestickTime(that.tenCandlestickTime())
+          .setMaxLoss(that.maxLoss())
+          .setMaxLossPercent(that.maxLossPercent())
+          .setMaxLossTime(that.maxLossTime())
+          .setIsPriceTargetMet(that.isPriceTargetMet())
+          .setPriceTargetMetTime(that.priceTargetMetTime());
     }
   }
 }

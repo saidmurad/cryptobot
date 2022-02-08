@@ -65,6 +65,7 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.failedToGetPriceAtTenCandlestickTime()? 1:0
     };
 
+    logger.info("Inserting into db chart pattern signal: \n" + chartPatternSignal);
     return jdbcTemplate.update(sql, params) > 0;
   }
 
@@ -115,9 +116,10 @@ public class ChartPatternSignalDaoImpl {
     return allPatterns;
   }
 
-  /*public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
+  public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
     String sql = "select * from ChartPatternSignal where MaxLoss is null order by datetime(TimeOfSignal), TimeFrame";
-  }*/
+    return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+  }
 
   // intented for test use.
   public ChartPatternSignal getChartPattern(ChartPatternSignal chartPatternSignal) {

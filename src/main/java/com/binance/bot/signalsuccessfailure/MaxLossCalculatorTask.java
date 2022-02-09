@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,12 +12,14 @@ import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+@Component
 public class MaxLossCalculatorTask {
   private final ChartPatternSignalDaoImpl dao;
   private final BinanceApiRestClient binanceApiRestClient;
@@ -40,7 +43,8 @@ public class MaxLossCalculatorTask {
   }
 
   @Scheduled(fixedDelay = 600000)
-  public void perform() throws ParseException, InterruptedException {
+  public void perform() throws ParseException, InterruptedException, IOException {
+    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
@@ -61,7 +65,7 @@ public class MaxLossCalculatorTask {
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
             chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,
-            firstIteration ? signalTime : null, null);
+            firstIteration ? signalTime : null, firstIteration? getToTime(signalTime, chartPatternSignal) : null);
         firstIteration = false;
         if (aggTrades.isEmpty()) {
           isDone = true;
@@ -96,6 +100,10 @@ public class MaxLossCalculatorTask {
           .build();
       dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
     }
+  }
+
+  private Long getToTime(long signalTime, ChartPatternSignal chartPatternSignal) {
+    return Math.min(signalTime + 3600000, chartPatternSignal.priceTargetTime().getTime());
   }
 
   private boolean isTargetMet(ChartPatternSignal chartPatternSignal, AggTrade aggTrade) throws ParseException {

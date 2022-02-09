@@ -22,6 +22,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoJUnitRule;
 import org.mockito.junit.MockitoRule;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -59,7 +60,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testSymbolNotTrading_skips() throws ParseException, InterruptedException {
+  public void testSymbolNotTrading_skips() throws ParseException, IOException, InterruptedException {
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(
         getChartPatternSignal()
             .setCoinPair("BTCUSDT")
@@ -71,7 +72,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_noTradesReturned_exitsLoop() throws ParseException, InterruptedException {
+  public void testPerform_noTradesReturned_exitsLoop() throws ParseException, IOException, InterruptedException {
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
         .thenReturn(Lists.newArrayList());
 
@@ -86,7 +87,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_endTime_whenNotCappedBySignalTargetTime() throws ParseException, InterruptedException {
+  public void testPerform_endTime_whenNotCappedBySignalTargetTime() throws ParseException, IOException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setPriceTargetTime(new Date(SIGNAL_TIME + 3600001))
         .build();
@@ -100,7 +101,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_tradeBeyondSignalTargetTime_exitsLoop() throws ParseException, InterruptedException {
+  public void testPerform_tradeBeyondSignalTargetTime_exitsLoop() throws ParseException, IOException, InterruptedException {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
     aggTrade.setPrice("1.0");
@@ -118,7 +119,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_requestCounter() throws ParseException, InterruptedException {
+  public void testPerform_requestCounter() throws ParseException, IOException, InterruptedException {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
     aggTrade.setPrice("1.0");
@@ -131,7 +132,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_maxLoss_usingBuyTrade_tradeIdIncrementInRequest() throws ParseException, InterruptedException {
+  public void testPerform_maxLoss_usingBuyTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -168,7 +169,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_maxLoss_usingSellTrade_tradeIdIncrementInRequest() throws ParseException, InterruptedException {
+  public void testPerform_maxLoss_usingSellTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)
@@ -210,7 +211,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_data_from_two_iterations_fed_in_correctly() throws ParseException, InterruptedException {
+  public void testPerform_data_from_two_iterations_fed_in_correctly() throws ParseException, IOException, InterruptedException {
     when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
@@ -247,7 +248,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet() throws ParseException, InterruptedException {
+  public void testPerform_isPriceTargetMet() throws ParseException, IOException, InterruptedException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -281,7 +282,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetNotMet() throws ParseException, InterruptedException {
+  public void testPerform_isPriceTargetNotMet() throws ParseException, IOException, InterruptedException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -315,7 +316,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet_sellTrade_yes() throws ParseException, InterruptedException {
+  public void testPerform_isPriceTargetMet_sellTrade_yes() throws ParseException, IOException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)
@@ -354,7 +355,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet_sellTrade_no() throws ParseException, InterruptedException {
+  public void testPerform_isPriceTargetMet_sellTrade_no() throws ParseException, IOException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)

@@ -377,8 +377,10 @@ public class ChartPatternSignalDaoImpl {
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
         "Attempt=?";
     int ret = jdbcTemplate.update(updateSql, chartPatternSignal.maxLoss(), chartPatternSignal.maxLossPercent(),
-        df.format(chartPatternSignal.maxLossTime()), chartPatternSignal.isPriceTargetMet(),
-        df.format(chartPatternSignal.priceTargetMetTime()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+        chartPatternSignal.maxLossTime() != null ? df.format(chartPatternSignal.maxLossTime()) : null,
+        chartPatternSignal.isPriceTargetMet(),
+        chartPatternSignal.priceTargetMetTime() != null ? df.format(chartPatternSignal.priceTargetMetTime()) : null,
+        chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
         chartPatternSignal.tradeType(), chartPatternSignal.pattern(), df.format(chartPatternSignal.timeOfSignal()),
         chartPatternSignal.attempt());
     if (ret != 1) {

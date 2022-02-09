@@ -744,4 +744,19 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignal.isPriceTargetMet()).isTrue();
     assertThat(chartPatternSignal.priceTargetMetTime().getTime()).isEqualTo(currentTimeMillis + 3600000);
   }
+
+  public void testUpdateMaxLossAndTargetMetValues_emptyValues() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    Date currDate = new Date(currentTimeMillis);
+
+    dao.updateMaxLossAndTargetMetValues(chartPatternSignal);
+
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.maxLoss()).isEqualTo(0.0);
+    assertThat(chartPatternSignal.maxLossPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignal.maxLossTime()).isNull();
+    assertThat(chartPatternSignal.isPriceTargetMet()).isFalse();
+    assertThat(chartPatternSignal.priceTargetMetTime()).isNull();
+  }
 }

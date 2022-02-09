@@ -370,4 +370,23 @@ public class ChartPatternSignalDaoImpl {
     }
     return ret;
   }
+
+  public boolean updateMaxLossAndTargetMetValues(ChartPatternSignal chartPatternSignal) {
+    String updateSql = "update ChartPatternSignal set MaxLoss=?, MaxLossPercent=?, MaxLossTime=?, IsPriceTargetMet=?, " +
+        "PriceTargetMetTime=? " +
+        "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
+        "Attempt=?";
+    int ret = jdbcTemplate.update(updateSql, chartPatternSignal.maxLoss(), chartPatternSignal.maxLossPercent(),
+        df.format(chartPatternSignal.maxLossTime()), chartPatternSignal.isPriceTargetMet(),
+        df.format(chartPatternSignal.priceTargetMetTime()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+        chartPatternSignal.tradeType(), chartPatternSignal.pattern(), df.format(chartPatternSignal.timeOfSignal()),
+        chartPatternSignal.attempt());
+    if (ret != 1) {
+      logger.error(String.format("Failed to update max loss and target met values for chart pattern signal \n%s.",
+          chartPatternSignal));
+    } else {
+      logger.info(String.format("Updated max loss and target met values for chart pattern signal:%s\n", chartPatternSignal));
+    }
+    return ret == 1;
+  }
 }

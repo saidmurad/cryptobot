@@ -9,6 +9,7 @@ import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.sqlite.SQLiteDataSource;
@@ -719,4 +720,28 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(activePositions).hasSize(1);
     assertThat(activePositions.get(0).entryOrder().executedQty()).isEqualTo(1.1);
   }
+
+  public void testUpdateMaxLossAndTargetMetValues() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    Date currDate = new Date(currentTimeMillis);
+
+    ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
+        .copy(chartPatternSignal)
+        .setMaxLoss(10.0)
+        .setMaxLossPercent(1.0)
+        .setMaxLossTime(currDate)
+        .setIsPriceTargetMet(true)
+        .setPriceTargetMetTime(DateUtils.addHours(currDate, 1))
+        .build();
+
+    dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
+
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.maxLoss()).isEqualTo(10.0);
+    assertThat(chartPatternSignal.maxLossPercent()).isEqualTo(1.0);
+    assertThat(chartPatternSignal.maxLossTime().getTime()).isEqualTo(currentTimeMillis);
+    assertThat(chartPatternSignal.isPriceTargetMet()).isTrue();
+    assertThat(chartPatternSignal.priceTargetMetTime().getTime()).isEqualTo(currentTimeMillis + 3600000);
   }
+}

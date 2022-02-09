@@ -66,7 +66,7 @@ public class MaxLossCalculatorTask {
       Long fromId = null;
       while (!isDone) {
         if (requestCounter.counter ++ >= REQUEST_WEIGHT_1_MIN_LIMIT/2) {
-          //Thread.sleep(60000);
+          Thread.sleep(60000);
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
             chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,

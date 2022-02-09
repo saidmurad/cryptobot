@@ -7,6 +7,8 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,6 +28,7 @@ public class MaxLossCalculatorTask {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final RequestCounter requestCounter;
+  private final Logger logger = LoggerFactory.getLogger(getClass());
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
 
   @Component
@@ -46,6 +49,8 @@ public class MaxLossCalculatorTask {
   public void perform() throws ParseException, InterruptedException, IOException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
+    logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
+        chartPatternSignals.size()));
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         continue;

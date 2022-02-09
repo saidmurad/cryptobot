@@ -12,3 +12,6 @@ Next steps:
 invalidation. Need to handle it.
 For the time period the above fix is not there, I also need a lagging task to back fill those prices.
 3. In AltfinPatternsReader set ten candlestick time no more than the target time.
+4. Things to check before placing a trade:
+    HOw far the real price is away from the price at the time of signal and from the price target.
+5. Trading status of the symbol.

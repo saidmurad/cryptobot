@@ -72,7 +72,7 @@ public class MaxLossCalculatorTaskTest {
 
   @Test
   public void testPerform_noTradesReturned_exitsLoop() throws ParseException, InterruptedException {
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, null))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
         .thenReturn(Lists.newArrayList());
 
     maxLossCalculatorTask.perform();
@@ -86,11 +86,25 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
+  public void testPerform_endTime_whenNotCappedBySignalTargetTime() throws ParseException, InterruptedException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setPriceTargetTime(new Date(SIGNAL_TIME + 3600001))
+        .build();
+    when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TIME + 3600000))
+        .thenReturn(Lists.newArrayList());
+
+    maxLossCalculatorTask.perform();
+
+    verify(mockBinanceApiRestClient).getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TIME + 3600000);
+  }
+
+  @Test
   public void testPerform_tradeBeyondSignalTargetTime_exitsLoop() throws ParseException, InterruptedException {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
     aggTrade.setPrice("1.0");
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, null))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
         .thenReturn(Lists.newArrayList());
 
     maxLossCalculatorTask.perform();
@@ -108,7 +122,7 @@ public class MaxLossCalculatorTaskTest {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
     aggTrade.setPrice("1.0");
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, null))
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
         .thenReturn(Lists.newArrayList());
 
     maxLossCalculatorTask.perform();
@@ -129,14 +143,15 @@ public class MaxLossCalculatorTaskTest {
     aggTrade.setTradeTime(SIGNAL_TIME + 2);
     aggTrade.setPrice("3000");
     aggTrades.add(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), eq(null)))
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
           Long startTime = invocation.getArgument(3);
-          if (fromId == null && startTime == SIGNAL_TIME) {
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
             return aggTrades;
           }
-          if (fromId != null && fromId.equals("3") && startTime == null) {
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
             return Lists.newArrayList();
           }
           throw new RuntimeException("Unexpected arguments");
@@ -170,14 +185,15 @@ public class MaxLossCalculatorTaskTest {
     aggTrade.setTradeTime(SIGNAL_TIME + 2);
     aggTrade.setPrice("5000");
     aggTrades.add(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), eq(null)))
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
           Long startTime = invocation.getArgument(3);
-          if (fromId == null && startTime == SIGNAL_TIME) {
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
             return aggTrades;
           }
-          if (fromId != null && fromId.equals("3") && startTime == null) {
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
             return Lists.newArrayList();
           }
           throw new RuntimeException("Unexpected arguments");
@@ -195,25 +211,26 @@ public class MaxLossCalculatorTaskTest {
 
   @Test
   public void testPerform_data_from_two_iterations_fed_in_correctly() throws ParseException, InterruptedException {
-    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), eq(null)))
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
           Long startTime = invocation.getArgument(3);
-          if (fromId == null && startTime == SIGNAL_TIME) {
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
             AggTrade aggTrade = new AggTrade();
             aggTrade.setAggregatedTradeId(1);
             aggTrade.setTradeTime(SIGNAL_TIME + 1);
             aggTrade.setPrice("3500");
             return Lists.newArrayList(aggTrade);
           }
-          if (fromId != null && fromId.equals("2") && startTime == null) {
+          if (fromId != null && fromId.equals("2") && startTime == null && endTime == null) {
             AggTrade aggTrade = new AggTrade();
             aggTrade.setAggregatedTradeId(2);
             aggTrade.setTradeTime(SIGNAL_TIME + 2);
             aggTrade.setPrice("3000");
             return Lists.newArrayList(aggTrade);
           }
-          if (fromId != null && fromId.equals("3") && startTime == null) {
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
             return Lists.newArrayList();
           }
           throw new RuntimeException("Unexpected arguments");
@@ -242,14 +259,15 @@ public class MaxLossCalculatorTaskTest {
     aggTrade.setTradeTime(SIGNAL_TIME + 2);
     aggTrade.setPrice("4999");
     aggTrades.add(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), eq(null)))
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
           Long startTime = invocation.getArgument(3);
-          if (fromId == null && startTime == SIGNAL_TIME) {
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
             return aggTrades;
           }
-          if (fromId != null && fromId.equals("3") && startTime == null) {
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
             return Lists.newArrayList();
           }
           throw new RuntimeException("Unexpected arguments");
@@ -275,14 +293,93 @@ public class MaxLossCalculatorTaskTest {
     aggTrade.setTradeTime(SIGNAL_TIME + 2);
     aggTrade.setPrice("4999");
     aggTrades.add(aggTrade);
-    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), eq(null)))
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
           Long startTime = invocation.getArgument(3);
-          if (fromId == null && startTime == SIGNAL_TIME) {
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
             return aggTrades;
           }
-          if (fromId != null && fromId.equals("3") && startTime == null) {
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
+            return Lists.newArrayList();
+          }
+          throw new RuntimeException("Unexpected arguments");
+        });
+
+    maxLossCalculatorTask.perform();
+
+    verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
+    assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
+  }
+
+  @Test
+  public void testPerform_isPriceTargetMet_sellTrade_yes() throws ParseException, InterruptedException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000.0)
+        .build();
+    when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    List<AggTrade> aggTrades = new ArrayList<>();
+    AggTrade aggTrade = new AggTrade();
+    aggTrade.setAggregatedTradeId(1);
+    aggTrade.setTradeTime(SIGNAL_TIME + 1);
+    aggTrade.setPrice("2999");
+    aggTrades.add(aggTrade);
+    aggTrade = new AggTrade();
+    aggTrade.setAggregatedTradeId(2);
+    aggTrade.setTradeTime(SIGNAL_TIME + 2);
+    aggTrade.setPrice("3001");
+    aggTrades.add(aggTrade);
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
+        .thenAnswer(invocation-> {
+          String fromId = invocation.getArgument(1);
+          Long startTime = invocation.getArgument(3);
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
+            return aggTrades;
+          }
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
+            return Lists.newArrayList();
+          }
+          throw new RuntimeException("Unexpected arguments");
+        });
+
+    maxLossCalculatorTask.perform();
+
+    verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isTrue();
+    assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime().getTime()).isEqualTo(SIGNAL_TIME + 1);
+  }
+
+  @Test
+  public void testPerform_isPriceTargetMet_sellTrade_no() throws ParseException, InterruptedException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000.0)
+        .build();
+    when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(chartPatternSignal));
+    List<AggTrade> aggTrades = new ArrayList<>();
+    AggTrade aggTrade = new AggTrade();
+    aggTrade.setAggregatedTradeId(1);
+    aggTrade.setTradeTime(SIGNAL_TIME + 1);
+    aggTrade.setPrice("3002");
+    aggTrades.add(aggTrade);
+    aggTrade = new AggTrade();
+    aggTrade.setAggregatedTradeId(2);
+    aggTrade.setTradeTime(SIGNAL_TIME + 2);
+    aggTrade.setPrice("3001");
+    aggTrades.add(aggTrade);
+    when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
+        .thenAnswer(invocation-> {
+          String fromId = invocation.getArgument(1);
+          Long startTime = invocation.getArgument(3);
+          Long endTime = invocation.getArgument(4);
+          if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
+            return aggTrades;
+          }
+          if (fromId != null && fromId.equals("3") && startTime == null && endTime == null) {
             return Lists.newArrayList();
           }
           throw new RuntimeException("Unexpected arguments");

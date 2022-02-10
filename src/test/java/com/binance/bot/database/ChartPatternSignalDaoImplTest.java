@@ -10,6 +10,7 @@ import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.apache.commons.lang3.time.DateUtils;
+import org.assertj.core.util.DateUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.sqlite.SQLiteDataSource;
@@ -758,5 +759,23 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignal.maxLossTime()).isNull();
     assertThat(chartPatternSignal.isPriceTargetMet()).isFalse();
     assertThat(chartPatternSignal.priceTargetMetTime()).isNull();
+  }
+
+  public void testGetAllChartPatternsNeedingMaxLossCalculated() {
+    ChartPatternSignal yesterdayChartPattern = getChartPatternSignal()
+        .setCoinPair("ETHUSDT")
+        .setTimeOfSignal(DateUtil.yesterday())
+        .build();
+    ChartPatternSignal todayChartPattern = getChartPatternSignal()
+        .setCoinPair("BTCUSDT")
+        .setTimeOfSignal(new Date())
+        .build();
+    dao.insertChartPatternSignal(yesterdayChartPattern, volProfile);
+    dao.insertChartPatternSignal(todayChartPattern, volProfile);
+
+    List<ChartPatternSignal> patterns = dao.getAllChartPatternsNeedingMaxLossCalculated();
+
+    assertThat(patterns).hasSize(1);
+    assertThat(patterns.get(0).coinPair()).isEqualTo("ETHUSDT");
   }
 }

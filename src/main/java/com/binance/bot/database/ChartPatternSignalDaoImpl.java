@@ -387,7 +387,10 @@ public class ChartPatternSignalDaoImpl {
       logger.error(String.format("Failed to update max loss and target met values for chart pattern signal \n%s.",
           chartPatternSignal));
     } else {
-      logger.info(String.format("Updated max loss and target met values for chart pattern signal:%s\n", chartPatternSignal));
+      logger.info(String.format("Updated max loss and target met values for chart pattern signal:%s\n." +
+          "Updated values - maxLoss=%f, maxLossPercent=%f, IsPriceTargetMet=%s", chartPatternSignal,
+          chartPatternSignal.maxLoss(), chartPatternSignal.maxLossPercent(),
+          chartPatternSignal.isPriceTargetMet() ? "True" : "Falses"));
     }
     return ret == 1;
   }

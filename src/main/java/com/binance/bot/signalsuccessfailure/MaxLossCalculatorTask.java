@@ -55,6 +55,7 @@ public class MaxLossCalculatorTask {
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         continue;
       }
+      logger.info(String.format("Calculating max loss and profit target met for chart pattern signal:\n%s.", chartPatternSignal));
       Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
       long maxLossTime = 0;
       boolean isProfitTargetMet = false;
@@ -64,9 +65,12 @@ public class MaxLossCalculatorTask {
       boolean firstIteration = true;
       boolean isDone = false;
       Long fromId = null;
+      long beginTime = System.currentTimeMillis();
       while (!isDone) {
         if (requestCounter.counter ++ >= REQUEST_WEIGHT_1_MIN_LIMIT/2) {
+          logger.info("Going to sleep for a minute.");
           Thread.sleep(60000);
+          logger.info("Woke up from sleep.");
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
             chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,
@@ -95,6 +99,8 @@ public class MaxLossCalculatorTask {
           fromId = aggTrades.get(aggTrades.size() - 1).getAggregatedTradeId() + 1;
         }
       }
+      logger.info(String.format("Getting all aggTrades took %d seconds.",
+          (System.currentTimeMillis() - beginTime) / 1000));
       ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
           .copy(chartPatternSignal)
           .setMaxLoss(maxLossAndPercent.getFirst())

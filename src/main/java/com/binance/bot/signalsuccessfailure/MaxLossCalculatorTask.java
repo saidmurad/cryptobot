@@ -68,8 +68,8 @@ public class MaxLossCalculatorTask {
       long beginTime = System.currentTimeMillis();
       while (!isDone) {
         if ((requestCounter.counter ++) %  REQUEST_WEIGHT_1_MIN_LIMIT/2== 0) {
-          logger.info("Going to sleep for a minute.");
-          Thread.sleep(60000);
+          logger.info("Going to sleep for 10 sec.");
+          Thread.sleep(10000);
           logger.info("Woke up from sleep.");
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(

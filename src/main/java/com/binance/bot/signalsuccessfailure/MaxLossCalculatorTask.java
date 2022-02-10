@@ -67,7 +67,7 @@ public class MaxLossCalculatorTask {
       Long fromId = null;
       long beginTime = System.currentTimeMillis();
       while (!isDone) {
-        if (requestCounter.counter ++ >= REQUEST_WEIGHT_1_MIN_LIMIT/2) {
+        if ((requestCounter.counter ++) %  REQUEST_WEIGHT_1_MIN_LIMIT/2== 0) {
           logger.info("Going to sleep for a minute.");
           Thread.sleep(60000);
           logger.info("Woke up from sleep.");

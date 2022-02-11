@@ -47,11 +47,11 @@ public class MaxLossCalculatorTask {
 
   @Scheduled(fixedDelay = 600000)
   public void perform() throws ParseException, InterruptedException, IOException {
-    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
     logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
         chartPatternSignals.size()));
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      HeartBeatChecker.logHeartBeat(getClass());
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         continue;
       }

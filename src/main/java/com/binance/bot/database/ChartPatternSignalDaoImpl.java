@@ -118,7 +118,7 @@ public class ChartPatternSignalDaoImpl {
 
   public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
     String sql = String.format("select * from ChartPatternSignal where MaxLoss is null " +
-        "and date(PriceTargetTime) < datetime('%s') " +
+        "and datetime(PriceTargetTime) < datetime('%s') " +
             "order by datetime(TimeOfSignal) desc, TimeFrame",
         df.format(new Date()));
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());

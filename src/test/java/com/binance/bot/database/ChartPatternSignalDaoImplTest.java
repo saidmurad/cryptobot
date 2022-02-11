@@ -764,11 +764,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   public void testGetAllChartPatternsNeedingMaxLossCalculated() {
     ChartPatternSignal yesterdayChartPattern = getChartPatternSignal()
         .setCoinPair("ETHUSDT")
-        .setTimeOfSignal(DateUtil.yesterday())
+        .setPriceTargetTime(DateUtils.addMinutes(new Date(), -1))
         .build();
     ChartPatternSignal todayChartPattern = getChartPatternSignal()
         .setCoinPair("BTCUSDT")
-        .setTimeOfSignal(new Date())
+        .setPriceTargetTime(DateUtils.addMinutes(new Date(), 1))
         .build();
     dao.insertChartPatternSignal(yesterdayChartPattern, volProfile);
     dao.insertChartPatternSignal(todayChartPattern, volProfile);

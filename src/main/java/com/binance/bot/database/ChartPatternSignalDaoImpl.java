@@ -287,7 +287,7 @@ public class ChartPatternSignalDaoImpl {
 
   // No need to consider previously updated partial execution values if any, a the current order update should include
   // them anyway as it is fetched from binance.
-  public boolean setExitLimitOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
+  public boolean setExitStopLossOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitLimitOrder) {
     ChartPatternSignal chartPatternSignalInDB = getChartPattern(chartPatternSignal);
     Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(chartPatternSignalInDB, exitLimitOrder.executedQty(), exitLimitOrder.avgPrice());
     double realizedPercent = realizedUnRealized.getFirst() /

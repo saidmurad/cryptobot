@@ -23,17 +23,17 @@ import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.stubbing.Answer;
 
 import java.text.ParseException;
 import java.util.Date;
 
-import static com.binance.bot.trading.BinanceTradingBot.PER_TRADE_AMOUNT;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(JUnit4.class)
 public class BinanceTradingBotTest {
@@ -69,53 +69,69 @@ public class BinanceTradingBotTest {
   }
 
   @Captor
-  ArgumentCaptor<NewOrder> buyOrderCaptor;
+  ArgumentCaptor<NewOrder> orderCaptor;
   @Captor
   ArgumentCaptor<NewOrder> sellOrderCaptor;
+  @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
+  @Captor ArgumentCaptor<ChartPatternSignal.Order> chartPatternSignalOrderArgumentCaptor;
 
   @Test
   public void testPlaceBuyTrade() throws ParseException {
-    setUsdtBalance(PER_TRADE_AMOUNT + 100);
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.perTradeAmount = 20.0;
+    setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getLotSize("ETHUSDT")).thenReturn(3);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     NewOrderResponse buyOrderResp = new NewOrderResponse();
     buyOrderResp.setOrderId(1L);
-    buyOrderResp.setExecutedQty("20");
+    buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
-    when(mockBinanceApiRestClient.newOrder(any(NewOrder.class))).thenReturn(buyOrderResp);
 
-    NewOrderResponse sellLimitOrderResp = new NewOrderResponse();
-    sellLimitOrderResp.setOrderId(2L);
-    sellLimitOrderResp.setExecutedQty("0");
-    sellLimitOrderResp.setPrice("6000.012");
-    sellLimitOrderResp.setStatus(OrderStatus.NEW);
-    when(mockBinanceApiRestClient.newOrder(any())).thenReturn(sellLimitOrderResp);
+    NewOrderResponse sellStopLossOrderResp = new NewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
 
-    binanceTradingBot.placeTrade(getChartPatternSignal().build());
+    when(mockBinanceApiRestClient.newOrder(any(NewOrder.class))).thenAnswer(new Answer<NewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public NewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
 
-    verify(mockBinanceApiRestClient).newOrder(buyOrderCaptor.capture());
-    NewOrder buyOrder = buyOrderCaptor.getValue();
+    binanceTradingBot.placeTrade(chartPatternSignal);
+
+    verify(mockBinanceApiRestClient, times(2)).newOrder(orderCaptor.capture());
+    NewOrder buyOrder = orderCaptor.getAllValues().get(0);
     assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
     assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
-    assertThat(buyOrder.getQuantity()).isEqualTo("0.005");
-    verify(mockDao).setEntryOrder(chartPatternSignal,
+    assertThat(buyOrder.getQuantity()).isEqualTo("0.005"); // assuming market price $4000, and buying for $100.
+    verify(mockDao).setEntryOrder(chartPatternSignalArgumentCaptor.capture(),
+        chartPatternSignalOrderArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
+    assertThat(chartPatternSignalOrderArgumentCaptor.getValue()).isEqualTo(ChartPatternSignal.Order.create(
+        buyOrderResp.getOrderId(),
+        0.005,
+        /* TODO: Find the actual price from the associated Trade */
+        chartPatternSignal.priceAtTimeOfSignalReal(),
+        OrderStatus.FILLED));
+    NewOrder sellStopLossOrder = orderCaptor.getAllValues().get(1);
+    assertThat(sellStopLossOrder.getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.SELL);
+    assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS);
+    assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getPrice()).isEqualTo("3800.00");
+    verify(mockDao).setExitStopLossOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(
-            buyOrderResp.getOrderId(),
-            /* TODO: Find the actual price from the associated Trade */
-            chartPatternSignal.priceAtTimeOfSignalReal(),
-            20.0, OrderStatus.FILLED));
-    verify(mockBinanceApiRestClient).newOrder(sellOrderCaptor.capture());
-    NewOrder sellLimitOrder = sellOrderCaptor.getValue();
-    assertThat(sellLimitOrder.getSymbol()).isEqualTo("ETHUSDT");
-    assertThat(sellLimitOrder.getSide()).isEqualTo(OrderSide.SELL);
-    assertThat(sellLimitOrder.getType()).isEqualTo(OrderType.LIMIT);
-    assertThat(sellLimitOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellLimitOrder.getQuantity()).isEqualTo("20.0");
-    assertThat(sellLimitOrder.getPrice()).isEqualTo("6000.012");
-    verify(mockDao).setExitLimitOrder(chartPatternSignal,
-        ChartPatternSignal.Order.create(
-            sellLimitOrderResp.getOrderId(), 6000.01, 0.0,
+            sellStopLossOrderResp.getOrderId(), 0.0, 3800.0,
             OrderStatus.NEW));
   }
 

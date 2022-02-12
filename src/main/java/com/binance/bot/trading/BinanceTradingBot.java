@@ -5,18 +5,17 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
-import com.binance.api.client.domain.account.AssetBalance;
 import com.binance.api.client.domain.account.NewOrder;
 import com.binance.api.client.domain.account.NewOrderResponse;
 import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
-import com.binance.api.client.domain.account.request.OrderRequest;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.text.NumberFormat;
@@ -32,7 +31,11 @@ public class BinanceTradingBot {
     private final SupportedSymbolsInfo supportedSymbolsInfo;
     private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    static final double PER_TRADE_AMOUNT = 20;
+
+    @Value("${per_trade_amount}")
+    double perTradeAmount;
+    @Value("${stop_loss_percent}")
+    double stopLossPercent;
 
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory, SupportedSymbolsInfo supportedSymbolsInfo, ChartPatternSignalDaoImpl dao) {
@@ -54,12 +57,13 @@ public class BinanceTradingBot {
         switch (chartPatternSignal.tradeType()) {
             case BUY:
                 double usdtBalance = numberFormat.parse(binanceApiRestClient.getAccount().getAssetBalance(USDT).getFree()).doubleValue();
-                if (usdtBalance < 5.0) {
-                    logger.error("No USDT in Spot account for placing BUY trade for\n" + chartPatternSignal.toString());
+                if (usdtBalance < perTradeAmount) {
+                    logger.error(String.format("Lesser than %f USDT in Spot account for placing BUY trade for\n" +
+                        usdtBalance, chartPatternSignal));
                     return;
                 }
-                if (usdtBalance > PER_TRADE_AMOUNT) {
-                    usdtBalance = PER_TRADE_AMOUNT;
+                if (usdtBalance > perTradeAmount) {
+                    usdtBalance = perTradeAmount;
                 }
 
                 NewOrder buyOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.BUY,
@@ -71,32 +75,48 @@ public class BinanceTradingBot {
                 dao.setEntryOrder(chartPatternSignal,
                     ChartPatternSignal.Order.create(
                         buyOrderResp.getOrderId(),
+                        numberFormat.parse(buyOrderResp.getExecutedQty()).doubleValue(),
                         /* TODO: Find the actual price from the associated Trade */
                         chartPatternSignal.priceAtTimeOfSignalReal(),
-                        numberFormat.parse(buyOrderResp.getExecutedQty()).doubleValue(), buyOrderResp.getStatus()));
+                        buyOrderResp.getStatus()));
 
-                NewOrder sellLimitOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.SELL, OrderType.LIMIT, TimeInForce.GTC, buyOrderResp.getExecutedQty(), String.format("%.2f", chartPatternSignal.priceTarget()));
-                NewOrderResponse sellLimitOrderResp = binanceApiRestClient.newOrder(sellLimitOrder);
-                logger.info(String.format("Placed sell limit order %s with status %s for chart pattern signal\n%s.", sellLimitOrderResp.toString(), sellLimitOrderResp.getStatus().name(), chartPatternSignal.toString()));
+                NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
+                    OrderSide.SELL,
+                    OrderType.STOP_LOSS,
+                    TimeInForce.GTC,
+                    buyOrderResp.getExecutedQty(),
+                    String.format("%.2f", getEntryPrice(chartPatternSignal)
+                    * (100 - stopLossPercent) / 100));
+                NewOrderResponse stopLossOrderResp = binanceApiRestClient.newOrder(stopLossOrder);
+                logger.info(String.format("Placed sell Stop loss order %s with status %s for chart pattern signal\n%s.",
+                    stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
 
-                dao.setExitLimitOrder(chartPatternSignal,
+                dao.setExitStopLossOrder(chartPatternSignal,
                     ChartPatternSignal.Order.create(
-                        sellLimitOrderResp.getOrderId(),
-                        numberFormat.parse(sellLimitOrderResp.getPrice()).doubleValue(),
-                        numberFormat.parse(sellLimitOrderResp.getExecutedQty()).doubleValue(),
-                        sellLimitOrderResp.getStatus()));
+                        stopLossOrderResp.getOrderId(),
+                        // Will be zero at this point.
+                        numberFormat.parse(stopLossOrderResp.getExecutedQty()).doubleValue(),
+                        numberFormat.parse(stopLossOrderResp.getPrice()).doubleValue(),
+                        stopLossOrderResp.getStatus()));
 
                 break;
             default:
         }
     }
 
+    private double getEntryPrice(ChartPatternSignal chartPatternSignal) {
+        if (chartPatternSignal.priceAtTimeOfSignalReal() > 0) {
+            return chartPatternSignal.priceAtTimeOfSignalReal();
+        }
+        return chartPatternSignal.priceAtTimeOfSignal();
+    }
+
     public boolean exitPosition(ChartPatternSignal chartPatternSignal) throws ParseException {
-        CancelOrderRequest cancelOrderRequest = new CancelOrderRequest(chartPatternSignal.coinPair(), chartPatternSignal.exitLimitOrder().orderId());
+        CancelOrderRequest cancelOrderRequest = new CancelOrderRequest(chartPatternSignal.coinPair(), chartPatternSignal.exitStopLossOrder().orderId());
         CancelOrderResponse cancelOrderResponse = binanceApiRestClient.cancelOrder(cancelOrderRequest);
         logger.info("Cancel order response of profit taking order: " + cancelOrderResponse.toString());
 
-        double qtyToExit = chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitLimitOrder().executedQty();
+        double qtyToExit = chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitStopLossOrder().executedQty();
         NewOrder exitMarketOrder = new NewOrder(chartPatternSignal.coinPair(),
             chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
             OrderType.MARKET, null, getFormattedQuantity(chartPatternSignal.coinPair(), qtyToExit));

@@ -159,7 +159,7 @@ public abstract class ChartPatternSignal {
   public abstract Order entryOrder();
 
   @Nullable
-  public abstract Order exitLimitOrder();
+  public abstract Order exitStopLossOrder();
 
   @Nullable
   public abstract Order exitMarketOrder();
@@ -270,7 +270,7 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setEntryOrder(Order entryOrder);
 
-    public abstract Builder setExitLimitOrder(Order exitLimitOrder);
+    public abstract Builder setExitStopLossOrder(Order exitStopLossOrder);
 
     public abstract Builder setExitMarketOrder(Order exitMarketOrder);
 
@@ -331,7 +331,7 @@ public abstract class ChartPatternSignal {
           .setTimeOfInsertion(that.timeOfInsertion())
           .setIsInsertedLate(that.isInsertedLate())
           .setEntryOrder(that.entryOrder())
-          .setExitLimitOrder(that.exitLimitOrder())
+          .setExitStopLossOrder(that.exitStopLossOrder())
           .setExitMarketOrder(that.exitMarketOrder())
           .setIsPositionExited(that.isPositionExited())
           .setTenCandlestickTime(that.tenCandlestickTime())

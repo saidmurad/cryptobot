@@ -35,11 +35,11 @@ public class ProfitTakingOrderStatusChecker {
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     BinanceApiRestClient restClient = binanceApiRestClientFactory.newRestClient();
     for (ChartPatternSignal activePosition: activePositions) {
-      OrderStatusRequest orderStatusRequest = new OrderStatusRequest(activePosition.coinPair(), activePosition.exitLimitOrder().orderId());
+      OrderStatusRequest orderStatusRequest = new OrderStatusRequest(activePosition.coinPair(), activePosition.exitStopLossOrder().orderId());
       Order orderStatus = restClient.getOrderStatus(orderStatusRequest);
       if (orderStatus.getStatus() == OrderStatus.FILLED ||
           orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED &&
-              numberFormat.parse(orderStatus.getExecutedQty()).doubleValue() > activePosition.exitLimitOrder().executedQty()) {
+              numberFormat.parse(orderStatus.getExecutedQty()).doubleValue() > activePosition.exitStopLossOrder().executedQty()) {
         double executedQtyInOrderStatus = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
         dao.setExitMarketOrder(activePosition,
             ChartPatternSignal.Order.create(orderStatus.getOrderId(), executedQtyInOrderStatus,

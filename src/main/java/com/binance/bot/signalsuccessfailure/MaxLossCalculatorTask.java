@@ -27,22 +27,15 @@ public class MaxLossCalculatorTask {
   private final BinanceApiRestClient binanceApiRestClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final SupportedSymbolsInfo supportedSymbolsInfo;
-  private final RequestCounter requestCounter;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
 
-  @Component
-  static class RequestCounter {
-    int counter = 0;
-  }
-
   @Autowired
   MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, BinanceApiClientFactory binanceApiClientFactory,
-                        SupportedSymbolsInfo supportedSymbolsInfo, RequestCounter requestCounter) {
+                        SupportedSymbolsInfo supportedSymbolsInfo) {
     this.dao = dao;
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     this.supportedSymbolsInfo = supportedSymbolsInfo;
-    this.requestCounter = requestCounter;
   }
 
   @Scheduled(fixedDelay = 600000)

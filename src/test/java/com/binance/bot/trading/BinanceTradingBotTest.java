@@ -46,6 +46,7 @@ public class BinanceTradingBotTest {
   ChartPatternSignalDaoImpl mockDao;
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
+
   @Before
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);

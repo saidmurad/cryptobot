@@ -18,3 +18,5 @@ For the time period the above fix is not there, I also need a lagging task to ba
     May be ignore isInsertedLate for trading decsion as comeback signals don't have that info, and
         also ok to place trade if large percent of the target price is yet to be met.
 5. Trading status of the symbol.
+6. Signal for the same symbol getting replaced with a different trade in the same trade type
+- no need to kill the trade here.

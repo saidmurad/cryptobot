@@ -1,5 +1,6 @@
 package com.binance.bot.trading;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
@@ -31,29 +32,28 @@ public class GetVolumeProfileTest {
   private static final String COIN_PAIR = "ETHUSDT";
   private static final long CURRENT_TIME_MILLIS = 999999999999999999l;
 
-  @Mock @Bind
+  @Mock private BinanceApiClientFactory mockBinanceApiRestClientFactory;
+  @Mock
   private BinanceApiRestClient mockBinanceApiRestClient;
-  @Mock @Bind private Clock clock;
-
-  @Inject
+  @Mock private Clock clock;
   private GetVolumeProfile getVolumeProfile;
 
   @Before
   public void setUp() {
     MockitoAnnotations.initMocks(this);
-    Guice.createInjector(BoundFieldModule.of(this)).injectMembers(this);
-  }
-
-  @Test
-  public void canPlaceTrade() {
+    when(mockBinanceApiRestClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
+    getVolumeProfile = new GetVolumeProfile(mockBinanceApiRestClientFactory);
   }
 
   @Test
   public void getVolumeProfile_minMaxAvg() {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
-    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES,
+        1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000,
+        CURRENT_TIME_MILLIS - 30 * 60 * 100))
         .thenReturn(getCandlesticks("100", "200"));
-    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
+    when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES,
+        2, CURRENT_TIME_MILLIS - 30 * 60 * 1000, CURRENT_TIME_MILLIS))
         .thenReturn(getCandlesticks("100", "200"));
 
     VolumeProfile volumeProfile = getVolumeProfile.getVolumeProfile(COIN_PAIR);

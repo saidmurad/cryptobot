@@ -43,7 +43,6 @@ public class MaxLossCalculatorTaskTest {
   @Mock private BinanceApiClientFactory mockBinanceApiClientFactory;
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
-  private MaxLossCalculatorTask.RequestCounter requestCounter = new MaxLossCalculatorTask.RequestCounter();
   @Captor
   private ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
   private MaxLossCalculatorTask maxLossCalculatorTask;
@@ -54,7 +53,7 @@ public class MaxLossCalculatorTaskTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     maxLossCalculatorTask = new MaxLossCalculatorTask(
-        mockDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo, requestCounter);
+        mockDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
   }
@@ -116,19 +115,6 @@ public class MaxLossCalculatorTaskTest {
     assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime()).isNull();
     assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
     assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
-  }
-
-  @Test
-  public void testPerform_requestCounter() throws ParseException, IOException, InterruptedException {
-    AggTrade aggTrade = new AggTrade();
-    aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
-    aggTrade.setPrice("1.0");
-    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
-        .thenReturn(Lists.newArrayList());
-
-    maxLossCalculatorTask.perform();
-
-    assertThat(requestCounter.counter).isEqualTo(1);
   }
 
   @Test

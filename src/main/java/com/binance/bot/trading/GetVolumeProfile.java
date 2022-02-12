@@ -29,16 +29,12 @@ public class GetVolumeProfile {
         this.binanceApiRestClient = binanceApiClientFactory.newRestClient();
     }
 
-    boolean canPlaceTrade(String coinPair, TradeType tradeType) {
-        String coin = tradeType == TradeType.BUY ? USDT : Util.getCoinFromCoinPair(coinPair);
-        AssetBalance balance = binanceApiRestClient.getAccount().getAssetBalance(coin);
-        return Double.parseDouble(balance.getFree()) >= 0;
-    }
-
     public VolumeProfile getVolumeProfile(String coinPair) {
         long currentTimeMillis = clock.millis();
         // Look from 2:30 hours past till 30 min ago
-        List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(coinPair, CandlestickInterval.FIFTEEN_MINUTES, 1000, currentTimeMillis - 150 * 60 * 1000, currentTimeMillis - 30 * 60 * 100);
+        List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+            coinPair, CandlestickInterval.FIFTEEN_MINUTES, 1000,
+            currentTimeMillis - 150 * 60 * 1000, currentTimeMillis - 30 * 60 * 100);
         if (candlesticks.isEmpty()) {
             logger.warn("Got 0 klines for " + coinPair + " so volume data is missing");
             return null;

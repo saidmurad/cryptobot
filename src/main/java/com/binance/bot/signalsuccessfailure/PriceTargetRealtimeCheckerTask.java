@@ -42,7 +42,7 @@ public class PriceTargetRealtimeCheckerTask {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  @Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000)
   public void performPriceTargetChecks() throws ParseException, IOException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();

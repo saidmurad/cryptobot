@@ -29,7 +29,7 @@ public class ProfitTakingOrderStatusChecker {
   private BinanceApiClientFactory binanceApiRestClientFactory;
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
-  @Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000)
   public void perform() throws ParseException, IOException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();

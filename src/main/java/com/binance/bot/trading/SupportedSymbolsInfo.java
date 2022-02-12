@@ -8,6 +8,7 @@ import com.binance.api.client.domain.general.SymbolStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
@@ -18,7 +19,7 @@ public class SupportedSymbolsInfo {
 
   private BinanceApiRestClient binanceApiRestClient;
   private Set<String> supportedSymbols = new HashSet<>();
-  private Map<String, Integer> lotSizeMap = new HashMap<>();
+  private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new HashMap<>();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Map<String, List<OrderType>> tradingSymbolsMap = new HashMap<>();
   private long lastFetchTime = 0;
@@ -66,15 +67,14 @@ public class SupportedSymbolsInfo {
     return count;
   }
 
-  public Integer getLotSize(String symbol) {
-    if (lotSizeMap.isEmpty()) {
+  public Pair<Double, Integer> getMinNotionalAndLotSize(String symbol) {
+    if (minNotionalAndLotSizeMap.isEmpty()) {
       binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-        String stepSize = symbolInfo.getSymbolFilter(FilterType.LOT_SIZE).getStepSize();
-        if (stepSize != null) {
-          lotSizeMap.put(symbolInfo.getSymbol(), getTickSizeAsNum(stepSize));
-        }
+        Integer stepSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.LOT_SIZE).getStepSize());
+        Double minNotional = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.MIN_NOTIONAL).getMinNotional());
+        minNotionalAndLotSizeMap.put(symbolInfo.getSymbol(), Pair.of(minNotional, stepSize));
       });
     }
-    return lotSizeMap.get(symbol);
+    return minNotionalAndLotSizeMap.get(symbol);
   }
 }

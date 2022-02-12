@@ -27,6 +27,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.stubbing.Answer;
+import org.springframework.data.util.Pair;
 
 import java.text.ParseException;
 import java.util.Date;
@@ -51,6 +52,9 @@ public class BinanceTradingBotTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    binanceTradingBot.perTradeAmount = 20.0;
   }
 
   private void setUsdtBalance(Double bal) {
@@ -76,11 +80,11 @@ public class BinanceTradingBotTest {
   @Captor ArgumentCaptor<ChartPatternSignal.Order> chartPatternSignalOrderArgumentCaptor;
 
   @Test
-  public void testPlaceBuyTrade() throws ParseException {
+  public void testPlaceBuyTrade_usesOnlyPerTradeAmount() throws ParseException {
     binanceTradingBot.stopLossPercent = 5.0;
-    binanceTradingBot.perTradeAmount = 20.0;
     setUsdtBalance(120.0);
-    when(mockSupportedSymbolsInfo.getLotSize("ETHUSDT")).thenReturn(3);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     NewOrderResponse buyOrderResp = new NewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -126,13 +130,105 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSymbol()).isEqualTo("ETHUSDT");
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.SELL);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS);
-    assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
+    assertThat(sellStopLossOrder.getTimeInForce()).isNull();
     assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("3800.00");
     verify(mockDao).setExitStopLossOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(
             sellStopLossOrderResp.getOrderId(), 0.0, 3800.0,
             OrderStatus.NEW));
+  }
+
+  @Test
+  public void insufficientUSDTInAccount_doesNothing() throws ParseException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.perTradeAmount = 20.0;
+    setUsdtBalance(19.5);
+
+    binanceTradingBot.placeTrade(getChartPatternSignal().build());
+
+    verifyNoInteractions(mockSupportedSymbolsInfo);
+    verifyNoInteractions(mockDao);
+  }
+
+  @Test
+  public void testPlaceBuyTrade_usesAtleastMinNotionalAmount() throws ParseException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.perTradeAmount = 9;
+    setUsdtBalance(120.0);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    NewOrderResponse buyOrderResp = new NewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setExecutedQty("0.0025"); // Equivalent of $10 notional.
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    NewOrderResponse sellStopLossOrderResp = new NewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiRestClient.newOrder(any(NewOrder.class))).thenAnswer(new Answer<NewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public NewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal);
+
+    verify(mockBinanceApiRestClient, times(2)).newOrder(orderCaptor.capture());
+    NewOrder buyOrder = orderCaptor.getAllValues().get(0);
+    assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
+    assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
+    assertThat(buyOrder.getQuantity()).isEqualTo("0.0025"); // Equivalent of $10 notional.
+  }
+
+  @Test
+  public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits() throws ParseException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.perTradeAmount = 10.1;
+    setUsdtBalance(120.0);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    NewOrderResponse buyOrderResp = new NewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setExecutedQty("0.0026"); // 0.002525 is rounded up.
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    NewOrderResponse sellStopLossOrderResp = new NewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiRestClient.newOrder(any(NewOrder.class))).thenAnswer(new Answer<NewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public NewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal);
+
+    verify(mockBinanceApiRestClient, times(2)).newOrder(orderCaptor.capture());
+    NewOrder buyOrder = orderCaptor.getAllValues().get(0);
+    assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
+    assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
+    assertThat(buyOrder.getQuantity()).isEqualTo("0.0026"); // Equivalent of $10 notional.
   }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {

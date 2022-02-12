@@ -243,6 +243,10 @@ public class AltfinPatternsReader {
   }
 
   void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException {
+    if (chartPatternSignal.profitPotentialPercent() < 0) {
+      logger.warn(String.format("Skipping chart pattern signal with negative profit potential:\n%s.", chartPatternSignal));
+      return;
+    }
     Date currTime = new Date();
     boolean isInsertedLate;
     if (chartPatternSignal.attempt() > 1) {
@@ -262,7 +266,8 @@ public class AltfinPatternsReader {
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
     //logger.info("Ret value: " + ret);
     // TODO: Unit test.
-    if (!isInsertedLate && isTradingAllowed(chartPatternSignal.timeFrame(), chartPatternSignal.tradeType())) {
+    if ((!isInsertedLate || chartPatternSignal.profitPotentialPercent() >= 0.5)
+        && isTradingAllowed(chartPatternSignal.timeFrame(), chartPatternSignal.tradeType())) {
       binanceTradingBot.placeTrade(chartPatternSignal);
     }
   }

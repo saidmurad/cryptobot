@@ -15,6 +15,7 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -129,6 +130,91 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
 
     verify(mockDao).insertChartPatternSignal(chartPatternSignal, volumeProfile);
+  }
+
+  public void testNegativeProfitPotential_neverInserted() throws ParseException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setProfitPotentialPercent(-1.0)
+        .build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao, never()).insertChartPatternSignal(any(), any());
+  }
+
+  @Captor private ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
+  public void testPlacesTrade_ifNotInsertedLate_and_tradingAllowed_placesTrade() throws ParseException {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.BUY)
+        .setTimeOfSignal(new Date())
+        .build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockBinanceTradingBot).placeTrade(chartPatternSignalArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
+  }
+
+  public void testPlacesTrade_notInsertedLate_but_tradingANotllowed_doesntPlaceTrade() throws ParseException {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "SELL";
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.BUY)
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTimeOfSignal(new Date())
+        .build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockBinanceTradingBot, never()).placeTrade(any());
+  }
+
+  public void testPlacesTrade_InsertedLate_but_tradingAllowed_doesntPlaceTrade() throws ParseException {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.BUY)
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setProfitPotentialPercent(0.25)
+        .setTimeOfSignal(DateUtils.addDays(new Date(), -1))
+        .build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockBinanceTradingBot, never()).placeTrade(any());
+  }
+
+  public void testPlacesTrade_InsertedLate_but_profitPotentialMet_placesTrade() throws ParseException {
+    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.BUY)
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setProfitPotentialPercent(0.5)
+        .setTimeOfSignal(DateUtils.addDays(new Date(), -1))
+        .build();
+    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
+    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
+    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
+
+    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockBinanceTradingBot).placeTrade(chartPatternSignalArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
   }
 
   public void testFilterProcessPatterns_useAltfinInvalidationsIsFalse_comebackChartPatternIsIgnoredAndNotReInserted() throws ParseException {

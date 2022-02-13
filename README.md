@@ -20,3 +20,8 @@ For the time period the above fix is not there, I also need a lagging task to ba
 5. Trading status of the symbol.
 6. Signal for the same symbol getting replaced with a different trade in the same trade type
 - no need to kill the trade here.
+7. Add an error message column to the table and put failed actions there.
+8. BinanceapiException to be made a checked exception.d
+9. At signal target time, a market order similar to the profit taking order but is realizing loss or lesser profits than
+predicted, and should set signal status and position status to exited.
+10. 

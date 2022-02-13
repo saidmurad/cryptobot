@@ -32,6 +32,9 @@ public class MarketPriceStream {
   }
 
   public void addSymbol(String symbol) throws IOException {
+    if (coinPairs.contains(symbol)) {
+      return;
+    }
     coinPairs.add(symbol);
     restartStream();
   }

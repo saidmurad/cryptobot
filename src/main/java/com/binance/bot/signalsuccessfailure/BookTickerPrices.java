@@ -14,7 +14,7 @@ import java.util.Map;
 public class BookTickerPrices {
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   public void setBookTicker(BookTickerEvent callback) throws ParseException {
-    bookTickerMap.put(callback.getSymbol(),
+    bookTickerMap.put(callback.getSymbol().toUpperCase(),
         BookTicker.create(
             numberFormat.parse(callback.getAskPrice()).doubleValue(),
             numberFormat.parse(callback.getBidPrice()).doubleValue()));
@@ -31,4 +31,8 @@ public class BookTickerPrices {
     }
   }
   private Map<String, BookTicker> bookTickerMap = new HashMap<>();
+
+  public BookTicker getBookTicker(String symbol) {
+    return bookTickerMap.get(symbol);
+  }
 }

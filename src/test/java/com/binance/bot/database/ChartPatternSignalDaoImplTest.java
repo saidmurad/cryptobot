@@ -616,6 +616,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+    assertThat(chartPatternSignalInDB.isSignalOn()).isFalse();
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeBUY_partiallyExitsPosition() throws ParseException {
@@ -644,6 +645,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(250.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(1.25);
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+    assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_fullyExitsPosition() throws ParseException {
@@ -672,6 +674,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+    assertThat(chartPatternSignalInDB.isSignalOn()).isFalse();
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_partiallyExitsPosition() throws ParseException {
@@ -700,6 +703,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(-250.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(-1.25);
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+    assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
   }
 
   public void testUpdateExitMarketOrder_tradeTypeBUY() {

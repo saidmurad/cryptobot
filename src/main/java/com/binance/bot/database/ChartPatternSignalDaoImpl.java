@@ -97,7 +97,8 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getChartPatternsWithActiveTradePositions(TimeFrame timeFrame, TradeType tradeType) {
-    String sql = String.format("select * from ChartPatternSignal where TimeFrame='%s' and TradeType='%s' " +
+    String sql = String.format("select * from ChartPatternSignal where TimeFrame='%s' and " +
+        "TradeType='%s' " +
         "and IsPositionExited=0 and EntryExecutedQty>0", timeFrame.name(), tradeType.name());
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
@@ -356,7 +357,7 @@ public class ChartPatternSignalDaoImpl {
         "ExitStopLossOrderAvgPrice=?," +
         "ExitStopLossOrderStatus=?," +
         "Realized=?, RealizedPercent=?, Unrealized=?, UnRealizedPercent=?," +
-        "IsPositionExited=? where " +
+        "IsPositionExited=?, IsSignalOn=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
     int ret = jdbcTemplate.update(sql, exitStopLimitOrderStatus.getOrderId(),
@@ -365,6 +366,7 @@ public class ChartPatternSignalDaoImpl {
         exitStopLimitOrderStatus.getStatus().name(),
         realizedUnRealized.getFirst(), realizedPercent, realizedUnRealized.getSecond(), unRealizedPercent,
         exitStopLimitOrderStatus.getStatus() == OrderStatus.FILLED,
+        exitStopLimitOrderStatus.getStatus() == OrderStatus.FILLED ? 0 : 1,
         chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),

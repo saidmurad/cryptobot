@@ -41,7 +41,10 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
           logger.info("Null ChartPaternSignal array element. Skipping.");
           continue;
         }
-        chartPatternSignals.add(performMapping((JsonObject) arrayElement));
+        ChartPatternSignal chartPatternSignal = performMapping((JsonObject) arrayElement);
+        if (chartPatternSignal != null) {
+          chartPatternSignals.add(chartPatternSignal);
+        }
       } catch (ParseException e) {
         logger.error("Error while deserializing patterns.", e);
         throw new RuntimeException(e);
@@ -52,8 +55,12 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
 
   private ChartPatternSignal performMapping(JsonObject patternElement) throws ParseException {
     TradeType tradeType = tradeTypeMap.get(patternElement.get("trade_type").getAsString());
+    String coinPair = convertIfBUSD(patternElement.get("coin_pair").getAsString());
+    if (!coinPair.endsWith("USDT")) {
+      return null;
+    }
     ChartPatternSignal.Builder builder = ChartPatternSignal.newBuilder()
-        .setCoinPair(patternElement.get("coin_pair").getAsString())
+        .setCoinPair(coinPair)
         .setTimeFrame(timeFrameMap.get(patternElement.get("interval").getAsString()))
         .setPattern(patternElement.get("pattern").getAsString())
         .setTradeType(tradeType)
@@ -65,6 +72,13 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
       builder.setProfitPotentialPercent(parseDouble(patternElement.get("profit_potential_percent").getAsString()));
     }
     return builder.build();
+  }
+
+  private String convertIfBUSD(String coinPair) {
+    if (coinPair.endsWith("BUSD")) {
+      return coinPair.substring(0, coinPair.length() - 4) + "USDT";
+    }
+    return coinPair;
   }
 
   private double getPriceTarget(String priceTargetStr, TradeType tradeType) throws ParseException {

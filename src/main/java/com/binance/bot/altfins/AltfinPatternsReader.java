@@ -49,7 +49,6 @@ public class AltfinPatternsReader {
   private static final String PROD_MACHINE_DIR = "/usr/local/google/home/kannanj/altfins/send_alerts";
   private static final String DEV_MACHINE_DIR = "/home/kannanj";
   private final TimeFrame[] timeFrames = {TimeFrame.FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
-  private final BinanceTradingBot binanceTradingBot;
   private long[] lastProcessedTimes = new long[4];
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -59,20 +58,12 @@ public class AltfinPatternsReader {
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
-  @Value("${fifteen_minute_timeframe}")
-  String fifteenMinuteTimeFrameAllowedTradeTypeConfig;
-  @Value("${hourly_timeframe}")
-  String hourlyTimeFrameAllowedTradeTypeConfig;
-  @Value("${four_hourly_timeframe}")
-  String fourHourlyTimeFrameAllowedTradeTypeConfig;
-  @Value("${daily_timeframe}")
-  String dailyTimeFrameAllowedTradeTypeConfig;
   @Value("${use_altfin_invalidations}")
   boolean useAltfinInvalidations;
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
-                              ChartPatternSignalDaoImpl chartPatternSignalDao, BinanceTradingBot binanceTradingBot,
+                              ChartPatternSignalDaoImpl chartPatternSignalDao,
                               SupportedSymbolsInfo supportedSymbolsInfo) {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -84,7 +75,6 @@ public class AltfinPatternsReader {
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
     this.chartPatternSignalDao = chartPatternSignalDao;
-    this.binanceTradingBot = binanceTradingBot;
   }
 
   @Scheduled(fixedDelay = 60000)
@@ -181,34 +171,6 @@ public class AltfinPatternsReader {
     }
   }
 
-  boolean isTradingAllowed(TimeFrame timeFrame, TradeType tradeType) {
-    String configForTimeFrame;
-    switch (timeFrame) {
-      case FIFTEEN_MINUTES:
-        configForTimeFrame = fifteenMinuteTimeFrameAllowedTradeTypeConfig;
-        break;
-      case HOUR:
-        configForTimeFrame = hourlyTimeFrameAllowedTradeTypeConfig;
-        break;
-      case FOUR_HOURS:
-        configForTimeFrame = fourHourlyTimeFrameAllowedTradeTypeConfig;
-        break;
-      default:
-        configForTimeFrame = dailyTimeFrameAllowedTradeTypeConfig;
-    }
-    switch (configForTimeFrame) {
-      case "NONE":
-        return false;
-      case "BOTH":
-        return true;
-      case "BUY":
-        return tradeType == TradeType.BUY;
-      case "SELL":
-      default:
-        return tradeType == TradeType.SELL;
-    }
-  }
-
   private String getCoinPairsInDifferenceBetween(List<ChartPatternSignal> patternFromAltfins, List<ChartPatternSignal> postFilterPatterns) {
     StringBuilder stringBuilder = new StringBuilder();
     Set<ChartPatternSignal> postFilterPatternsSet = new HashSet<>();
@@ -248,43 +210,14 @@ public class AltfinPatternsReader {
       return;
     }
     Date currTime = new Date();
-    boolean isInsertedLate;
-    if (chartPatternSignal.attempt() > 1) {
-      // For comeeback signals we don't have a reliable way of detecting that we caught the comeback late.
-      isInsertedLate = false;
-    } else {
-      isInsertedLate = isInsertedLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), currTime);
-    }
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
-        .setPriceAtTimeOfSignalReal(numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue())
         .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))
-        .setIsInsertedLate(isInsertedLate)
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
     //logger.info("Inserting chart pattern signal " + chartPatternSignal);
     boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
     //logger.info("Ret value: " + ret);
-    // TODO: Unit test.
-    if ((!isInsertedLate || chartPatternSignal.profitPotentialPercent() >= 0.5)
-        && isTradingAllowed(chartPatternSignal.timeFrame(), chartPatternSignal.tradeType())) {
-      binanceTradingBot.placeTrade(chartPatternSignal);
-    }
-  }
-
-  // TODO: Unit test
-  private boolean isInsertedLate(TimeFrame timeFrame, Date timeOfSignal, Date currTime) {
-    long timeLagMins = (currTime.getTime() - timeOfSignal.getTime()) / 60000;
-    switch (timeFrame) {
-      case FIFTEEN_MINUTES:
-        return timeLagMins > 15;
-      case HOUR:
-        return timeLagMins > 30;
-      case FOUR_HOURS:
-        return timeLagMins > 30;
-      default:
-        return timeLagMins > 120;
-    }
   }
 
   private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {

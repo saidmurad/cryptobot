@@ -38,6 +38,7 @@ public class SupportedSymbolsInfo {
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       supportedSymbols.add(symbolInfo.getSymbol());
     });
+    logger.info(String.format("Returning %d symbols.", supportedSymbols.size()));
     return supportedSymbols;
   }
 

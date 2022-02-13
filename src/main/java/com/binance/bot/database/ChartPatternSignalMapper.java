@@ -71,7 +71,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
               OrderStatus.valueOf(rs.getString("entryOrderStatus"))));
       }
       if (rs.getString("exitStopLossOrderId") != null) {
-        chartPatternSignalBuilder.setExitStopLossOrder(
+        chartPatternSignalBuilder.setExitStopLimitOrder(
             ChartPatternSignal.Order.create(
                 rs.getInt("exitStopLossOrderId"), rs.getDouble("exitStopLossOrderExecutedQty"),
                 rs.getDouble("exitStopLossOrderAvgPrice"),

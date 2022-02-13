@@ -20,30 +20,31 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
-public class ProfitTakingOrderStatusChecker {
-  @Autowired
-  private ChartPatternSignalDaoImpl dao;
-  @Autowired
-  private BinanceTradingBot binanceTradingBot;
-  @Autowired
-  private BinanceApiClientFactory binanceApiRestClientFactory;
+public class StopLimitOrderStatusChecker {
+  private final ChartPatternSignalDaoImpl dao;
+  private final BinanceApiRestClient binanceApiRestClient;
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
-  //@Scheduled(fixedDelay = 60000)
+  @Autowired
+  StopLimitOrderStatusChecker(ChartPatternSignalDaoImpl dao, BinanceApiClientFactory binanceApiRestClientFactory) {
+    this.dao = dao;
+    this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
+  }
+
+  @Scheduled(fixedDelay = 60000)
   public void perform() throws ParseException, IOException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
-    BinanceApiRestClient restClient = binanceApiRestClientFactory.newRestClient();
     for (ChartPatternSignal activePosition: activePositions) {
-      OrderStatusRequest orderStatusRequest = new OrderStatusRequest(activePosition.coinPair(), activePosition.exitStopLossOrder().orderId());
-      Order orderStatus = restClient.getOrderStatus(orderStatusRequest);
+      if (activePosition.exitStopLimitOrder() == null) {
+        continue;
+      }
+      OrderStatusRequest orderStatusRequest = new OrderStatusRequest(
+          activePosition.coinPair(), activePosition.exitStopLimitOrder().orderId());
+      Order orderStatus = binanceApiRestClient.getOrderStatus(orderStatusRequest);
       if (orderStatus.getStatus() == OrderStatus.FILLED ||
-          orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED &&
-              numberFormat.parse(orderStatus.getExecutedQty()).doubleValue() > activePosition.exitStopLossOrder().executedQty()) {
-        double executedQtyInOrderStatus = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
-        dao.setExitMarketOrder(activePosition,
-            ChartPatternSignal.Order.create(orderStatus.getOrderId(), executedQtyInOrderStatus,
-                numberFormat.parse(orderStatus.getPrice()).doubleValue(), orderStatus.getStatus()));
+          orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
+        dao.updateExitStopLimitOrder(activePosition, orderStatus);
       }
     }
   }

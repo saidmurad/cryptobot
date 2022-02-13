@@ -23,3 +23,10 @@ Create Table ChartPatternSignal(
     CurrentTime TEXT
 );
 PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)
+
+
+alter statements pending:
+1. isInsertedLate no longer used.
+2. priceAtTimeOfSignalReal is no longe rused as the entery marekt order will give that price.
+2. exit columns for stop loss replace previous limit order column ExitLimitOrderId, not used now. need to drop unused cols for limit exit.
+

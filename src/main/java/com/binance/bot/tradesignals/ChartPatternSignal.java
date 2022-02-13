@@ -159,7 +159,7 @@ public abstract class ChartPatternSignal {
   public abstract Order entryOrder();
 
   @Nullable
-  public abstract Order exitStopLossOrder();
+  public abstract Order exitStopLimitOrder();
 
   @Nullable
   public abstract Order exitMarketOrder();
@@ -270,7 +270,7 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setEntryOrder(Order entryOrder);
 
-    public abstract Builder setExitStopLossOrder(Order exitStopLossOrder);
+    public abstract Builder setExitStopLimitOrder(Order exitStopLimitOrder);
 
     public abstract Builder setExitMarketOrder(Order exitMarketOrder);
 
@@ -331,7 +331,7 @@ public abstract class ChartPatternSignal {
           .setTimeOfInsertion(that.timeOfInsertion())
           .setIsInsertedLate(that.isInsertedLate())
           .setEntryOrder(that.entryOrder())
-          .setExitStopLossOrder(that.exitStopLossOrder())
+          .setExitStopLimitOrder(that.exitStopLimitOrder())
           .setExitMarketOrder(that.exitMarketOrder())
           .setIsPositionExited(that.isPositionExited())
           .setTenCandlestickTime(that.tenCandlestickTime())
@@ -339,7 +339,11 @@ public abstract class ChartPatternSignal {
           .setMaxLossPercent(that.maxLossPercent())
           .setMaxLossTime(that.maxLossTime())
           .setIsPriceTargetMet(that.isPriceTargetMet())
-          .setPriceTargetMetTime(that.priceTargetMetTime());
+          .setPriceTargetMetTime(that.priceTargetMetTime())
+          .setRealized(that.realized())
+          .setRealizedPercent(that.realizedPercent())
+          .setUnRealized(that.unRealized())
+          .setUnRealizedPercent(that.unRealizedPercent());
     }
   }
 }

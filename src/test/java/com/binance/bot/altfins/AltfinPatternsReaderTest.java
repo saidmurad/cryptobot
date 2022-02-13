@@ -45,7 +45,6 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Mock private ChartPatternSignalDaoImpl mockDao;
   @Mock private BinanceApiClientFactory mockApiClientFactory;
   @Mock private BinanceApiRestClient mockRestClient;
-  @Mock private BinanceTradingBot mockBinanceTradingBot;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   @Captor
   private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
@@ -54,11 +53,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
-    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockBinanceTradingBot, mockSupportedSymbolsInfo);
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
-    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
-    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
-    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
+    altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockSupportedSymbolsInfo);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of("ORNUSDT", "ORNUSDTXYZ", "RSRUSDT", "BTCUSDT", "ETHUSDT"));
     Candlestick currentCandlestick = new Candlestick();
@@ -77,9 +72,15 @@ public class AltfinPatternsReaderTest extends TestCase {
     tickerPrice.setPrice("1,111.12");
   }
 
-  public void testReadPatterns() throws IOException {
+  public void testReadPatterns_skipsNonUSDTNonBUSDQuoteCurrency() throws IOException {
     List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());
-    assertThat(patterns).hasSize(6);
+
+    assertThat(patterns.stream().filter(pattern-> !pattern.coinPair().endsWith("USDT")).findFirst().isPresent()).isFalse();
+    assertThat(patterns).hasSize(7);
+  }
+
+    public void testReadPatterns() throws IOException {
+    List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());
     ChartPatternSignal pattern = patterns.get(0);
     assertThat(pattern.coinPair()).isEqualTo("ORNUSDT");
     assertThat(pattern.pattern()).isEqualTo("Triangle");
@@ -109,6 +110,12 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns.get(4).priceTarget()).isEqualTo(5000.0);
     // In range.
     assertThat(patterns.get(5).priceTarget()).isEqualTo(5000.0);
+  }
+
+  public void testReadPatterns_convertsBUSDToUSDT() throws IOException {
+    List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());
+
+    assertThat(patterns.get(6).coinPair()).isEqualTo("XRPUSDT");
   }
 
   public void testFilterProcessPatterns_noNewPatterns() throws ParseException {
@@ -143,78 +150,6 @@ public class AltfinPatternsReaderTest extends TestCase {
     altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
 
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
-  }
-
-  @Captor private ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
-  public void testPlacesTrade_ifNotInsertedLate_and_tradingAllowed_placesTrade() throws ParseException {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
-        .setTradeType(TradeType.BUY)
-        .setTimeOfSignal(new Date())
-        .build();
-    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
-    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
-    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
-
-    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockBinanceTradingBot).placeTrade(chartPatternSignalArgumentCaptor.capture());
-    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
-  }
-
-  public void testPlacesTrade_notInsertedLate_but_tradingANotllowed_doesntPlaceTrade() throws ParseException {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "SELL";
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
-        .setTradeType(TradeType.BUY)
-        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
-        .setTimeOfSignal(new Date())
-        .build();
-    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
-    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
-    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
-
-    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockBinanceTradingBot, never()).placeTrade(any());
-  }
-
-  public void testPlacesTrade_InsertedLate_but_tradingAllowed_doesntPlaceTrade() throws ParseException {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
-        .setTradeType(TradeType.BUY)
-        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
-        .setProfitPotentialPercent(0.25)
-        .setTimeOfSignal(DateUtils.addDays(new Date(), -1))
-        .build();
-    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
-    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
-    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
-
-    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockBinanceTradingBot, never()).placeTrade(any());
-  }
-
-  public void testPlacesTrade_InsertedLate_but_profitPotentialMet_placesTrade() throws ParseException {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
-        .setTradeType(TradeType.BUY)
-        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
-        .setProfitPotentialPercent(0.5)
-        .setTimeOfSignal(DateUtils.addDays(new Date(), -1))
-        .build();
-    List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
-    when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList());
-    when(mockDao.insertChartPatternSignal(chartPatternSignal, volumeProfile)).thenReturn(true);
-
-    altfinPatternsReader.processPaterns(patterns, TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockBinanceTradingBot).placeTrade(chartPatternSignalArgumentCaptor.capture());
-    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
   }
 
   public void testFilterProcessPatterns_useAltfinInvalidationsIsFalse_comebackChartPatternIsIgnoredAndNotReInserted() throws ParseException {
@@ -459,7 +394,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testInsertChartPatternSignal_priceAtTimeOfSignalReal_and_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException {
+  public void testInsertChartPatternSignal_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException {
     ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
 
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
@@ -471,27 +406,9 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volumeProfile));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
-    assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
     // First pattern in test file is a 15 min timeframe signal.
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
-  }
-
-  // More than 15 minutes.
-  public void testInsertChartPatternSignal_InsertedLate_fifteenMinuteTimeFrame() throws ParseException {
-    ChartPatternSignal pattern = getChartPatternSignal()
-        .setTimeOfSignal(new Date(System.currentTimeMillis() - 16 * 60 * 1000))
-        .build();
-
-    when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
-
-    altfinPatternsReader.processPaterns(Lists.newArrayList(pattern), TimeFrame.FIFTEEN_MINUTES);
-
-    ArgumentCaptor<ChartPatternSignal> patternArgCatcher = ArgumentCaptor.forClass(ChartPatternSignal.class);
-//    verify(mockBinanceTradingBot).placeTrade(pattern);
-    verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(volumeProfile));
-    ChartPatternSignal insertedVal = patternArgCatcher.getValue();
-    assertThat(insertedVal.isInsertedLate()).isTrue();
   }
 
   public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException {
@@ -544,9 +461,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(patternArgCatcher.capture(), eq(null));
     ChartPatternSignal insertedVal = patternArgCatcher.getValue();
     assertThat(insertedVal.coinPair()).isEqualTo(pattern.coinPair());
-    assertThat(insertedVal.priceAtTimeOfSignalReal()).isEqualTo(1111.12);
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
-    assertThat(insertedVal.isInsertedLate()).isTrue();
     // First pattern in test file is a 15 min timeframe signal.
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
   }
@@ -635,78 +550,6 @@ public class AltfinPatternsReaderTest extends TestCase {
         eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()),
         eq(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS));
 
-  }
-
-  public void testIsTradingAllowed_none() {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "NONE";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "NONE";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "NONE";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "NONE";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isFalse();
-  }
-
-  public void testIsTradingAllowed_buyOnly() {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BUY";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BUY";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isFalse();
-
-    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BUY";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isFalse();
-  }
-
-  public void testIsTradingAllowed_sellOnly() {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "SELL";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "SELL";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "SELL";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "SELL";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isFalse();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isTrue();
-  }
-
-  public void testIsTradingAllowed_both() {
-    altfinPatternsReader.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.HOUR, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.FOUR_HOURS, TradeType.SELL)).isTrue();
-
-    altfinPatternsReader.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.BUY)).isTrue();
-    assertThat(altfinPatternsReader.isTradingAllowed(TimeFrame.DAY, TradeType.SELL)).isTrue();
   }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {

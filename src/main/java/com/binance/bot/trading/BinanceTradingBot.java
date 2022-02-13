@@ -11,21 +11,26 @@ import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import static com.binance.bot.common.Constants.USDT;
+import static com.binance.bot.tradesignals.TimeFrame.FIFTEEN_MINUTES;
 
 @Component
 public class BinanceTradingBot {
@@ -48,13 +53,104 @@ public class BinanceTradingBot {
     }
 
     String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
-        String pattern = "#.";
+        String pattern = "#";
         for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {
+            if (i == 0) {
+                pattern += ".";
+            }
             pattern += "#";
         }
         DecimalFormat df = new DecimalFormat(pattern);
         df.setRoundingMode(RoundingMode.CEILING);
         return df.format(qty);
+    }
+
+    @Value("${fifteen_minute_timeframe}")
+    String fifteenMinuteTimeFrameAllowedTradeTypeConfig;
+    @Value("${hourly_timeframe}")
+    String hourlyTimeFrameAllowedTradeTypeConfig;
+    @Value("${four_hourly_timeframe}")
+    String fourHourlyTimeFrameAllowedTradeTypeConfig;
+    @Value("${daily_timeframe}")
+    String dailyTimeFrameAllowedTradeTypeConfig;
+    private final TimeFrame[] timeFrames = {FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
+    private final TradeType tradeTypes[] = {TradeType.BUY, TradeType.SELL};
+
+    @Scheduled(fixedDelay = 60000)
+    public void perform() throws ParseException {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 2; j++) {
+                if (isTradingAllowed(timeFrames[i], tradeTypes[j])) {
+                    List<ChartPatternSignal> signalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(timeFrames[i], tradeTypes[j]);
+                    for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
+                        if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
+                            || (chartPatternSignal.profitPotentialPercent() >= 0.5
+                        && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
+                        && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+                            placeTrade(chartPatternSignal);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isLate(TimeFrame timeFrame, Date timeOfSignal) {
+        long currTime = System.currentTimeMillis();
+        long timeLagMins = (currTime - timeOfSignal.getTime()) / 60000;
+        switch (timeFrame) {
+            case FIFTEEN_MINUTES:
+                return timeLagMins > 15;
+            case HOUR:
+                return timeLagMins > 30;
+            case FOUR_HOURS:
+                return timeLagMins > 30;
+            default:
+                return timeLagMins > 120;
+        }
+    }
+
+    private boolean notVeryLate(TimeFrame timeFrame, Date timeOfSignal) {
+        long currTime = System.currentTimeMillis();
+        long timeLagMins = (currTime - timeOfSignal.getTime()) / 60000;
+        switch (timeFrame) {
+            case FIFTEEN_MINUTES:
+                return false;
+            case HOUR:
+                return timeLagMins <= 60;
+            case FOUR_HOURS:
+                return timeLagMins <= 120;
+            default:
+                return timeLagMins <= 240;
+        }
+    }
+
+    boolean isTradingAllowed(TimeFrame timeFrame, TradeType tradeType) {
+        String configForTimeFrame;
+        switch (timeFrame) {
+            case FIFTEEN_MINUTES:
+                configForTimeFrame = fifteenMinuteTimeFrameAllowedTradeTypeConfig;
+                break;
+            case HOUR:
+                configForTimeFrame = hourlyTimeFrameAllowedTradeTypeConfig;
+                break;
+            case FOUR_HOURS:
+                configForTimeFrame = fourHourlyTimeFrameAllowedTradeTypeConfig;
+                break;
+            default:
+                configForTimeFrame = dailyTimeFrameAllowedTradeTypeConfig;
+        }
+        switch (configForTimeFrame) {
+            case "NONE":
+                return false;
+            case "BOTH":
+                return true;
+            case "BUY":
+                return tradeType == TradeType.BUY;
+            case "SELL":
+            default:
+                return tradeType == TradeType.SELL;
+        }
     }
 
     public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException {
@@ -67,8 +163,14 @@ public class BinanceTradingBot {
                 double minOrderQtyAdjustedForStopLoss =
                     getMinQtyAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLossPercent);
                 if (usdtAvailableToTrade < minOrderQtyAdjustedForStopLoss) {
-                    logger.error(String.format("Lesser than %f USDT in Spot account for placing BUY trade for\n%s.",
+                    logger.error(String.format("Lesser than minimum adjusted notional amount of " +
+                            " %f USDT in Spot account for placing BUY trade for\n%s.",
                         minOrderQtyAdjustedForStopLoss, chartPatternSignal));
+                    return;
+                }
+                if (usdtAvailableToTrade < perTradeAmount) {
+                    logger.error(String.format("Lesser than per trade amount %f USDT in Spot account for placing BUY trade for\n%s.",
+                        perTradeAmount, chartPatternSignal));
                     return;
                 }
                 double usdtToUse = perTradeAmount;
@@ -77,7 +179,8 @@ public class BinanceTradingBot {
                         "Increasing per trade amount to %f to meet the min order qty adjusted for stop loss.", minOrderQtyAdjustedForStopLoss));
                     usdtToUse = minOrderQtyAdjustedForStopLoss;
                 }
-                String roundedQuantity = getFormattedQuantity(usdtToUse / chartPatternSignal.priceAtTimeOfSignalReal(), stepSizeNumDecimalPlaces);
+                double entryPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+                String roundedQuantity = getFormattedQuantity(usdtToUse / entryPrice, stepSizeNumDecimalPlaces);
                 NewOrder buyOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.BUY,
                     OrderType.MARKET, /* timeInForce= */ null,
                     roundedQuantity);
@@ -89,35 +192,34 @@ public class BinanceTradingBot {
                         buyOrderResp.getOrderId(),
                         numberFormat.parse(buyOrderResp.getExecutedQty()).doubleValue(),
                         /* TODO: Find the actual price from the associated Trade */
-                        chartPatternSignal.priceAtTimeOfSignalReal(),
+                        entryPrice, // because the order response returns just 0 as the price for market order fill.
                         buyOrderResp.getStatus()));
 
+                String stopPrice = String.format("%.2f", getEntryPrice(chartPatternSignal)
+                    * (100 - stopLossPercent) / 100);
                 NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
                     OrderSide.SELL,
-                    OrderType.STOP_LOSS,
-                    null,
+                    OrderType.STOP_LOSS_LIMIT,
+                    TimeInForce.GTC,
                     buyOrderResp.getExecutedQty(),
-                    String.format("%.2f", getEntryPrice(chartPatternSignal)
-                    * (100 - stopLossPercent) / 100));
+                    stopPrice);
+                stopLossOrder.stopPrice(stopPrice);
                 NewOrderResponse stopLossOrderResp = binanceApiRestClient.newOrder(stopLossOrder);
                 logger.info(String.format("Placed sell Stop loss order %s with status %s for chart pattern signal\n%s.",
                     stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
 
-                dao.setExitStopLossOrder(chartPatternSignal,
+                dao.setExitStopLimitOrder(chartPatternSignal,
                     ChartPatternSignal.Order.create(
                         stopLossOrderResp.getOrderId(),
-                        // Will be zero at this point.
-                        numberFormat.parse(stopLossOrderResp.getExecutedQty()).doubleValue(),
-                        numberFormat.parse(stopLossOrderResp.getPrice()).doubleValue(),
+                        0,0,
                         stopLossOrderResp.getStatus()));
-
                 break;
             default:
         }
     }
 
-    private double getMinQtyAdjustedForStopLoss(Double first, double stopLossPercent) {
-        return first * 100 * 100 / (100 - stopLossPercent);
+    private double getMinQtyAdjustedForStopLoss(Double minNotional, double stopLossPercent) {
+        return minNotional * 100 / (100 - stopLossPercent);
     }
 
     private double getEntryPrice(ChartPatternSignal chartPatternSignal) {
@@ -128,11 +230,11 @@ public class BinanceTradingBot {
     }
 
     public boolean exitPosition(ChartPatternSignal chartPatternSignal) throws ParseException {
-        CancelOrderRequest cancelOrderRequest = new CancelOrderRequest(chartPatternSignal.coinPair(), chartPatternSignal.exitStopLossOrder().orderId());
+        CancelOrderRequest cancelOrderRequest = new CancelOrderRequest(chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
         CancelOrderResponse cancelOrderResponse = binanceApiRestClient.cancelOrder(cancelOrderRequest);
         logger.info("Cancel order response of profit taking order: " + cancelOrderResponse.toString());
 
-        double qtyToExit = chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitStopLossOrder().executedQty();
+        double qtyToExit = chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitStopLimitOrder().executedQty();
         NewOrder exitMarketOrder = new NewOrder(chartPatternSignal.coinPair(),
             chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
             OrderType.MARKET, null, getFormattedQuantity(qtyToExit, 2));

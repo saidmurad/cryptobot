@@ -1,5 +1,7 @@
 package com.binance.api.client;
 
+import java.text.ParseException;
+
 /**
  * BinanceApiCallback is a functional interface used together with the BinanceApiAsyncClient to provide a non-blocking REST client.
  *

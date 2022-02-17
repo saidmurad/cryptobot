@@ -24,4 +24,4 @@ For the time period the above fix is not there, I also need a lagging task to ba
 8. BinanceapiException to be made a checked exception.d
 9. At signal target time, a market order similar to the profit taking order but is realizing loss or lesser profits than
 predicted, and should set signal status and position status to exited.
-10. 
+10. Add gap between stop loss and limit order.

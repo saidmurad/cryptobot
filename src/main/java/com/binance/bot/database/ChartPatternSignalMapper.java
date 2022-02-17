@@ -1,10 +1,7 @@
 package com.binance.bot.database;
 
 import com.binance.api.client.domain.OrderStatus;
-import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
-import com.binance.bot.tradesignals.TimeFrame;
-import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.tradesignals.*;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.ResultSet;
@@ -89,6 +86,9 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
       chartPatternSignalBuilder.setUnRealized(rs.getDouble("UnRealized"));
       chartPatternSignalBuilder.setUnRealizedPercent(rs.getDouble("UnRealizedPercent"));
       chartPatternSignalBuilder.setIsPositionExited(rs.getInt("IsPositionExited") == 1);
+      if (rs.getString("TradeExitType") != null) {
+        chartPatternSignalBuilder.setTradeExitType(TradeExitType.valueOf(rs.getString("TradeExitType")));
+      }
       return chartPatternSignalBuilder.build();
     } catch (ParseException e) {
       throw new RuntimeException(e);

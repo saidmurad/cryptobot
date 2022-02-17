@@ -24,9 +24,18 @@ Create Table ChartPatternSignal(
 );
 PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)
 
+Create Table BTCHistory(
+    FifteenMinuteCandlestickTime TEXT,
+    Price REAL NOT NULL,
+    ChangeSince1Candlestick REAL NOT NULL,
+    ChangeSince2Candlesticks REAL NOT NULL,
+    ChangeSince3Candlesticks REAL NOT NULL,
+    ChangeSince4Candlesticks REAL NOT NULL
+);
 
 alter statements pending:
-1. isInsertedLate no longer used.
+1. alter table ChartPatternSignal add column TradeExitType TEXT;
+isInsertedLate no longer used.
 2. priceAtTimeOfSignalReal is no longe rused as the entery marekt order will give that price.
 2. exit columns for stop loss replace previous limit order column ExitLimitOrderId, not used now. need to drop unused cols for limit exit.
 

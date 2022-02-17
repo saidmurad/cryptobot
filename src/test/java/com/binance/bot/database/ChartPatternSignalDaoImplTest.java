@@ -3,10 +3,7 @@ package com.binance.bot.database;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.market.Candlestick;
-import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
-import com.binance.bot.tradesignals.TimeFrame;
-import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
@@ -86,6 +83,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    MaxLossTime TEXT,\n" +
       "    IsPriceTargetMet INTEGER,\n" +
       "    PriceTargetMetTime REAL," +
+      "    TradeExitType TEXT,\n" +
       "    CONSTRAINT chartpatternsignal_pk PRIMARY KEY (CoinPair, TimeFrame, TradeType, TimeOfSignal, Attempt)\n" +
       ");";
   /*
@@ -617,6 +615,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
     assertThat(chartPatternSignalInDB.isSignalOn()).isFalse();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeBUY_partiallyExitsPosition() throws ParseException {
@@ -646,6 +645,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(1.25);
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
     assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_fullyExitsPosition() throws ParseException {
@@ -675,6 +675,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
     assertThat(chartPatternSignalInDB.isSignalOn()).isFalse();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_partiallyExitsPosition() throws ParseException {
@@ -704,9 +705,39 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(-1.25);
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
     assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
-  public void testUpdateExitMarketOrder_tradeTypeBUY() {
+  public void testUpdateExitMarketOrder_tradeTypeBUY_noPreExistingPnL() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.BUY)
+        // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
+        .setRealized(0.0)
+        .setRealizedPercent(0.0)
+        .setUnRealized(0.0)
+        .setUnRealizedPercent(0.0)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 100.0, 200.0, OrderStatus.FILLED))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.PARTIALLY_FILLED),
+        TradeExitType.TARGET_TIME_PASSED)).isTrue();
+
+    ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
+    assertThat(chartPatternSignalInDB.realized()).isEqualTo(250.0);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.25);
+    assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
+    assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
+  }
+
+  public void testUpdateExitMarketOrder_tradeTypeBUY_partialExit_previousPartiallyExecutedStopLimitOrder() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.BUY)
         // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
         .setRealized(10.0)
@@ -718,21 +749,23 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     assertThat(dao.setExitMarketOrder(chartPatternSignal,
-        ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.FILLED))).isTrue();
+        ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.PARTIALLY_FILLED),
+        TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
     assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
-    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.25);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.3);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
-    assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+    assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
   }
 
-  public void testUpdateExitMarketOrder_tradeTypeSELL() {
+  public void testUpdateExitMarketOrder_preExistingPnl_additive_tradeTypeSELL() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.SELL)
         // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
         .setRealized(10.0)
@@ -744,7 +777,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
     assertThat(dao.setExitMarketOrder(chartPatternSignal,
-        ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED))).isTrue();
+        ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
@@ -752,10 +785,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(195.0);
     assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
-    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.25);
+    assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.3);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.unRealizedPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.isPositionExited()).isTrue();
+    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
   }
 
   public void testGetActivePositions() {

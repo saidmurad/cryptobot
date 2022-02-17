@@ -228,25 +228,4 @@ public class BinanceTradingBot {
         }
         return chartPatternSignal.priceAtTimeOfSignal();
     }
-
-    public boolean exitPosition(ChartPatternSignal chartPatternSignal) throws ParseException {
-        CancelOrderRequest cancelOrderRequest = new CancelOrderRequest(chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-        CancelOrderResponse cancelOrderResponse = binanceApiRestClient.cancelOrder(cancelOrderRequest);
-        logger.info("Cancel order response of profit taking order: " + cancelOrderResponse.toString());
-
-        double qtyToExit = chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitStopLimitOrder().executedQty();
-        NewOrder exitMarketOrder = new NewOrder(chartPatternSignal.coinPair(),
-            chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
-            OrderType.MARKET, null, getFormattedQuantity(qtyToExit, 2));
-        NewOrderResponse exitMarketOrderResponse = binanceApiRestClient.newOrder(exitMarketOrder);
-        double currPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-        logger.info(String.format("Exit market order issued for chart pattern signal %s and got order response \n%s at price %d",
-            chartPatternSignal.toString(), exitMarketOrderResponse.toString()), currPrice);
-
-        // TODO: delayed market order executions.
-        return dao.setExitMarketOrder(chartPatternSignal,
-            ChartPatternSignal.Order.create(exitMarketOrderResponse.getOrderId(),
-                numberFormat.parse(exitMarketOrderResponse.getExecutedQty()).doubleValue(),
-                currPrice, exitMarketOrderResponse.getStatus()));
-    }
 }

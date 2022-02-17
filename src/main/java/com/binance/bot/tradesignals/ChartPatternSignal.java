@@ -29,6 +29,9 @@ public abstract class ChartPatternSignal {
   public abstract int attempt();
 
   @Nullable
+  public abstract TradeExitType tradeExitType();
+
+  @Nullable
   public abstract Date timeOfInsertion();
 
   public abstract boolean isInsertedLate();
@@ -42,6 +45,12 @@ public abstract class ChartPatternSignal {
         coinPair(), timeFrame().name(), tradeType().name(), pattern(), dateFormat.format(timeOfSignal()),
         attempt(), priceTarget(),
         dateFormat.format(priceTargetTime()), attempt());
+  }
+
+  public String toStringOrderValues() {
+    return toString() + String.format("\nEntry Order: %s\nExit Stop Limit Order: %s\nExit Market Order: %s.",
+        entryOrder() != null ? entryOrder() : "", exitStopLimitOrder() != null ? exitStopLimitOrder() : "",
+        exitMarketOrder() != null ? exitMarketOrder() : "");
   }
   @Override
   public boolean equals(Object that) {
@@ -296,6 +305,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setPriceTargetMetTime(Date priceTargetMetTime);
 
+    public abstract Builder setTradeExitType(TradeExitType tradeExitType);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -343,7 +354,8 @@ public abstract class ChartPatternSignal {
           .setRealized(that.realized())
           .setRealizedPercent(that.realizedPercent())
           .setUnRealized(that.unRealized())
-          .setUnRealizedPercent(that.unRealizedPercent());
+          .setUnRealizedPercent(that.unRealizedPercent())
+          .setTradeExitType(that.tradeExitType());
     }
   }
 }

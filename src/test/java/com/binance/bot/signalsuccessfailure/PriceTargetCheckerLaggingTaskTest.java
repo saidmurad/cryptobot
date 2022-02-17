@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -20,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Clock;
@@ -41,6 +43,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private Clock mockClock;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
+  @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
   private final long timeOfSignal = 1640995200000L; // 01/01/2022 0:00 GMT
   private PriceTargetCheckerLaggingTask priceTargetCheckerLaggingTask;
 
@@ -48,24 +51,24 @@ public class PriceTargetCheckerLaggingTaskTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     priceTargetCheckerLaggingTask = new PriceTenCandlestickTimeCheckerLaggingTask(
-        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo);
+        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
     priceTargetCheckerLaggingTask.clock = mockClock;
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()),
         Map.of("BTCUSDT", Lists.newArrayList()));
   }
 
   @Test
-  public void testPerformIteration_symbolNotInSupportedSymbolsInfo_skipped() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_symbolNotInSupportedSymbolsInfo_skipped() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ALGOUSDT").build();
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
-
+    
     priceTargetCheckerLaggingTask.performIteration(patternsQueue);
 
     assertThat(patternsQueue).isEmpty();
   }
 
   @Test
-  public void testPerformIteration_tenCandlestickTimePriceReturnedOnFirstAttempt() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_tenCandlestickTimePriceReturnedOnFirstAttempt() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
@@ -81,7 +84,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_noAggTradesReturned_requeuedWithBumpedAttemptCount() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_noAggTradesReturned_requeuedWithBumpedAttemptCount() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
@@ -98,7 +101,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_noAggTradesReturned_requeuedWithBumpedAttemptCount_nextEntryFrontOfQueue() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_noAggTradesReturned_requeuedWithBumpedAttemptCount_nextEntryFrontOfQueue() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
@@ -120,7 +123,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_startTimeCappedToCurrTime_notRequeuedIfNoAggTrades() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_startTimeCappedToCurrTime_notRequeuedIfNoAggTrades() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     long tenCandlestickTime = timeOfSignal + 150 * 60000;
     long currTime = tenCandlestickTime - 60000;
@@ -140,7 +143,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   @Test
   // In this test requeue occurring is independent of the start time getting capped. Requeue or not is determined
   // by the window end time crossing the current time alone.
-  public void testPerformIteration_startTimeCappedToSignalTargetTime() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_startTimeCappedToSignalTargetTime() throws ParseException, InterruptedException, IOException, MessagingException {
     long tenCandlestickTime = timeOfSignal + 150 * 60000;
     long priceTargetTime = tenCandlestickTime - 60000;
     long currTime = timeOfSignal + 300 * 60000;
@@ -162,7 +165,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   }
 
   @Test
-  public void testPerformIteration_noAggTradesReturned_maxAttemptsReached_notRequeued() throws ParseException, InterruptedException, IOException {
+  public void testPerformIteration_noAggTradesReturned_maxAttemptsReached_notRequeued() throws ParseException, InterruptedException, IOException, MessagingException {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
     when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,

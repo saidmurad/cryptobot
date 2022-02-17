@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import javax.mail.MessagingException;
 import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client"})
@@ -25,7 +26,7 @@ public class BinancebotApplication implements CommandLineRunner {
 	}
 
 	@Override
-	public void run(String... args) throws ParseException {
+	public void run(String... args) throws ParseException, MessagingException {
 		getOrderStatus.getOrderStatus();
 		executeExitPositions.perform();
 	}

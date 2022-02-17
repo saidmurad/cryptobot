@@ -5,13 +5,16 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
+import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -35,8 +38,9 @@ public abstract class PriceTargetCheckerLaggingTask {
   static final long TIME_RANGE_AGG_TRADES = 60000;
   private final BinanceApiRestClient restClient;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
-  protected ChartPatternSignalDaoImpl dao;
-  private Logger logger = LoggerFactory.getLogger(getClass());
+  protected final ChartPatternSignalDaoImpl dao;
+  private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
+  private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   Clock clock = Clock.systemDefaultZone();
@@ -46,18 +50,20 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   PriceTargetCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                 ChartPatternSignalDaoImpl dao,
-                                SupportedSymbolsInfo supportedSymbolsInfo) {
+                                SupportedSymbolsInfo supportedSymbolsInfo,
+                                ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
 
   // Caution: Not unit tested nor found worth the trouble.
   //@Scheduled(fixedDelay = 600000)
-  public void perform() throws InterruptedException, ParseException, IOException {
+  public void perform() throws InterruptedException, ParseException, IOException, MessagingException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
     logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
@@ -73,7 +79,7 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   protected abstract List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime();
 
-  void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException {
+  void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException, MessagingException {
     Pair<ChartPatternSignal, Integer> patternPair = attemptedPatterns.remove(0);
     if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(patternPair.getKey().coinPair())) {
       //logger.warn(String.format("Skipping chart pattern signal %s not in supported symbols at the moment.", patternPair.getKey().toString()));
@@ -101,6 +107,7 @@ public abstract class PriceTargetCheckerLaggingTask {
       double price = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
       boolean ret = setTargetPrice(chartPatternSignal, price);
       logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, price, TradeExitType.TARGET_TIME_PASSED);
     }
     else {
       attemptCount++;

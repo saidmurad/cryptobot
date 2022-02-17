@@ -20,9 +20,9 @@ public class MarketPriceStreamUsage {
         marketPriceStream.removeSymbol("ETHUSDT");
         marketPriceStream.addSymbol("BTCUSDT");
         break;
-      case 1:
+     /* case 1:
         marketPriceStream.removeSymbol("BTCUSDT");
-        marketPriceStream.addSymbol("ETHUSDT");
+        marketPriceStream.addSymbol("ETHUSDT");*/
     }
   }
 }

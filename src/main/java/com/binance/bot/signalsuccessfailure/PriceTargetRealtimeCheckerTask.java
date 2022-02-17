@@ -4,7 +4,9 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
+import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -31,19 +34,23 @@ public class PriceTargetRealtimeCheckerTask {
   private ChartPatternSignalDaoImpl dao;
   private Logger logger = LoggerFactory.getLogger(getClass());
   private final SupportedSymbolsInfo supportedSymbolsInfo;
+  private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   @Autowired
   PriceTargetRealtimeCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
-                                 ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo) {
+                                 ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo,
+                                 ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
+    this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
   //@Scheduled(fixedDelay = 60000)
-  public void performPriceTargetChecks() throws ParseException, IOException {
+  // TODO: Unit test.
+  public void performPriceTargetChecks() throws ParseException, IOException, MessagingException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();
     for (int i = 0; i < signalsTargetTime.size(); i++) {
@@ -53,6 +60,7 @@ public class PriceTargetRealtimeCheckerTask {
         continue;
       }
       double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, priceAtTargetTime, TradeExitType.TARGET_TIME_PASSED);
       boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
       logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
     }

@@ -51,7 +51,7 @@ public class PriceTargetCheckerLaggingTaskTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     priceTargetCheckerLaggingTask = new PriceTenCandlestickTimeCheckerLaggingTask(
-        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
+        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo);
     priceTargetCheckerLaggingTask.clock = mockClock;
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()),
         Map.of("BTCUSDT", Lists.newArrayList()));

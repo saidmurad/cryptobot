@@ -5,10 +5,8 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
-import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.ReasonForSignalInvalidation;
-import com.binance.bot.tradesignals.TimeFrame;
-import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
+import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
@@ -24,6 +22,7 @@ import org.springframework.boot.logging.LogLevel;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.mail.MessagingException;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -58,13 +57,15 @@ public class AltfinPatternsReader {
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
+  private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
   @Value("${use_altfin_invalidations}")
   boolean useAltfinInvalidations;
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
                               ChartPatternSignalDaoImpl chartPatternSignalDao,
-                              SupportedSymbolsInfo supportedSymbolsInfo) {
+                              SupportedSymbolsInfo supportedSymbolsInfo,
+                              ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     if (new File(PROD_MACHINE_DIR).exists()) {
@@ -75,6 +76,7 @@ public class AltfinPatternsReader {
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
     this.chartPatternSignalDao = chartPatternSignalDao;
+    this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
   @Scheduled(fixedDelay = 60000)
@@ -109,7 +111,7 @@ public class AltfinPatternsReader {
           processPaterns(patternFromAltfins, timeFrames[i]);
         }
       }
-    } catch (IOException |ParseException ex) {
+    } catch (IOException | ParseException | MessagingException ex) {
       logger.error("Exception.", ex);
       throw new RuntimeException(ex);
     }
@@ -117,7 +119,7 @@ public class AltfinPatternsReader {
   }
 
   // TODO: Unit test.
-  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException {
+  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException, MessagingException {
     patternFromAltfins = makeUnique(patternFromAltfins);
     int origSize = patternFromAltfins.size();
     List<ChartPatternSignal> temp = patternFromAltfins.stream()
@@ -166,6 +168,7 @@ public class AltfinPatternsReader {
           boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
               chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
           logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, priceAtTimeOfInvalidation, TradeExitType.REMOVED_FROM_ALTFINS);
         }
       }
     }

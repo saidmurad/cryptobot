@@ -27,7 +27,6 @@ public class ProfitTakerTask {
   private final ChartPatternSignalDaoImpl dao;
   private final BookTickerPrices bookTickerPrices;
   private final MarketPriceStream marketPriceStream;
-  private final BinanceApiRestClient binanceApiRestClient;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
@@ -35,12 +34,10 @@ public class ProfitTakerTask {
   ProfitTakerTask(ChartPatternSignalDaoImpl dao,
                   BookTickerPrices bookTickerPrices,
                   MarketPriceStream marketPriceStream,
-                  BinanceApiClientFactory binanceApiRestClientFactory,
                   ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.dao = dao;
     this.bookTickerPrices = bookTickerPrices;
     this.marketPriceStream = marketPriceStream;
-    this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 

@@ -39,7 +39,6 @@ public abstract class PriceTargetCheckerLaggingTask {
   private final BinanceApiRestClient restClient;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   protected final ChartPatternSignalDaoImpl dao;
-  private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -50,13 +49,11 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   PriceTargetCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                 ChartPatternSignalDaoImpl dao,
-                                SupportedSymbolsInfo supportedSymbolsInfo,
-                                ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
+                                SupportedSymbolsInfo supportedSymbolsInfo) {
     restClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
@@ -105,9 +102,9 @@ public abstract class PriceTargetCheckerLaggingTask {
 
     if (!tradesList.isEmpty()) {
       double price = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
+      // This call is for the signal itself, regardless of whether I hold a trade. This call sets IsSignalOn=0
       boolean ret = setTargetPrice(chartPatternSignal, price);
       logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
-      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, price, TradeExitType.TARGET_TIME_PASSED);
     }
     else {
       attemptCount++;
@@ -126,7 +123,7 @@ public abstract class PriceTargetCheckerLaggingTask {
     }
   }
 
-  protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price);
+  protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price) throws MessagingException, ParseException;
 
   protected abstract void markFailedToGetTargetPrice(ChartPatternSignal chartPatternSignal);
 

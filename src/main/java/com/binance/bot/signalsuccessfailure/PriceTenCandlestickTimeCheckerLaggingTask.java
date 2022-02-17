@@ -18,9 +18,8 @@ public class PriceTenCandlestickTimeCheckerLaggingTask extends PriceTargetChecke
   @Autowired
   PriceTenCandlestickTimeCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                             ChartPatternSignalDaoImpl dao,
-                                            SupportedSymbolsInfo supportedSymbolsInfo,
-                                            ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
-    super(binanceApiClientFactory, dao, supportedSymbolsInfo, exitPositionAtMarketPrice);
+                                            SupportedSymbolsInfo supportedSymbolsInfo) {
+    super(binanceApiClientFactory, dao, supportedSymbolsInfo);
     targetTimeType = TargetTimeType.TEN_CANDLESTICK;
   }
 

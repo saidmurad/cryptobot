@@ -25,3 +25,5 @@ For the time period the above fix is not there, I also need a lagging task to ba
 9. At signal target time, a market order similar to the profit taking order but is realizing loss or lesser profits than
 predicted, and should set signal status and position status to exited.
 10. Add gap between stop loss and limit order.
+11. whenver starting the program need to sart the market price ticker steram for the active positions held.
+12. Unit test for ExitPriceAtMarktPrice.

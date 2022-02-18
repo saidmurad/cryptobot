@@ -2,17 +2,19 @@ package com.binance.bot.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.Properties;
 import javax.mail.*;
 import javax.mail.internet.*;
 
+@Component
 public class Mailer{
   private static final Logger log = LoggerFactory.getLogger(Mailer.class);
   private static final String EMAIL_ADDRESS = "cryptoalertsforwalkingcorpse@gmail.com";
   private static final String PASSWORD = "G0ladiator.";
 
-  public static void sendEmail(String sub, String msg) throws MessagingException {
+  public void sendEmail(String sub, String msg) throws MessagingException {
     //Get properties object
     Properties props = new Properties();
     props.put("mail.smtp.host", "smtp.gmail.com");

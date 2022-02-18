@@ -37,6 +37,11 @@ public class BitcoinMonitoringTask {
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
+  private final boolean[][] tradingReco = new boolean[4][2];
+  public boolean[][] getTradingReco() {
+    return tradingReco;
+  }
+
   @Autowired
   public BitcoinMonitoringTask(BinanceApiClientFactory binanceApiClientFactory,
                                ChartPatternSignalDaoImpl dao,

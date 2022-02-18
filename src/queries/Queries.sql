@@ -139,7 +139,7 @@ select date(TimeOfSignal), TimeFrame, Sum(ProfitPercentAtTimeOfSignalInvalidatio
 ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
  and IsPriceTargetMet=0
  group by date(TimeOfSignal), TimeFrame)
- group by date(TimeOfSignal), TimeFrame
+ group by date(TimeOfSignal), TimeFrame;
 
 
 3b) Sum (profit percents) without considering invalidation time (but for the same time period as above).

@@ -44,6 +44,8 @@ public class BinanceTradingBot {
     double perTradeAmount;
     @Value("${stop_loss_percent}")
     double stopLossPercent;
+    @Value("${stop_limit_percent}")
+    double stopLimitPercent;
 
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory, SupportedSymbolsInfo supportedSymbolsInfo, ChartPatternSignalDaoImpl dao) {
@@ -161,7 +163,7 @@ public class BinanceTradingBot {
                     chartPatternSignal.coinPair());
                 int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
                 double minOrderQtyAdjustedForStopLoss =
-                    getMinQtyAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLossPercent);
+                    getMinQtyAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLimitPercent);
                 if (usdtAvailableToTrade < minOrderQtyAdjustedForStopLoss) {
                     logger.error(String.format("Lesser than minimum adjusted notional amount of " +
                             " %f USDT in Spot account for placing BUY trade for\n%s.",
@@ -197,12 +199,14 @@ public class BinanceTradingBot {
 
                 String stopPrice = String.format("%.2f", getEntryPrice(chartPatternSignal)
                     * (100 - stopLossPercent) / 100);
+                String stopLimitPrice = String.format("%.2f", getEntryPrice(chartPatternSignal)
+                    * (100 - stopLimitPercent) / 100);
                 NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
                     OrderSide.SELL,
                     OrderType.STOP_LOSS_LIMIT,
                     TimeInForce.GTC,
                     buyOrderResp.getExecutedQty(),
-                    stopPrice);
+                    stopLimitPrice);
                 stopLossOrder.stopPrice(stopPrice);
                 NewOrderResponse stopLossOrderResp = binanceApiRestClient.newOrder(stopLossOrder);
                 logger.info(String.format("Placed sell Stop loss order %s with status %s for chart pattern signal\n%s.",

@@ -70,7 +70,8 @@ public class BinanceTradingBotTest {
     binanceTradingBot.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
     binanceTradingBot.fourHourlyTimeFrameAllowedTradeTypeConfig = "BOTH";
     binanceTradingBot.dailyTimeFrameAllowedTradeTypeConfig = "BOTH";
-
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.stopLimitPercent = 5.5;
   }
 
   private void setUsdtBalance(Double bal) {
@@ -442,7 +443,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
     assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("3800.00");
-    assertThat(sellStopLossOrder.getPrice()).isEqualTo("3800.00");
+    assertThat(sellStopLossOrder.getPrice()).isEqualTo("3780.00");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(
             sellStopLossOrderResp.getOrderId(), 0.0, 0,
@@ -451,7 +452,6 @@ public class BinanceTradingBotTest {
 
   @Test
   public void insufficientUSDTInAccount_doesNothing() throws ParseException {
-    binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.perTradeAmount = 20.0;
     setUsdtBalance(19.5);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -465,7 +465,6 @@ public class BinanceTradingBotTest {
 
   @Test
   public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws ParseException {
-    binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.perTradeAmount = 11;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -507,7 +506,6 @@ public class BinanceTradingBotTest {
 
   @Test
   public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits_perTradeAmountIsIgnoredIfLessThanMinNotionalWithAdjustment() throws ParseException {
-    binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.perTradeAmount = 10.1;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))

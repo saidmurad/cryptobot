@@ -79,7 +79,7 @@ public class AltfinPatternsReader {
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
-  @Scheduled(fixedDelay = 60000)
+  @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   // TODO: Add unit tests.
   public void run() throws IOException {
     try {

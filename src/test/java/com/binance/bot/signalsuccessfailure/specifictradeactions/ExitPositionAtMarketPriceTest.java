@@ -137,11 +137,12 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);
     assertThat(cancelOrderRequestCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).cancelStopLimitOrder(eq(chartPatternSignal));
     verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
     assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
@@ -181,11 +182,12 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);
     assertThat(cancelOrderRequestCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verify(mockDao, never()).setExitMarketOrder(any(), any(), any());
     verify(mockMailer).sendEmail(any(), any());
@@ -228,11 +230,12 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);
     assertThat(cancelOrderRequestCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
     assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);

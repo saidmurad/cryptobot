@@ -50,6 +50,7 @@ public class ExitPositionAtMarketPrice {
     }
     OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
         chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
+    // To get the most update from binance.
     Order stopLimitOrderStatus = restClient.getOrderStatus(stopLimitOrderStatusRequest);
     logger.info(String.format("Status of the stop limit order: %s.", stopLimitOrderStatus));
     dao.updateExitStopLimitOrder(chartPatternSignal, stopLimitOrderStatus);
@@ -71,6 +72,7 @@ public class ExitPositionAtMarketPrice {
         chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
     CancelOrderResponse cancelStopLimitOrderResponse = restClient.cancelOrder(cancelStopLimitOrderRequest);
     logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
+    dao.cancelStopLimitOrder(chartPatternSignal);
     exitSpotAccountQty(chartPatternSignal, qtyToExit, currMarketPrice, tradeExitType);
   }
 

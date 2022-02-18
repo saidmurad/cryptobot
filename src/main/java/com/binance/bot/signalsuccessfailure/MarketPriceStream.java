@@ -54,7 +54,6 @@ public class MarketPriceStream {
   private Closeable listenToTickerEvents() {
     return binanceApiWebSocketClient.onBookTickerEvent(getSymbolsList(), callback -> {
       try {
-        System.out.println("Received book ticker event " + callback);
         bookTickerPrices.setBookTicker(callback);
       } catch (ParseException e) {
         logger.error(String.format("Exception in parsing book ticker %s.", callback), e);

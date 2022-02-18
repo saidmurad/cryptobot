@@ -301,7 +301,7 @@ public class ChartPatternSignalDaoImpl {
         (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
     String sql = "update ChartPatternSignal set ExitMarketOrderId=?, ExitMarketOrderExecutedQty=?, ExitMarketOrderAvgPrice=?, " +
         "ExitMarketOrderStatus=?, " +
-        "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=?," +
+        "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=?, IsSignalOn=?," +
         "TradeExitType=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
@@ -309,7 +309,9 @@ public class ChartPatternSignalDaoImpl {
         exitMarketOrder.status().name(),
         realizedUnRealized.getFirst(), realizedPercent,
         realizedUnRealized.getSecond(), unRealizedPercent,
-        exitMarketOrder.status() == OrderStatus.FILLED ? 1 : 0, tradeExitType.name(), chartPatternSignal.coinPair(),
+        exitMarketOrder.status() == OrderStatus.FILLED ? 1 : 0,
+        exitMarketOrder.status() == OrderStatus.FILLED ? 0 : 1,
+        tradeExitType.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
@@ -448,5 +450,20 @@ public class ChartPatternSignalDaoImpl {
           : null));
     }
     return ret == 1;
+  }
+
+  public void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) {
+    String updateSql = String.format("update ChartPatternSignal set ExitStopLossOrderStatus='%s' " +
+        "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)",
+        OrderStatus.CANCELED);
+    boolean ret = jdbcTemplate.update(updateSql,
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal())) == 1;
+    if (ret) {
+      logger.info("Updated Stop Limit Order status to Canceled for chart pattern signal: %s.", chartPatternSignal);
+    } else {
+      logger.error("Failed to update Stop Limit Order status to Canceled for chart pattern signal: %s", chartPatternSignal);
+    }
   }
 }

@@ -1,9 +1,7 @@
 package com.binance.bot;
 
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
-import com.binance.bot.signalsuccessfailure.PriceTargetCheckerLaggingTask;
-import com.binance.bot.testing.GetOrderStatus;
-import com.binance.bot.testing.MarketPriceStreamUsage;
+import com.binance.bot.testing.CancelOrders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -22,7 +20,7 @@ public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
-	//@Autowired private MarketPriceStreamUsage marketPriceStreamUsage;
+	@Autowired private CancelOrders cancelOrders;
 
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
@@ -30,7 +28,7 @@ public class BinancebotApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException {
-		//marketPriceStreamUsage.perform();
+		cancelOrders.cancelOrders();
 		executeExitPositions.perform();
 	}
 }

@@ -41,7 +41,7 @@ public class ProfitTakerTask {
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
-  @Scheduled(fixedDelay = 60000)
+  @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws IOException, MessagingException, ParseException {
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {

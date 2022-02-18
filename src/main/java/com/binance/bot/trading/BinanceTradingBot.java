@@ -7,8 +7,6 @@ import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrder;
 import com.binance.api.client.domain.account.NewOrderResponse;
-import com.binance.api.client.domain.account.request.CancelOrderRequest;
-import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -17,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -78,7 +77,10 @@ public class BinanceTradingBot {
     private final TimeFrame[] timeFrames = {FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
     private final TradeType tradeTypes[] = {TradeType.BUY, TradeType.SELL};
 
-    @Scheduled(fixedDelay = 60000)
+    @ConditionalOnProperty(
+        value = "app.scheduling.enable", havingValue = "true", matchIfMissing = true
+    )
+    @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
     public void perform() throws ParseException {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
@@ -161,9 +163,13 @@ public class BinanceTradingBot {
                 double usdtAvailableToTrade = numberFormat.parse(binanceApiRestClient.getAccount().getAssetBalance(USDT).getFree()).doubleValue();
                 Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
                     chartPatternSignal.coinPair());
+                if (minNotionalAndLotSize == null) {
+                    logger.error(String.format("Unexpectedly supportedSymbolsInfo.getMinNotionalAndLotSize returned null for %s", chartPatternSignal.coinPair()));
+                    return;
+                }
                 int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
                 double minOrderQtyAdjustedForStopLoss =
-                    getMinQtyAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLimitPercent);
+                    getMinQtyUSDTAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLimitPercent);
                 if (usdtAvailableToTrade < minOrderQtyAdjustedForStopLoss) {
                     logger.error(String.format("Lesser than minimum adjusted notional amount of " +
                             " %f USDT in Spot account for placing BUY trade for\n%s.",
@@ -197,10 +203,8 @@ public class BinanceTradingBot {
                         entryPrice, // because the order response returns just 0 as the price for market order fill.
                         buyOrderResp.getStatus()));
 
-                String stopPrice = String.format("%.2f", getEntryPrice(chartPatternSignal)
-                    * (100 - stopLossPercent) / 100);
-                String stopLimitPrice = String.format("%.2f", getEntryPrice(chartPatternSignal)
-                    * (100 - stopLimitPercent) / 100);
+                String stopPrice = String.format("%.2f", entryPrice * (100 - stopLossPercent) / 100);
+                String stopLimitPrice = String.format("%.2f", entryPrice * (100 - stopLimitPercent) / 100);
                 NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
                     OrderSide.SELL,
                     OrderType.STOP_LOSS_LIMIT,
@@ -222,14 +226,9 @@ public class BinanceTradingBot {
         }
     }
 
-    private double getMinQtyAdjustedForStopLoss(Double minNotional, double stopLossPercent) {
-        return minNotional * 100 / (100 - stopLossPercent);
-    }
-
-    private double getEntryPrice(ChartPatternSignal chartPatternSignal) {
-        if (chartPatternSignal.priceAtTimeOfSignalReal() > 0) {
-            return chartPatternSignal.priceAtTimeOfSignalReal();
-        }
-        return chartPatternSignal.priceAtTimeOfSignal();
+    private double getMinQtyUSDTAdjustedForStopLoss(Double minNotional, double stopLossPercent) {
+        // Adding extra 25 cents to account for quick price drops when placing order that would reduce the amount being
+        // ordered below min notional.
+        return minNotional * 100 / (100 - stopLossPercent) + 0.25;
     }
 }

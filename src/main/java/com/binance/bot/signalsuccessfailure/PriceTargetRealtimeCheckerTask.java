@@ -48,7 +48,7 @@ public class PriceTargetRealtimeCheckerTask {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  //@Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   // TODO: Unit test.
   public void performPriceTargetChecks() throws ParseException, IOException, MessagingException {
     HeartBeatChecker.logHeartBeat(getClass());

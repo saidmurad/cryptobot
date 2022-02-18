@@ -44,7 +44,7 @@ public class PriceTenCandlestickRealtimeCheckerTask {
 
   }
 
-  //@Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   public void performPriceTargetChecks() throws ParseException, IOException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();

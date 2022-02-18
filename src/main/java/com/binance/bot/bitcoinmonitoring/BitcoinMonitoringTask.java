@@ -53,7 +53,7 @@ public class BitcoinMonitoringTask {
 
   private List<Double> lastFourCandlestickPrices = new ArrayList<>();
 
-  @Scheduled(fixedRate = 900000)
+  @Scheduled(fixedDelay = 900000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws ParseException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 5, null, null);

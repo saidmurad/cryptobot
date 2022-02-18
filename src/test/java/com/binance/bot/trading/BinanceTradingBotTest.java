@@ -215,6 +215,24 @@ public class BinanceTradingBotTest {
   }
 
   @Test
+  public void lotSizeMapReturnsNull_doesNothing() throws ParseException {
+    setUsdtBalance(120.0);
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(null);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
   public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Hourly_doesntPlaceTrade() throws ParseException {
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -542,7 +560,7 @@ public class BinanceTradingBotTest {
     assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
     assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
-    assertThat(buyOrder.getQuantity()).isEqualTo("0.0027"); // Equivalent of $10.52 = 0.00263 rounded up after adjusted for stop loss notional.
+    assertThat(buyOrder.getQuantity()).isEqualTo("0.0028"); // Equivalent of $10.52 = 0.00263 rounded up after adjusted for stop loss notional.
   }
 
   @Test

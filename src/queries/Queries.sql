@@ -35,19 +35,19 @@ ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55'
 662
 
 In terms of meeting their price targets the patterns behave WORSE than CHANCE but not if making use of the Invalidation signal:
-select TimeFrame, sum(s) from
-(select TimeFrame, Sum(ProfitPotentialPercent) as s from ChartPatternSignal where ProfitPotentialPercent>0
+select TimeFrame, avg(s) from
+(select TimeFrame, avg(ProfitPotentialPercent) as s from ChartPatternSignal where ProfitPotentialPercent>0
 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
 and DateTime(TimeOfSignalInvalidation)>=DateTime(PriceTargetMetTime) and IsPriceTargetMet=1
 group by TimeFrame
 UNION ALL
-select TimeFrame,Sum(ProfitPercentAtTimeOfSignalInvalidation) as s from ChartPatternSignal where
+select TimeFrame,avg(ProfitPercentAtTimeOfSignalInvalidation) as s from ChartPatternSignal where
 ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
 and DateTime(TimeOfSignalInvalidation)<DateTime(PriceTargetMetTime)
  and IsPriceTargetMet=1
  group by TimeFrame
 UNION ALL
-select TimeFrame,Sum(ProfitPercentAtTimeOfSignalInvalidation) as s from ChartPatternSignal where
+select TimeFrame,avg(ProfitPercentAtTimeOfSignalInvalidation) as s from ChartPatternSignal where
 ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
  and IsPriceTargetMet=0
 group by TimeFrame)
@@ -88,6 +88,28 @@ ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55'
  and IsPriceTargetMet=0))
  group by Date(TimeOfSignal), HourOfDay, TimeFrame, TradeType
  order by Date(TimeOfSignal), HourOfDay, TimeFrame, TradeType;
+
+Sum of averages by timeframe from the above query :
+
+select TimeFrame, Sum(avgProfitPercent) as sumAvg
+from (
+select Date(TimeOfSignal), HourOfDay, TimeFrame, TradeType, count(0) as NumTrades, Avg (s) as avgProfitPercent, Sum(s) as sumProfitPercents from (
+select TimeOfSignal, cast(24*(julianDay(TimeOfSignal)-julianDay(strftime('%Y-%m-%d 00:00:00', TimeOfSignal))) as Integer)
+                             as HourOfDay, TimeFrame, TradeType, s from (
+select TimeOfSignal as TimeOfSignal, TimeFrame, TradeType, ProfitPotentialPercent as s from ChartPatternSignal where ProfitPotentialPercent>0
+and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+and DateTime(TimeOfSignalInvalidation)>=DateTime(PriceTargetMetTime) and IsPriceTargetMet=1
+UNION ALL
+select TimeOfSignal as TimeOfSignal, TimeFrame, TradeType, ProfitPercentAtTimeOfSignalInvalidation as s from ChartPatternSignal where
+ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+and DateTime(TimeOfSignalInvalidation)<DateTime(PriceTargetMetTime)
+ and IsPriceTargetMet=1
+UNION ALL
+select TimeOfSignal as TimeOfSignal,TimeFrame,  TradeType, ProfitPercentAtTimeOfSignalInvalidation as s from ChartPatternSignal where
+ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+ and IsPriceTargetMet=0))
+ group by Date(TimeOfSignal), HourOfDay, TimeFrame, TradeType)
+ group by TimeFrame;
 
 Worst output was these rows:
 2022-02-10|13|FIFTEEN_MINUTES|BUY|6|-1.53830541745894|-9.22983250475363
@@ -182,21 +204,22 @@ select sum(-5) as s from ChartPatternSignal where IsPriceTargetMet=0 and MaxLoss
 
 UNION ALLed overall with 5% stop loss
 
-select sum(s) from (select sum(ProfitPotentialPercent) as s from ChartPatternSignal
+select Avg(s) from (
+select Avg(ProfitPotentialPercent) as s from ChartPatternSignal
 where IsPriceTargetMet=1 and ProfitPotentialPercent>0 and MaxLossPercent<5
 UNION ALL
-select sum(-5) as s from ChartPatternSignal
+select Avg(-5) as s from ChartPatternSignal
 where IsPriceTargetMet=1 and MaxLossPercent>5 and ProfitPotentialPercent>0
 UNION ALL
-select sum(ProfitPercentAtSignalTargetTime) as s from ChartPatternSignal
+select Avg(ProfitPercentAtSignalTargetTime) as s from ChartPatternSignal
 where IsPriceTargetMet=0 and MaxLossPercent<5 and ProfitPotentialPercent>0
 UNION ALL
-select sum(-5) as s from ChartPatternSignal
+select Avg(-5) as s from ChartPatternSignal
 where IsPriceTargetMet=0 and MaxLossPercent>5 and ProfitPotentialPercent>0);
 -306
 
 UNION ALLed overall with 8% stop loss
-select sum(s) from (select sum(ProfitPotentialPercent) as s from ChartPatternSignal
+select sum(s) from (select s(ProfitPotentialPercent) as s from ChartPatternSignal
 where ProfitPotentialPercent>0 and IsPriceTargetMet=1 and MaxLossPercent<8
 UNION ALL
 select sum(-8) as s from ChartPatternSignal
@@ -373,3 +396,32 @@ select TimeFrame, (JulianDay(TimeOfSignalInvalidation) - JulianDay(TimeOfSignal)
 from ChartPatternSignal
 where Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55') and TimeOfSignalInvalidation is not null
 order by TimeFrame, (JulianDay(TimeOfSignalInvalidation) - JulianDay(TimeOfSignal)) * 24;
+
+Average time taken for Altfin signal invalidation to occur by Time frame.
+
+select TimeFrame, IsPriceTargetMet, Avg(24 * 60 * (JulianDay(TimeOfSignalInvalidation) - JulianDay(TimeOfSignal)))
+from ChartPatternSignal
+where Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+group by IsPriceTargetMet, TimeFrame;
+
+DAY|1773.53731339547
+FIFTEEN_MINUTES|75.3589550387774
+FOUR_HOURS|731.20422927187
+HOUR|224.000895765045
+
+
+Average profit percents by timeframe while using invalidation signals from altfins:
+select TimeFrame, Count(0) as NumTrades, Avg(s) from
+(select TimeFrame, ProfitPotentialPercent as s from ChartPatternSignal where ProfitPotentialPercent>0
+and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+and DateTime(TimeOfSignalInvalidation)>=DateTime(PriceTargetMetTime) and IsPriceTargetMet=1
+UNION ALL
+select TimeFrame, ProfitPercentAtTimeOfSignalInvalidation as s from ChartPatternSignal where
+ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+and DateTime(TimeOfSignalInvalidation)<DateTime(PriceTargetMetTime)
+ and IsPriceTargetMet=1
+UNION ALL
+select TimeFrame, ProfitPercentAtTimeOfSignalInvalidation as s from ChartPatternSignal where
+ProfitPotentialPercent>0 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')
+ and IsPriceTargetMet=0)
+ group by TimeFrame;

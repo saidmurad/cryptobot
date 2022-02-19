@@ -1,6 +1,8 @@
 package com.binance.bot;
 
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
+import com.binance.bot.onetimetasks.ProfitPercentageWithMoneyReuseCalculation;
+import com.binance.bot.signalsuccessfailure.MarketPriceStream;
 import com.binance.bot.testing.CancelOrders;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -15,12 +17,14 @@ import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client"})
 @Configuration
-@EnableScheduling
+//@EnableScheduling
 public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
-	@Autowired private CancelOrders cancelOrders;
+	//@Autowired private CancelOrders cancelOrders;
+	@Autowired private MarketPriceStream marketPriceStream;
+	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
 
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
@@ -28,8 +32,10 @@ public class BinancebotApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException {
-		cancelOrders.cancelOrders();
-		executeExitPositions.perform();
+		calculation.calculate();
+		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
+		//cancelOrders.cancelOrders();
+		//TODO: remove.executeExitPositions.perform();
 	}
 }
 

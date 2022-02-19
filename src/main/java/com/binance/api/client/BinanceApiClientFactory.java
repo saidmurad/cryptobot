@@ -24,10 +24,16 @@ public class BinanceApiClientFactory {
    * Secret.B
    */
   private String apiSecret;
+  @Value("${margin_acct_api_key}")
+  private String marginAcctApiKey = "JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";
+      @Value("${margin_acct_api_secret}")
+  private String marginAcctApiSecret="LZdi5SFRq2p1gWeDaTP7uh4eumkI91h1Oc4lcoykGBL5KBBtysP8O0sUZmMcX1h8";
   private String futuresApiKey = "87314199199403b9416250d3105716317a7973bc5a1ae21e9fe10ba45d542abf";
   private String futuresApiSecret = "8c206e8e8f1fdd8b1183c604ba26cbd7de81cd1dbb812d6907e6b091c0e31247";
   private boolean useTestnet = true;
   private static final String FUTURES_TESTNET_URL = "https://testnet.binancefuture.com";
+
+  public BinanceApiClientFactory() {}
 
   @Autowired
   public BinanceApiClientFactory(@Value("${use_testnet}") boolean useTestnet, @Value("${api_key}") String apiKey, @Value("${api_secret}") String apiSecret) {
@@ -119,14 +125,14 @@ public class BinanceApiClientFactory {
    * Creates a new asynchronous/non-blocking Margin REST client.
    */
   public BinanceApiAsyncMarginRestClient newAsyncMarginRestClient() {
-    return new BinanceApiAsyncMarginRestClientImpl(apiKey, apiSecret);
+    return new BinanceApiAsyncMarginRestClientImpl(marginAcctApiKey, marginAcctApiSecret);
   }
 
   /**
    * Creates a new synchronous/blocking Margin REST client.
    */
   public BinanceApiMarginRestClient newMarginRestClient() {
-    return new BinanceApiMarginRestClientImpl(apiKey, apiSecret);
+    return new BinanceApiMarginRestClientImpl(marginAcctApiKey, marginAcctApiSecret);
   }
 
   /**

@@ -40,7 +40,9 @@ public class MarketPriceStream {
   }
 
   public void removeSymbol(String symbol) throws IOException {
-    coinPairs.remove(symbol);
+    if (!symbol.equals("BTCUSDT")) {
+      coinPairs.remove(symbol);
+    }
     restartStream();
   }
 

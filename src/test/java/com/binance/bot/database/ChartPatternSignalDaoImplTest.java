@@ -848,7 +848,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(chartPatternSignal.maxLoss()).isEqualTo(0.0);
     assertThat(chartPatternSignal.maxLossPercent()).isEqualTo(0.0);
     assertThat(chartPatternSignal.maxLossTime()).isNull();
-    assertThat(chartPatternSignal.isPriceTargetMet()).isFalse();
+    assertThat(chartPatternSignal.isPriceTargetMet()).isNull();
     assertThat(chartPatternSignal.priceTargetMetTime()).isNull();
   }
 

@@ -13,7 +13,7 @@ import java.util.TimeZone;
 public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
-  ChartPatternSignalMapper() {
+  public ChartPatternSignalMapper() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -59,7 +59,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setMaxLoss(rs.getDouble("MaxLoss"))
           .setMaxLossPercent(rs.getDouble("MaxLossPercent"))
           .setMaxLossTime(rs.getString("MaxLossTime") != null? dateFormat.parse(rs.getString("MaxLossTime")): null)
-          .setIsPriceTargetMet(rs.getInt("IsPriceTargetMet") == 1)
+          .setIsPriceTargetMet(rs.getString("IsPriceTargetMet") != null? rs.getInt("IsPriceTargetMet") == 1 : null)
           .setPriceTargetMetTime(rs.getString("PriceTargetMetTime") != null? dateFormat.parse(rs.getString("PriceTargetMetTime")): null);
       if (rs.getString("entryOrderId") != null) {
         chartPatternSignalBuilder.setEntryOrder(

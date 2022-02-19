@@ -38,4 +38,7 @@ alter statements pending:
 isInsertedLate no longer used.
 2. priceAtTimeOfSignalReal is no longe rused as the entery marekt order will give that price.
 2. exit columns for stop loss replace previous limit order column ExitLimitOrderId, not used now. need to drop unused cols for limit exit.
-
+alter table ChartPatternSignal add column ExitStopLossOrderId INTEGER;
+alter table ChartPatternSignal add column ExitStopLossOrderExecutedQty REAL;
+alter table ChartPatternSignal add column ExitStopLossAvgPrice REAL;
+alter table ChartPatternSignal add column ExitStopLossOrderStatus TEXT;

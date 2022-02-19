@@ -1,17 +1,16 @@
 package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
-import com.binance.api.client.domain.account.Account;
-import com.binance.api.client.domain.account.AssetBalance;
-import com.binance.api.client.domain.account.NewOrder;
-import com.binance.api.client.domain.account.NewOrderResponse;
+import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -48,9 +47,12 @@ public class BinanceTradingBotTest {
   @Mock
   BinanceApiRestClient mockBinanceApiRestClient;
   @Mock
+  BinanceApiMarginRestClient mockBinanceApiMarginRestClient;
+  @Mock
   ChartPatternSignalDaoImpl mockDao;
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
+  @Mock private BookTickerPrices mockBookTickerPrices;
   @Captor
   ArgumentCaptor<NewOrder> orderCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
@@ -59,10 +61,11 @@ public class BinanceTradingBotTest {
   @Before
   public void setUp() {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
+    when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     TickerPrice tickerPrice = new TickerPrice();
     tickerPrice.setPrice("4000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
-    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao);
+    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao, mockBookTickerPrices);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     binanceTradingBot.perTradeAmount = 20.0;
@@ -469,12 +472,23 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void insufficientUSDTInAccount_doesNothing() throws ParseException {
+  public void insufficientUSDTInAccount_BuyTrade_doesNothing() throws ParseException {
     binanceTradingBot.perTradeAmount = 20.0;
     setUsdtBalance(19.5);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
 
+    binanceTradingBot.placeTrade(getChartPatternSignal().build());
+
+    verify(mockBinanceApiRestClient, never()).newOrder(any());
+    verifyNoInteractions(mockDao);
+  }
+
+  @Test
+  public void marginThreshold_SellTrade_doesNothing() throws ParseException {
+    MarginAccount marginAccount = new MarginAccount();
+    marginAccount.setMarginLevel("2.0");
+    when(mockBinanceApiMarginRestClient.getAccount()).thenReturn(marginAccount);
     binanceTradingBot.placeTrade(getChartPatternSignal().build());
 
     verify(mockBinanceApiRestClient, never()).newOrder(any());

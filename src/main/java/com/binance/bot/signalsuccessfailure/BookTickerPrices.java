@@ -21,12 +21,12 @@ public class BookTickerPrices {
   }
 
   @AutoValue
-  abstract static class BookTicker {
-    abstract double bestAsk();
+  public abstract static class BookTicker {
+    public abstract double bestAsk();
 
-    abstract double bestBid();
+    public abstract double bestBid();
 
-    static BookTicker create(double bestAsk, double bestBid) {
+    public static BookTicker create(double bestAsk, double bestBid) {
       return new AutoValue_BookTickerPrices_BookTicker(bestAsk, bestBid);
     }
   }

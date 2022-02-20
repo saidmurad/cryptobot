@@ -63,8 +63,29 @@ public class BitcoinMonitoringTask {
   boolean isFirstTimeHourlyTimeframe = true;
   boolean isFirstTimeFourHourlyTimeframe = true;
 
-  private void backFill(TimeFrame timeFrame, Date startTimeToBackfillFrom) {
+  public void backFill() throws ParseException {
+    Date startDate = df.parse("2022-01-11 00:00");
+    backFill(TimeFrame.FIFTEEN_MINUTES, CandlestickInterval.FIFTEEN_MINUTES, startDate, 1.5);
+    backFill(TimeFrame.HOUR, CandlestickInterval.HOURLY, startDate, 1.5);
+    backFill(TimeFrame.FOUR_HOURS, CandlestickInterval.FOUR_HOURLY, startDate, 5.5);
+  }
 
+  private void backFill(TimeFrame timeFrame, CandlestickInterval candlestickTimeFrame, Date startTimeToBackfillFrom,
+                        double thresholdPercent) throws ParseException {
+    Date startTime = startTimeToBackfillFrom;
+    boolean firstIteration = true;
+    while (true) {
+      List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+          "BTCUSDT", candlestickTimeFrame, 10, startTime.getTime(), null);
+      Candlestick lastCandlestick = candlesticks.get(candlesticks.size() - 1);
+      if (lastCandlestick.getCloseTime() > System.currentTimeMillis()) {
+        break;
+      }
+      TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, thresholdPercent);
+      updateBitcoinPrices(timeFrame, candlesticks, firstIteration, overdoneTradeType);
+      firstIteration = false;
+      startTime = new Date(lastCandlestick.getCloseTime() + 1);
+    }
   }
 
   @Scheduled(fixedRate = 900000, initialDelayString = "${timing.initialDelay}")

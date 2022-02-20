@@ -1,5 +1,6 @@
 package com.binance.bot;
 
+import com.binance.bot.bitcoinmonitoring.BitcoinMonitoringTask;
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
 import com.binance.bot.onetimetasks.ProfitPercentageWithMoneyReuseCalculation;
 import com.binance.bot.signalsuccessfailure.MarketPriceStream;
@@ -25,6 +26,7 @@ public class BinancebotApplication implements CommandLineRunner {
 	//@Autowired private CancelOrders cancelOrders;
 	@Autowired private MarketPriceStream marketPriceStream;
 	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
+	@Autowired private BitcoinMonitoringTask bitcoinMonitoringTask;
 
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
@@ -36,6 +38,7 @@ public class BinancebotApplication implements CommandLineRunner {
 		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
 		//cancelOrders.cancelOrders();
 		//TODO: remove.executeExitPositions.perform();
+		bitcoinMonitoringTask.backFill();
 	}
 }
 

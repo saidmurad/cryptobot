@@ -1,5 +1,9 @@
 package com.binance.bot.onetimetasks;
 
+import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.domain.OrderType;
+import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.bot.database.ChartPatternSignalMapper;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import org.slf4j.Logger;
@@ -11,18 +15,35 @@ import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class ProfitPercentageWithMoneyReuseCalculation {
+  private static final double STOP_LOSS_PERCENT = 20;
+  private static final boolean USE_MARGIN = true;
+  private static final double MARGIN_LEVEL_TO_USE = 1.5;
   @Autowired
   private JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  private final BinanceApiRestClient binanceApiRestClient;
   private final static double AMOUNT_PER_TRADE = 10;
-  private static final String QUERY = "select * from ChartPatternSignal where " +
+  /*private static final String QUERY_USING_ALTFINS_INVALIDATION = "select * from ChartPatternSignal
+  where ProfitPotentialPercent > 0" +
       "DateTime(TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
+      "order by TimeOfSignal";*/
+  private static final String QUERY = "select * from ChartPatternSignal " +
+      // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
+      // stop loss alone but not for whether profit met, better filter it out.
+      "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null " +
       "order by TimeOfSignal";
-  public ProfitPercentageWithMoneyReuseCalculation() {
+  private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
+  @Autowired
+  public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory) {
+    binanceApiRestClient = binanceApiClientFactory.newRestClient();
+    binanceApiRestClient.getExchangeInfo().getSymbols().forEach(symbolInfo -> {
+      symbolAndIsMarginTradingAllowed.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());
+    });
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -44,8 +65,24 @@ public class ProfitPercentageWithMoneyReuseCalculation {
 
   public void calculate() {
     List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(QUERY, new ChartPatternSignalMapper());
+    int origCount = chartPatternSignals.size();
+    if (USE_MARGIN) {
+      List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal ->
+          symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(Collectors.toList());
+      List<ChartPatternSignal> chartPatternSignalsFilteredOut = chartPatternSignals.stream().filter(chartPatternSignal ->
+          !symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(Collectors.toList());
+      Set<String> filteredSymbols = new HashSet<>();
+      chartPatternSignalsFilteredOut.forEach(chartPatternSignal -> {
+        filteredSymbols.add(chartPatternSignal.coinPair());
+      });
+      logger.info("Filtered out " + filteredSymbols.size() + " symbols not supported for margin trading.");
+      for (String symbol: filteredSymbols) {
+        logger.info(symbol);
+      }
+      chartPatternSignals = chartPatternSignalsFiltered;
+    }
 
-    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = getAmountsReleaseByDateCalendar(chartPatternSignals);
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
 
     eventDateIterator = amountsReleasedByDate.entrySet().iterator();
     nextEvent = eventDateIterator.next();
@@ -56,7 +93,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         coffer -= AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
         printWallet("Entering trade reusing from coffer", chartPatternSignal.timeOfSignal());
-      } else if ((coffer + lockedInTrades + AMOUNT_PER_TRADE) / (borrowed + AMOUNT_PER_TRADE) > 1.5) {
+      } else if (USE_MARGIN && (coffer + lockedInTrades + AMOUNT_PER_TRADE) / (borrowed + AMOUNT_PER_TRADE) > MARGIN_LEVEL_TO_USE) {
         borrowed += AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
         printWallet("Entering trade with borrowed money", chartPatternSignal.timeOfSignal());
@@ -75,6 +112,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         chartPatternList.add(chartPatternSignal);
       }
     }
+    // null is passed to process event dates calendar to finish.`
     processTradeExitEventsUntilGivenDate(null);
     printWallet("The end", new Date());
     dumpStateOfLockedChartPatterns();
@@ -102,7 +140,8 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       coffer += nextEvent.getValue().getSecond();
       lockedInTrades -= nextEvent.getValue().getFirst() * AMOUNT_PER_TRADE;
       numTradesLive -= nextEvent.getValue().getFirst();
-      logger.info(String.format("Releasing %f from %d trades.", nextEvent.getValue().getSecond(), nextEvent.getValue().getFirst()));
+      logger.info(String.format("Releasing %f from %d trades for event date %s.",
+          nextEvent.getValue().getSecond(), nextEvent.getValue().getFirst(), nextEvent.getKey()));
       if (eventDateIterator.hasNext()) {
         nextEvent = eventDateIterator.next();
       } else {
@@ -157,4 +196,38 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     }
     return amountsReleasedByDate;
   }
+
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Date tradeExitTime;
+      double amountReleasedFromTheTrade;
+      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+      if (chartPatternSignal.isPriceTargetMet() && chartPatternSignal.maxLossPercent() < STOP_LOSS_PERCENT) {
+        tradeExitTime = chartPatternSignal.priceTargetMetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPotentialPercent() / 100;
+      } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.maxLossPercent() < STOP_LOSS_PERCENT) {
+        tradeExitTime = chartPatternSignal.timeOfSignalInvalidation();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
+      } else if (chartPatternSignal.maxLossPercent() >= STOP_LOSS_PERCENT) {
+        tradeExitTime = chartPatternSignal.maxLossTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            -STOP_LOSS_PERCENT / 100;
+      } else {
+        // chartPatternSignal.isPriceTargetMet() == null
+        continue;
+      }
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
+      }
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+    }
+    return amountsReleasedByDate;
+}
 }

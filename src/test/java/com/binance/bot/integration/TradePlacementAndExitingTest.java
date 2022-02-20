@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.market.Candlestick;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -88,7 +89,7 @@ public class TradePlacementAndExitingTest {
   }
 
   @Test
-  public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException {
+  public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     binanceTradingBot.placeTrade(chartPatternSignal);

@@ -8,6 +8,7 @@ import com.binance.api.client.domain.account.request.*;
 import com.binance.api.client.domain.general.Asset;
 import com.binance.api.client.domain.general.ExchangeInfo;
 import com.binance.api.client.domain.market.*;
+import com.binance.api.client.exception.BinanceApiException;
 import retrofit2.Call;
 
 import java.util.List;
@@ -30,22 +31,22 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	// General endpoints
 
 	@Override
-	public void ping() {
+	public void ping() throws BinanceApiException {
 		executeSync(binanceApiService.ping());
 	}
 
 	@Override
-	public Long getServerTime() {
+	public Long getServerTime() throws BinanceApiException {
 		return executeSync(binanceApiService.getServerTime()).getServerTime();
 	}
 
 	@Override
-	public ExchangeInfo getExchangeInfo() {
+	public ExchangeInfo getExchangeInfo() throws BinanceApiException {
 		return executeSync(binanceApiService.getExchangeInfo());
 	}
 
 	@Override
-	public List<Asset> getAllAssets() {
+	public List<Asset> getAllAssets() throws BinanceApiException {
 		return executeSync(binanceApiService
 				.getAllAssets(BinanceApiConfig.getAssetInfoApiBaseUrl() + "assetWithdraw/getAllAsset.html"));
 	}
@@ -53,33 +54,33 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	// Market Data endpoints
 
 	@Override
-	public OrderBook getOrderBook(String symbol, Integer limit) {
+	public OrderBook getOrderBook(String symbol, Integer limit) throws BinanceApiException {
 		return executeSync(binanceApiService.getOrderBook(symbol, limit));
 	}
 
 	@Override
-	public List<TradeHistoryItem> getTrades(String symbol, Integer limit) {
+	public List<TradeHistoryItem> getTrades(String symbol, Integer limit) throws BinanceApiException {
 		return executeSync(binanceApiService.getTrades(symbol, limit));
 	}
 
 	@Override
-	public List<TradeHistoryItem> getHistoricalTrades(String symbol, Integer limit, Long fromId) {
+	public List<TradeHistoryItem> getHistoricalTrades(String symbol, Integer limit, Long fromId) throws BinanceApiException {
 		return executeSync(binanceApiService.getHistoricalTrades(symbol, limit, fromId));
 	}
 
 	@Override
-	public List<AggTrade> getAggTrades(String symbol, String fromId, Integer limit, Long startTime, Long endTime) {
+	public List<AggTrade> getAggTrades(String symbol, String fromId, Integer limit, Long startTime, Long endTime) throws BinanceApiException {
 		return executeSync(binanceApiService.getAggTrades(symbol, fromId, limit, startTime, endTime));
 	}
 
 	@Override
-	public List<AggTrade> getAggTrades(String symbol) {
+	public List<AggTrade> getAggTrades(String symbol) throws BinanceApiException {
 		return getAggTrades(symbol, null, null, null, null);
 	}
 
 	@Override
 	public List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval, Integer limit,
-			Long startTime, Long endTime) {
+			Long startTime, Long endTime) throws BinanceApiException {
 		return executeSync(
 				binanceApiService.getCandlestickBars(symbol, interval.getIntervalId(), limit, startTime, endTime));
 	}
@@ -90,32 +91,32 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public TickerStatistics get24HrPriceStatistics(String symbol) {
+	public TickerStatistics get24HrPriceStatistics(String symbol) throws BinanceApiException {
 		return executeSync(binanceApiService.get24HrPriceStatistics(symbol));
 	}
 
 	@Override
-	public List<TickerStatistics> getAll24HrPriceStatistics() {
+	public List<TickerStatistics> getAll24HrPriceStatistics() throws BinanceApiException {
 		return executeSync(binanceApiService.getAll24HrPriceStatistics());
 	}
 
 	@Override
-	public TickerPrice getPrice(String symbol) {
+	public TickerPrice getPrice(String symbol) throws BinanceApiException {
 		return executeSync(binanceApiService.getLatestPrice(symbol));
 	}
 
 	@Override
-	public List<TickerPrice> getAllPrices() {
+	public List<TickerPrice> getAllPrices() throws BinanceApiException {
 		return executeSync(binanceApiService.getLatestPrices());
 	}
 
 	@Override
-	public List<BookTicker> getBookTickers() {
+	public List<BookTicker> getBookTickers() throws BinanceApiException {
 		return executeSync(binanceApiService.getBookTickers());
 	}
 
 	@Override
-	public NewOrderResponse newOrder(NewOrder order) {
+	public NewOrderResponse newOrder(NewOrder order) throws BinanceApiException {
 		final Call<NewOrderResponse> call;
 		if (order.getQuoteOrderQty() == null) {
 			call = binanceApiService.newOrder(order.getSymbol(), order.getSide(), order.getType(),
@@ -132,7 +133,7 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public void newOrderTest(NewOrder order) {
+	public void newOrderTest(NewOrder order) throws BinanceApiException {
 		executeSync(binanceApiService.newOrderTest(order.getSymbol(), order.getSide(), order.getType(),
 				order.getTimeInForce(), order.getQuantity(), order.getPrice(), order.getNewClientOrderId(),
 				order.getStopPrice(), order.getIcebergQty(), order.getNewOrderRespType(), order.getRecvWindow(),
@@ -142,14 +143,14 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	// Account endpoints
 
 	@Override
-	public Order getOrderStatus(OrderStatusRequest orderStatusRequest) {
+	public Order getOrderStatus(OrderStatusRequest orderStatusRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.getOrderStatus(orderStatusRequest.getSymbol(),
 				orderStatusRequest.getOrderId(), orderStatusRequest.getOrigClientOrderId(),
 				orderStatusRequest.getRecvWindow(), orderStatusRequest.getTimestamp()));
 	}
 
 	@Override
-	public CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) {
+	public CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) throws BinanceApiException {
 		return executeSync(
 				binanceApiService.cancelOrder(cancelOrderRequest.getSymbol(), cancelOrderRequest.getOrderId(),
 						cancelOrderRequest.getOrigClientOrderId(), cancelOrderRequest.getNewClientOrderId(),
@@ -157,19 +158,19 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public List<Order> getOpenOrders(OrderRequest orderRequest) {
+	public List<Order> getOpenOrders(OrderRequest orderRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.getOpenOrders(orderRequest.getSymbol(), orderRequest.getRecvWindow(),
 				orderRequest.getTimestamp()));
 	}
 
 	@Override
-	public List<Order> getAllOrders(AllOrdersRequest orderRequest) {
+	public List<Order> getAllOrders(AllOrdersRequest orderRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.getAllOrders(orderRequest.getSymbol(), orderRequest.getOrderId(),
 				orderRequest.getLimit(), orderRequest.getRecvWindow(), orderRequest.getTimestamp()));
 	}
 
 	@Override
-	public NewOCOResponse newOCO(NewOCO oco) {
+	public NewOCOResponse newOCO(NewOCO oco) throws BinanceApiException {
 		return executeSync(binanceApiService.newOCO(oco.getSymbol(), oco.getListClientOrderId(), oco.getSide(),
 				oco.getQuantity(), oco.getLimitClientOrderId(), oco.getPrice(), oco.getLimitIcebergQty(),
 				oco.getStopClientOrderId(), oco.getStopPrice(), oco.getStopLimitPrice(), oco.getStopIcebergQty(),
@@ -177,87 +178,87 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	}
 
 	@Override
-	public CancelOrderListResponse cancelOrderList(CancelOrderListRequest cancelOrderListRequest) {
+	public CancelOrderListResponse cancelOrderList(CancelOrderListRequest cancelOrderListRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.cancelOrderList(cancelOrderListRequest.getSymbol(), cancelOrderListRequest.getOrderListId(),
 				cancelOrderListRequest.getListClientOrderId(), cancelOrderListRequest.getNewClientOrderId(),
 				cancelOrderListRequest.getRecvWindow(), cancelOrderListRequest.getTimestamp()));
 	}
 
 	@Override
-	public OrderList getOrderListStatus(OrderListStatusRequest orderListStatusRequest) {
+	public OrderList getOrderListStatus(OrderListStatusRequest orderListStatusRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.getOrderListStatus(orderListStatusRequest.getOrderListId(), orderListStatusRequest.getOrigClientOrderId(),
 				orderListStatusRequest.getRecvWindow(), orderListStatusRequest.getTimestamp()));
 	}
 
 	@Override
-	public List<OrderList> getAllOrderList(AllOrderListRequest allOrderListRequest) {
+	public List<OrderList> getAllOrderList(AllOrderListRequest allOrderListRequest) throws BinanceApiException {
 		return executeSync(binanceApiService.getAllOrderList(allOrderListRequest.getFromId(), allOrderListRequest.getStartTime(),
 				allOrderListRequest.getEndTime(), allOrderListRequest.getLimit(), allOrderListRequest.getRecvWindow(), allOrderListRequest.getTimestamp()));
 	}
 
 	@Override
-	public Account getAccount(Long recvWindow, Long timestamp) {
+	public Account getAccount(Long recvWindow, Long timestamp) throws BinanceApiException {
 		return executeSync(binanceApiService.getAccount(recvWindow, timestamp));
 	}
 
 	@Override
-	public Account getAccount() {
+	public Account getAccount() throws BinanceApiException {
 		return getAccount(BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, System.currentTimeMillis());
 	}
 
 	@Override
-	public List<Trade> getMyTrades(String symbol, Integer limit, Long fromId, Long recvWindow, Long timestamp) {
+	public List<Trade> getMyTrades(String symbol, Integer limit, Long fromId, Long recvWindow, Long timestamp) throws BinanceApiException {
 		return executeSync(binanceApiService.getMyTrades(symbol, limit, fromId, recvWindow, timestamp));
 	}
 
 	@Override
-	public List<Trade> getMyTrades(String symbol, Integer limit) {
+	public List<Trade> getMyTrades(String symbol, Integer limit) throws BinanceApiException {
 		return getMyTrades(symbol, limit, null, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis());
 	}
 
 	@Override
-	public List<Trade> getMyTrades(String symbol) {
+	public List<Trade> getMyTrades(String symbol) throws BinanceApiException {
 		return getMyTrades(symbol, null, null, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis());
 	}
 
 	@Override
-	public List<Trade> getMyTrades(String symbol, Long fromId) {
+	public List<Trade> getMyTrades(String symbol, Long fromId) throws BinanceApiException {
 		return getMyTrades(symbol, null, fromId, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis());
 	}
 
 	@Override
-	public WithdrawResult withdraw(String asset, String address, String amount, String name, String addressTag) {
+	public WithdrawResult withdraw(String asset, String address, String amount, String name, String addressTag) throws BinanceApiException {
 		return executeSync(binanceApiService.withdraw(asset, address, amount, name, addressTag,
 				BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, System.currentTimeMillis()));
 	}
 
 	@Override
-	public DustTransferResponse dustTranfer(List<String> asset) {
+	public DustTransferResponse dustTranfer(List<String> asset) throws BinanceApiException {
 		return executeSync(binanceApiService.dustTransfer(asset, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, System.currentTimeMillis()));
 	}
 
 	@Override
-	public DepositHistory getDepositHistory(String asset) {
+	public DepositHistory getDepositHistory(String asset) throws BinanceApiException {
 		return executeSync(binanceApiService.getDepositHistory(asset, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis()));
 	}
 
 	@Override
-	public WithdrawHistory getWithdrawHistory(String asset) {
+	public WithdrawHistory getWithdrawHistory(String asset) throws BinanceApiException {
 		return executeSync(binanceApiService.getWithdrawHistory(asset, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis()));
 	}
 
 	@Override
-	public List<SubAccountTransfer> getSubAccountTransfers() {
+	public List<SubAccountTransfer> getSubAccountTransfers() throws BinanceApiException {
 		return executeSync(binanceApiService.getSubAccountTransfers(System.currentTimeMillis()));
 	}
 
 	@Override
-	public DepositAddress getDepositAddress(String asset) {
+	public DepositAddress getDepositAddress(String asset) throws BinanceApiException {
 		return executeSync(binanceApiService.getDepositAddress(asset, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
 				System.currentTimeMillis()));
 	}
@@ -265,17 +266,17 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 	// User stream endpoints
 
 	@Override
-	public String startUserDataStream() {
+	public String startUserDataStream() throws BinanceApiException {
 		return executeSync(binanceApiService.startUserDataStream()).toString();
 	}
 
 	@Override
-	public void keepAliveUserDataStream(String listenKey) {
+	public void keepAliveUserDataStream(String listenKey) throws BinanceApiException {
 		executeSync(binanceApiService.keepAliveUserDataStream(listenKey));
 	}
 
 	@Override
-	public void closeUserDataStream(String listenKey) {
+	public void closeUserDataStream(String listenKey) throws BinanceApiException {
 		executeSync(binanceApiService.closeAliveUserDataStream(listenKey));
 	}
 }

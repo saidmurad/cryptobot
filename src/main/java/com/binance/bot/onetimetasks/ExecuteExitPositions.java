@@ -2,6 +2,7 @@ package com.binance.bot.onetimetasks;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -50,7 +51,7 @@ public class ExecuteExitPositions {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
   }
 
-  public void perform() throws ParseException, MessagingException {
+  public void perform() throws ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> positionsToExit = new ArrayList<>();
     positionsToExit.addAll(getPositionsToClose(TimeFrame.FIFTEEN_MINUTES, getTradeTypes(fifteenMinuteExitTradeTypes)));
     positionsToExit.addAll(getPositionsToClose(TimeFrame.HOUR, getTradeTypes(hourlyExitTradeTypes)));

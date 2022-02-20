@@ -1,6 +1,7 @@
 package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -45,7 +46,7 @@ public class PriceSignalTargetTimeCheckerLaggingTask extends PriceTargetCheckerL
 
   // TODO: Unit test doesn't exist for this calss as it is a subclass providing only the overrides.
   @Override
-  protected boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double targetTimePrice) throws MessagingException, ParseException {
+  protected boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double targetTimePrice) throws MessagingException, ParseException, BinanceApiException {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, targetTimePrice, TradeExitType.TARGET_TIME_PASSED);
     return dao.setSignalTargetTimePrice(chartPatternSignal, targetTimePrice,
         getProfitPercentAtWithPrice(chartPatternSignal, targetTimePrice));

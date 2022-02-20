@@ -5,7 +5,7 @@ import com.binance.api.client.BinanceApiError;
 /**
  * An exception which can occur while invoking methods of the Binance API.
  */
-public class BinanceApiException extends RuntimeException {
+public class BinanceApiException extends Exception {
 
     private static final long serialVersionUID = 3788669840036201041L;
 /**

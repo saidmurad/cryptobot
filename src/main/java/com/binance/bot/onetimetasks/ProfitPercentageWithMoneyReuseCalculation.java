@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.general.SymbolInfo;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalMapper;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
   @Autowired
-  public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory) {
+  public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory) throws BinanceApiException {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     binanceApiRestClient.getExchangeInfo().getSymbols().forEach(symbolInfo -> {
       symbolAndIsMarginTradingAllowed.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());

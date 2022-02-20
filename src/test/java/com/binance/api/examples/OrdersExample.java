@@ -41,12 +41,8 @@ public class OrdersExample {
     System.out.println(order);
 
     // Canceling an order
-    try {
-      CancelOrderResponse cancelOrderResponse = client.cancelOrder(new CancelOrderRequest("LINKETH", 756762l));
-      System.out.println(cancelOrderResponse);
-    } catch (BinanceApiException e) {
-      System.out.println(e.getError().getMsg());
-    }
+    CancelOrderResponse cancelOrderResponse = client.cancelOrder(new CancelOrderRequest("LINKETH", 756762l));
+    System.out.println(cancelOrderResponse);
 
     // Placing a test LIMIT order
     client.newOrderTest(limitBuy("LINKETH", TimeInForce.GTC, "1000", "0.0001"));

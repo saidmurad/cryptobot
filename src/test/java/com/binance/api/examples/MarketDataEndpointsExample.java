@@ -47,11 +47,6 @@ public class MarketDataEndpointsExample {
     System.out.println(allBookTickers);
 
     // Exception handling
-    try {
-      client.getOrderBook("UNKNOWN", 10);
-    } catch (BinanceApiException e) {
-      System.out.println(e.getError().getCode()); // -1121
-      System.out.println(e.getError().getMsg());  // Invalid symbol
-    }
+    client.getOrderBook("UNKNOWN", 10);
   }
 }

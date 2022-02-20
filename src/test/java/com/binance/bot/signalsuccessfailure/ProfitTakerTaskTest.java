@@ -1,6 +1,7 @@
 package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -45,7 +46,7 @@ public class ProfitTakerTaskTest {
     profitTakerTask = new ProfitTakerTask(dao, bookTickerPrices, marketPriceStream, exitPositionAtMarketPrice);
   }
   @Test
-  public void testPerform_noBookTickerCurrentlyAvailable_doesNthing() throws MessagingException, IOException, ParseException {
+  public void testPerform_noBookTickerCurrentlyAvailable_doesNthing() throws MessagingException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(null);
 
@@ -55,7 +56,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_BUYTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException {
+  public void testPerform_BUYTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(5999, 5998);
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
@@ -71,7 +72,7 @@ public class ProfitTakerTaskTest {
   @Captor ArgumentCaptor<Double> priceArgumentCaptor;
 
   @Test
-  public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException {
+  public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         getChartPatternSignal().build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 5998);
@@ -87,7 +88,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_SELLTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException {
+  public void testPerform_SELLTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         getChartPatternSignal().setTradeType(TradeType.SELL).setPriceTarget(3000).build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(3001, 3001);
@@ -98,7 +99,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_SELLTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException {
+  public void testPerform_SELLTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.SELL).setPriceTarget(3000).build();
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         chartPatternSignal));

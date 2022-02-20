@@ -12,6 +12,7 @@ import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -44,7 +45,7 @@ public class ExitPositionAtMarketPrice {
 
   public void exitPositionIfStillHeld(
       ChartPatternSignal chartPatternSignal, double currMarketPrice, TradeExitType tradeExitType)
-      throws MessagingException, ParseException {
+      throws MessagingException, ParseException, BinanceApiException {
     if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
       return;
     }
@@ -78,7 +79,7 @@ public class ExitPositionAtMarketPrice {
 
   private void exitSpotAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, double currPrice,
                                   TradeExitType tradeExitType)
-      throws ParseException, MessagingException {
+      throws ParseException, MessagingException, BinanceApiException {
     String baseAsset = chartPatternSignal.coinPair().substring(0, chartPatternSignal.coinPair().length() - 4);
     AssetBalance assetBalance = restClient.getAccount().getAssetBalance(baseAsset);
     double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();

@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -29,7 +30,6 @@ public class BitcoinMonitoringTask {
 
   private final BinanceApiRestClient binanceApiRestClient;
   private final ChartPatternSignalDaoImpl dao;
-  private boolean firstTime = true;
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -63,7 +63,7 @@ public class BitcoinMonitoringTask {
   boolean isFirstTimeHourlyTimeframe = true;
   boolean isFirstTimeFourHourlyTimeframe = true;
 
-  public void backFill() throws ParseException {
+  public void backFill() throws ParseException, BinanceApiException {
     Date startDate = df.parse("2022-01-11 00:00");
     backFill(TimeFrame.FIFTEEN_MINUTES, CandlestickInterval.FIFTEEN_MINUTES, startDate, 1.5);
     backFill(TimeFrame.HOUR, CandlestickInterval.HOURLY, startDate, 1.5);
@@ -71,7 +71,7 @@ public class BitcoinMonitoringTask {
   }
 
   private void backFill(TimeFrame timeFrame, CandlestickInterval candlestickTimeFrame, Date startTimeToBackfillFrom,
-                        double thresholdPercent) throws ParseException {
+                        double thresholdPercent) throws ParseException, BinanceApiException {
     Date startTime = startTimeToBackfillFrom;
     boolean firstIteration = true;
     while (true) {
@@ -89,7 +89,7 @@ public class BitcoinMonitoringTask {
   }
 
   @Scheduled(fixedRate = 900000, initialDelayString = "${timing.initialDelay}")
-  public void performFifteenMinuteTimeFrame() throws ParseException {
+  public void performFifteenMinuteTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null);
     // Remove incomplete candlestick. TODO: Unit test.
@@ -120,7 +120,7 @@ public class BitcoinMonitoringTask {
   }
 
   @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
-  public void performHourlyTimeFrame() throws ParseException {
+  public void performHourlyTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null);
     TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, hourlyMovementThresholdPercent);
@@ -132,7 +132,7 @@ public class BitcoinMonitoringTask {
   }
 
   @Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
-  public void performFourHourlyTimeFrame() throws ParseException {
+  public void performFourHourlyTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null);
     TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fourHourlyMovementThresholdPercent);

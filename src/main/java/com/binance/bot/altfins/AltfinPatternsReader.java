@@ -2,6 +2,7 @@ package com.binance.bot.altfins;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
@@ -119,7 +120,7 @@ public class AltfinPatternsReader {
   }
 
   // TODO: Unit test.
-  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException, MessagingException {
+  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException, MessagingException, BinanceApiException {
     patternFromAltfins = makeUnique(patternFromAltfins);
     int origSize = patternFromAltfins.size();
     List<ChartPatternSignal> temp = patternFromAltfins.stream()

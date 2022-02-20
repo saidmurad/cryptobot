@@ -57,7 +57,7 @@ public class UserDataUpdateEventDeserializer extends JsonDeserializer<UserDataUp
     try {
       return mapper.readValue(json, clazz);
     } catch (IOException e) {
-      throw new BinanceApiException(e);
+      throw new RuntimeException(e);
     }
   }
 }

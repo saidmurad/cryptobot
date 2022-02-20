@@ -1,5 +1,6 @@
 package com.binance.bot;
 
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.bitcoinmonitoring.BitcoinMonitoringTask;
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
 import com.binance.bot.onetimetasks.ProfitPercentageWithMoneyReuseCalculation;
@@ -33,7 +34,7 @@ public class BinancebotApplication implements CommandLineRunner {
 	}
 
 	@Override
-	public void run(String... args) throws ParseException, MessagingException, IOException {
+	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException {
 		//calculation.calculate();
 		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
 		//cancelOrders.cancelOrders();

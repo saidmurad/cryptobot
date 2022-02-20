@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.TickerPrice;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.*;
@@ -531,7 +532,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         eq(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS));
   }
 
-  public void testChartPatternSignalsToInvalidate_exitsTradesIfHeld() throws ParseException, MessagingException {
+  public void testChartPatternSignalsToInvalidate_exitsTradesIfHeld() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));

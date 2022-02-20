@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.general.FilterType;
 import com.binance.api.client.domain.general.SymbolStatus;
+import com.binance.api.client.exception.BinanceApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,7 @@ public class SupportedSymbolsInfo {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
   }
 
-  public Set<String> getSupportedSymbols() {
+  public Set<String> getSupportedSymbols() throws BinanceApiException {
     if (!supportedSymbols.isEmpty()) {
       return supportedSymbols;
     }

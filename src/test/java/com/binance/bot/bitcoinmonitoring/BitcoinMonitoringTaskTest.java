@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -49,7 +50,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_firstTimeIteration_fifteenMinutes() throws ParseException {
+  public void updatesDatabase_firstTimeIteration_fifteenMinutes() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeFifteenMinuteTimeframe = true;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -73,7 +74,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_notFirstTimeIteration_fifteenMinutes() throws ParseException {
+  public void updatesDatabase_notFirstTimeIteration_fifteenMinutes() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeFifteenMinuteTimeframe = false;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -97,7 +98,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_firstTimeIteration_hourly() throws ParseException {
+  public void updatesDatabase_firstTimeIteration_hourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeHourlyTimeframe = true;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -121,7 +122,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_notFirstTimeIteration_hourly() throws ParseException {
+  public void updatesDatabase_notFirstTimeIteration_hourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeHourlyTimeframe = false;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -145,7 +146,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_firstTimeIteration_fourHourly() throws ParseException {
+  public void updatesDatabase_firstTimeIteration_fourHourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeFourHourlyTimeframe = true;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -169,7 +170,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void updatesDatabase_notFirstTimeIteration_fourHourly() throws ParseException {
+  public void updatesDatabase_notFirstTimeIteration_fourHourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.isFirstTimeFourHourlyTimeframe = false;
     Double price = 100.0;
     List<Candlestick> candlesticks = new ArrayList<>();
@@ -193,7 +194,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void sellOverdone_in_oneCandlestick() throws ParseException {
+  public void sellOverdone_in_oneCandlestick() throws ParseException, BinanceApiException {
     Candlestick candlestick0 = new Candlestick();
     candlestick0.setOpenTime(1L);
     candlestick0.setCloseTime(2L);
@@ -212,7 +213,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void sellOverdone_in_twoCandlesticks() throws ParseException {
+  public void sellOverdone_in_twoCandlesticks() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("100");
     candlestick1.setClose("99");
@@ -231,7 +232,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void sellOverdone_inTenCandlesticks_butNotYetMeetingPercentageThreshold() throws ParseException {
+  public void sellOverdone_inTenCandlesticks_butNotYetMeetingPercentageThreshold() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = new ArrayList<>();
     Double openPrice = 100.0;
     for (int i = 0; i < 10; i++) {
@@ -252,7 +253,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void fallingStreakNotUnbroken_redGreenWhileLookingBackwards() throws ParseException {
+  public void fallingStreakNotUnbroken_redGreenWhileLookingBackwards() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("100");
     candlestick1.setClose("101");
@@ -273,7 +274,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void buyOverdone_in_oneCandlestick() throws ParseException {
+  public void buyOverdone_in_oneCandlestick() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
     candlestick1.setOpenTime(1L);
@@ -292,7 +293,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void buyOverdone_in_oneCandlestick_hourly() throws ParseException {
+  public void buyOverdone_in_oneCandlestick_hourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.hourlyMovementThresholdPercent = 1.5;
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
@@ -312,7 +313,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void buyOverdone_in_oneCandlestick_fourHourly() throws ParseException {
+  public void buyOverdone_in_oneCandlestick_fourHourly() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.fourHourlyMovementThresholdPercent = 1.5;
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
@@ -332,7 +333,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void buyOverdone_in_twoCandlesticks() throws ParseException {
+  public void buyOverdone_in_twoCandlesticks() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("100");
     candlestick1.setClose("101");
@@ -351,7 +352,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void buyOverdone_inTenCandlesticks_butNotYetMeetingPercentageThreshold() throws ParseException {
+  public void buyOverdone_inTenCandlesticks_butNotYetMeetingPercentageThreshold() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = new ArrayList<>();
     Double openPrice = 100.0;
     for (int i = 0; i < 10; i++) {
@@ -373,7 +374,7 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
-  public void risingStreakNotUnbroken_greenRedWhileLookingBackwards() throws ParseException {
+  public void risingStreakNotUnbroken_greenRedWhileLookingBackwards() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("99.6");
     candlestick1.setClose("98.5");

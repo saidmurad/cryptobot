@@ -3,6 +3,7 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
@@ -123,7 +124,7 @@ public abstract class PriceTargetCheckerLaggingTask {
     }
   }
 
-  protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price) throws MessagingException, ParseException;
+  protected abstract boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double price) throws MessagingException, ParseException, BinanceApiException;
 
   protected abstract void markFailedToGetTargetPrice(ChartPatternSignal chartPatternSignal);
 

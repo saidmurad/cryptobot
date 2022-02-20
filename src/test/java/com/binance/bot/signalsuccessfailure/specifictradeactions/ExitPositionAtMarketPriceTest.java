@@ -9,6 +9,7 @@ import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -55,7 +56,7 @@ public class ExitPositionAtMarketPriceTest {
   private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
   @Test
-  public void exitPositionIfStillHeld_isExitedReturnsNull_doesNothing() throws MessagingException, ParseException {
+  public void exitPositionIfStillHeld_isExitedReturnsNull_doesNothing() throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(null).build();
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
@@ -64,7 +65,7 @@ public class ExitPositionAtMarketPriceTest {
   }
 
   @Test
-  public void exitPositionIfStillHeld_isExitedReturnsTrue_doesNothing() throws MessagingException, ParseException {
+  public void exitPositionIfStillHeld_isExitedReturnsTrue_doesNothing() throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setIsPositionExited(true).build();
 
@@ -80,7 +81,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_stopLossStatusReturnsFILLED_returnsRightAfter()
-      throws MessagingException, ParseException {
+      throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -106,7 +107,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_noPartialStopLossTrade_exitsTradeForFullQty()
-      throws MessagingException, ParseException {
+      throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -156,7 +157,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_insfficientQty_shouldNeverHappen()
-      throws MessagingException, ParseException {
+      throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -195,7 +196,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_partialStopLossTrade_exitsTradeForRemainingQty()
-      throws MessagingException, ParseException {
+      throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))

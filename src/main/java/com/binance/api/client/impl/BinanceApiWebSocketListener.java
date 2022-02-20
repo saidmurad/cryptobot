@@ -40,7 +40,7 @@ public class BinanceApiWebSocketListener<T> extends WebSocketListener {
       T event = objectReader.readValue(text);
       callback.onResponse(event);
     } catch (IOException e) {
-      throw new BinanceApiException(e);
+      throw new RuntimeException(e);
     }
   }
 

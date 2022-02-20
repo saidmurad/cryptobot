@@ -60,7 +60,7 @@ public class ExchangeInfo {
    * @param symbol the symbol to obtain information for (e.g. ETHBTC)
    * @return symbol exchange information
    */
-  public SymbolInfo getSymbolInfo(String symbol) {
+  public SymbolInfo getSymbolInfo(String symbol) throws BinanceApiException {
     return symbols.stream().filter(symbolInfo -> symbolInfo.getSymbol().equals(symbol))
         .findFirst()
         .orElseThrow(() -> new BinanceApiException("Unable to obtain information for symbol " + symbol));

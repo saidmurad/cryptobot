@@ -84,7 +84,7 @@ public class BinanceApiServiceGenerator {
     /**
      * Execute a REST call and block until the response is received.
      */
-    public static <T> T executeSync(Call<T> call) {
+    public static <T> T executeSync(Call<T> call) throws BinanceApiException {
         try {
             Response<T> response = call.execute();
             if (response.isSuccessful()) {

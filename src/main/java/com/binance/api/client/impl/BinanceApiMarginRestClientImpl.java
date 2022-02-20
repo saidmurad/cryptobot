@@ -8,6 +8,7 @@ import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderRequest;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -26,93 +27,93 @@ public class BinanceApiMarginRestClientImpl implements BinanceApiMarginRestClien
     }
 
     @Override
-    public MarginAccount getAccount() {
+    public MarginAccount getAccount() throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.getMarginAccount(BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, timestamp));
     }
 
     @Override
-    public List<Order> getOpenOrders(OrderRequest orderRequest) {
+    public List<Order> getOpenOrders(OrderRequest orderRequest) throws BinanceApiException {
         return executeSync(binanceApiService.getOpenMarginOrders(orderRequest.getSymbol(), orderRequest.getRecvWindow(),
                 orderRequest.getTimestamp()));
     }
 
     @Override
-    public MarginNewOrderResponse newOrder(MarginNewOrder order) {
+    public MarginNewOrderResponse newOrder(MarginNewOrder order) throws BinanceApiException {
         return executeSync(binanceApiService.newMarginOrder(order.getSymbol(), order.getSide(), order.getType(),
                 order.getTimeInForce(), order.getQuantity(), order.getPrice(), order.getNewClientOrderId(), order.getStopPrice(),
                 order.getIcebergQty(), order.getNewOrderRespType(), order.getSideEffectType(), order.getRecvWindow(), order.getTimestamp()));
     }
 
     @Override
-    public CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) {
+    public CancelOrderResponse cancelOrder(CancelOrderRequest cancelOrderRequest) throws BinanceApiException {
         return executeSync(binanceApiService.cancelMarginOrder(cancelOrderRequest.getSymbol(),
                 cancelOrderRequest.getOrderId(), cancelOrderRequest.getOrigClientOrderId(), cancelOrderRequest.getNewClientOrderId(),
                 cancelOrderRequest.getRecvWindow(), cancelOrderRequest.getTimestamp()));
     }
 
     @Override
-    public Order getOrderStatus(OrderStatusRequest orderStatusRequest) {
+    public Order getOrderStatus(OrderStatusRequest orderStatusRequest) throws BinanceApiException {
         return executeSync(binanceApiService.getMarginOrderStatus(orderStatusRequest.getSymbol(),
                 orderStatusRequest.getOrderId(), orderStatusRequest.getOrigClientOrderId(),
                 orderStatusRequest.getRecvWindow(), orderStatusRequest.getTimestamp()));
     }
 
     @Override
-    public List<Trade> getMyTrades(String symbol) {
+    public List<Trade> getMyTrades(String symbol) throws BinanceApiException {
         return executeSync(binanceApiService.getMyTrades(symbol, null, null, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, System.currentTimeMillis()));
     }
 
     // user stream endpoints
 
     @Override
-    public String startUserDataStream() {
+    public String startUserDataStream() throws BinanceApiException {
         return executeSync(binanceApiService.startMarginUserDataStream()).toString();
     }
 
     @Override
-    public void keepAliveUserDataStream(String listenKey) {
+    public void keepAliveUserDataStream(String listenKey) throws BinanceApiException {
         executeSync(binanceApiService.keepAliveMarginUserDataStream(listenKey));
     }
 
     @Override
-    public MarginTransaction transfer(String asset, String amount, TransferType type) {
+    public MarginTransaction transfer(String asset, String amount, TransferType type) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.transfer(asset, amount, type.getValue(), BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, timestamp));
     }
 
     @Override
-    public MarginTransaction borrow(String asset, String amount) {
+    public MarginTransaction borrow(String asset, String amount) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.borrow(asset, amount, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, timestamp));
     }
 
     @Override
-    public LoanQueryResult queryLoan(String asset, String txId) {
+    public LoanQueryResult queryLoan(String asset, String txId) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.queryLoan(asset, txId, timestamp));
     }
 
     @Override
-    public RepayQueryResult queryRepay(String asset, String txId) {
+    public RepayQueryResult queryRepay(String asset, String txId) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.queryRepay(asset, txId, timestamp));
     }
 
     @Override
-    public RepayQueryResult queryRepay(String asset, long startTime) {
+    public RepayQueryResult queryRepay(String asset, long startTime) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.queryRepay(asset, startTime, timestamp));
     }
 
     @Override
-    public MaxBorrowableQueryResult queryMaxBorrowable(String asset) {
+    public MaxBorrowableQueryResult queryMaxBorrowable(String asset) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.queryMaxBorrowable(asset, timestamp));
     }
 
     @Override
-    public MarginTransaction repay(String asset, String amount) {
+    public MarginTransaction repay(String asset, String amount) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.repay(asset, amount, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, timestamp));
     }

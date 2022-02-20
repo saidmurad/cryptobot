@@ -10,14 +10,18 @@ import junit.framework.TestCase;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.sqlite.SQLiteDataSource;
 
 import java.io.File;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -86,6 +90,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "    TradeExitType TEXT,\n" +
       "    CONSTRAINT chartpatternsignal_pk PRIMARY KEY (CoinPair, TimeFrame, TradeType, TimeOfSignal, Attempt)\n" +
       ");";
+  public static final String CREATE_TABLE_STMT_BITCOIN_MONITORING = "create table BitcoinPriceMonitoring(" +
+      "time TEXT not Null, timeFrame TEXT not Null, candleOpenPrice REAL, candleClosePrice REAL, " +
+      "tradeTypeOverdone TEXT," +
+      "Constraint PK Primary Key(time, timeFrame))";
+  final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   /*
   create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);
    */
@@ -95,12 +104,14 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
   @Before
   public void setUp() throws SQLException {
     new File("/home/kannanj/IdeaProjects/binance-java-api/testcryptobot.db").delete();
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     SQLiteDataSource dataSource = new SQLiteDataSource();
     dataSource.setUrl("jdbc:sqlite:testcryptobot.db");
     dao = new ChartPatternSignalDaoImpl();
     dao.setDataSource(dataSource);
     Statement stmt = dataSource.getConnection().createStatement();
     stmt.execute(createTableStmt);
+    stmt.execute(CREATE_TABLE_STMT_BITCOIN_MONITORING);
     stmt.execute("create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, TimeOfSignal Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);");
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100.0000");
@@ -926,5 +937,30 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
 
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
+  }
+
+  public void testInsertBitconPriceMonitoringTradeTypeOverdone() {
+    Date time = new Date();
+    dao.insertOverdoneTradeType(time, TimeFrame.FIFTEEN_MINUTES, TradeType.BUY);
+
+    String ret = dao.jdbcTemplate.queryForObject(String.format("select TradeTypeOverdone from BitcoinPriceMonitoring " +
+        "where Time='%s' " +
+        "and TimeFrame='FIFTEEN_MINUTES'", dateFormat.format(time)), new Object[]{}, (rs, rowNum) -> {
+      return rs.getString("TradeTypeOverdone");
+    });
+    assertThat(ret).isEqualTo("BUY");
+  }
+
+  public void testUpdateBitconPriceMonitoringTradeTypeOverdone_whenRowAlreadyExists() {
+    Date time = new Date();
+    dao.insertOverdoneTradeType(time, TimeFrame.FIFTEEN_MINUTES, TradeType.BUY);
+
+    dao.insertOverdoneTradeType(time, TimeFrame.FIFTEEN_MINUTES, TradeType.SELL);
+    String ret = dao.jdbcTemplate.queryForObject(String.format("select TradeTypeOverdone from BitcoinPriceMonitoring " +
+        "where Time='%s' " +
+        "and TimeFrame='FIFTEEN_MINUTES'", dateFormat.format(time)), new Object[]{}, (rs, rowNum) -> {
+      return rs.getString("TradeTypeOverdone");
+    });
+    assertThat(ret).isEqualTo("SELL");
   }
 }

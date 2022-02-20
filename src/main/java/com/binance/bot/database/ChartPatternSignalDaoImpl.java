@@ -23,7 +23,7 @@ import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 @Repository
 public class ChartPatternSignalDaoImpl {
   @Autowired
-  private JdbcTemplate jdbcTemplate;
+  JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
   ChartPatternSignalDaoImpl() {
@@ -465,5 +465,40 @@ public class ChartPatternSignalDaoImpl {
     } else {
       logger.error("Failed to update Stop Limit Order status to Canceled for chart pattern signal: %s", chartPatternSignal);
     }
+  }
+
+  public void insertOverdoneTradeType(Date date, TimeFrame timeFrame, TradeType tradeTypeOverdone) {
+    boolean rowAlreadyExists = doesBitcoinPriceMonitoringRowAlreadyExist(date, timeFrame);
+    int ret;
+    if (rowAlreadyExists) {
+      ret = jdbcTemplate.update(String.format("update BitcoinPriceMonitoring set tradeTypeOverdone='%s' " +
+          "where Time='%s' and TimeFrame='%s'", tradeTypeOverdone.name(), df.format(date), timeFrame.name()));
+    } else {
+      ret = jdbcTemplate.update(String.format("insert into BitcoinPriceMonitoring(Time, TimeFrame, TradeTypeOverdone) " +
+          "values('%s', '%s', '%s')", df.format(date), timeFrame.name(), tradeTypeOverdone.name()));
+    }
+    String msg = String.format("%s %s BitcoinPriceMonitoring for date '%s', timeframe '%s' and " +
+            "tradeTypeOverdone '%s'",
+        ret == 1? "Done " : "Failed to ",
+        rowAlreadyExists? "update" : "insert", df.format(date), timeFrame.name(),
+        tradeTypeOverdone.name());
+    if (ret == 0) {
+      logger.error(msg);
+    } else {
+      logger.info(msg);
+    }
+  }
+
+  private boolean doesBitcoinPriceMonitoringRowAlreadyExist(Date date, TimeFrame timeFrame) {
+    Integer count = jdbcTemplate.queryForObject(String.format("select count(0) as count from BitcoinPriceMonitoring " +
+        "where Time='%s' and " +
+        "TimeFrame='%s'", df.format(date), timeFrame.name()), new Object[]{}, (rs, rowNum) -> {
+      return rs.getInt("count");
+    });
+    return count == 1;
+  }
+
+  public void updateBitcoinPrice(TimeFrame timeFrame, Long openTime, String open, String close) {
+
   }
 }

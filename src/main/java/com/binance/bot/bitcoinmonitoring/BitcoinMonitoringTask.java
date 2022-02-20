@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,42 +31,89 @@ public class BitcoinMonitoringTask {
   private final ChartPatternSignalDaoImpl dao;
   private boolean firstTime = true;
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
-  @Autowired
-  private JdbcTemplate jdbcTemplate;
+
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final boolean[][] tradingReco = new boolean[4][2];
   public boolean[][] getTradingReco() {
     return tradingReco;
   }
   @Value("${fifteen_minute_movement_threshold_percent}")
-  private double fifteenMinuteMovementThresholdPercent;
+  double fifteenMinuteMovementThresholdPercent;
+  @Value("${hourly_movement_threshold_percent}")
+  double hourlyMovementThresholdPercent;
+  @Value("${four_hourly_movement_threshold_percent}")
+  double fourHourlyMovementThresholdPercent;
+
   @Autowired
   public BitcoinMonitoringTask(BinanceApiClientFactory binanceApiClientFactory,
-                               ChartPatternSignalDaoImpl dao,
-                               JdbcTemplate jdbcTemplate) {
+                               ChartPatternSignalDaoImpl dao) {
     this.binanceApiRestClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
-    this.jdbcTemplate = jdbcTemplate;
   }
 
   private List<Double> lastFourCandlestickPrices = new ArrayList<>();
-  private Map<TimeFrame, TradeType> overdoneTradeType = new HashMap<>();
+  private Map<TimeFrame, TradeType> overdoneTradeTypes = new HashMap<>();
 
-  public
+  public TradeType getTradeTypeOverdone(TimeFrame timeFrame) {
+    return overdoneTradeTypes.get(timeFrame);
+  }
+
+  boolean isFirstTimeFifteenMinuteTimeframe = true;
+  boolean isFirstTimeHourlyTimeframe = true;
+  boolean isFirstTimeFourHourlyTimeframe = true;
+
+  private void backFill(TimeFrame timeFrame, Date startTimeToBackfillFrom) {
+
+  }
+
   @Scheduled(fixedRate = 900000, initialDelayString = "${timing.initialDelay}")
   public void performFifteenMinuteTimeFrame() throws ParseException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null);
-    TradeType tradeTypeToDisallow = getOverdoneTradeType(candlesticks, fifteenMinuteMovementThresholdPercent);
-    /*jdbcTemplate.update("insert into BTC values(?, ?, ?, ?, ?, ?)",
-        df.format(new Date(candlesticks.get(4).getCloseTime())),
-        lastCandlestick,
-        getDiffPercent(oldCandlestick1, lastCandlestick),
-        getDiffPercent(oldCandlestick2, lastCandlestick),
-        getDiffPercent(oldCandlestick3, lastCandlestick),
-        getDiffPercent(oldCandlestick4, lastCandlestick));*/
+    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fifteenMinuteMovementThresholdPercent);
+    overdoneTradeTypes.put(TimeFrame.FIFTEEN_MINUTES, overdoneTradeType);
+    updateBitcoinPrices(TimeFrame.FIFTEEN_MINUTES, candlesticks, isFirstTimeFifteenMinuteTimeframe, overdoneTradeType);
+    isFirstTimeFifteenMinuteTimeframe = false;
+  }
+
+  private void updateBitcoinPrices(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) {
+    int len = candlesticks.size();
+    long currentCandlestickStart = candlesticks.get(len - 1).getCloseTime() + 1;
+    dao.insertOverdoneTradeType(new Date(currentCandlestickStart), timeFrame, overdoneTradeType);
+    if (isFirstTime) {
+      // First 9 rows will normally have to insert rather than update. Handling that inside the daoImpl.
+      for (int i =0; i < len -1; i++) {
+        dao.updateBitcoinPrice(timeFrame, candlesticks.get(i).getOpenTime(), candlesticks.get(i).getOpen(),
+            candlesticks.get(i).getClose());
+      }
+    }
+    dao.updateBitcoinPrice(timeFrame, candlesticks.get(len-1).getOpenTime(), candlesticks.get(len-1).getOpen(),
+        candlesticks.get(len-1).getClose());
+  }
+
+  @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
+  public void performHourlyTimeFrame() throws ParseException {
+    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null);
+    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, hourlyMovementThresholdPercent);
+    overdoneTradeTypes.put(TimeFrame.HOUR,
+        overdoneTradeType);
+    overdoneTradeTypes.put(TimeFrame.HOUR, overdoneTradeType);
+    updateBitcoinPrices(TimeFrame.HOUR, candlesticks, isFirstTimeHourlyTimeframe, overdoneTradeType);
+    isFirstTimeHourlyTimeframe = false;
+  }
+
+  @Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
+  public void performFourHourlyTimeFrame() throws ParseException {
+    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null);
+    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fourHourlyMovementThresholdPercent);
+    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS,
+        overdoneTradeType);
+    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS, overdoneTradeType);
+    updateBitcoinPrices(TimeFrame.FOUR_HOURS, candlesticks, isFirstTimeFourHourlyTimeframe, overdoneTradeType);
+    isFirstTimeFourHourlyTimeframe = false;
   }
 
   private TradeType getOverdoneTradeType(List<Candlestick> candlesticks, double movementThresholdPercent) throws ParseException {
@@ -112,14 +158,10 @@ public class BitcoinMonitoringTask {
         return TradeType.SELL;
       }
     }
-    return null;
+    return TradeType.NONE;
   }
 
   private boolean isGreenCandle(Candlestick candlestick) throws ParseException {
-    return numberFormat.parse(candlestick.getClose()).doubleValue() - numberFormat.parse(candlestick.getOpen()).doubleValue();
-  }
-
-  private double getDiffPercent(double price1, double price2) {
-    return (price2 - price1) / price1 * 100;
+    return numberFormat.parse(candlestick.getClose()).doubleValue() >= numberFormat.parse(candlestick.getOpen()).doubleValue();
   }
 }

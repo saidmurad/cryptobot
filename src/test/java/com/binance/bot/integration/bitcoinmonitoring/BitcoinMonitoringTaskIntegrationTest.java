@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.bot.bitcoinmonitoring.BitcoinMonitoringTask;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.ChartPatternSignalDaoImplTest;
 import com.binance.bot.trading.BinanceTradingBot;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,7 +46,8 @@ public class BitcoinMonitoringTaskIntegrationTest {
   @Before
   public void setUp() throws SQLException {
     assertThat(apiKey).startsWith("31");
-    //Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+    Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+    stmt.execute(ChartPatternSignalDaoImplTest.CREATE_TABLE_STMT_BITCOIN_MONITORING);
   }
 
   @Test

@@ -29,6 +29,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   double invested = 0;
   double coffer = 0.0;
   double lockedInTrades = 0.0;
+  double borrowed = 0.0;
   int numTradesLive = 0;
   Iterator<Map.Entry<Date, Pair<Integer, Double>>> eventDateIterator;
   Map.Entry<Date, Pair<Integer, Double>> nextEvent;
@@ -54,11 +55,15 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       if (coffer >= AMOUNT_PER_TRADE) {
         coffer -= AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
-        printWallet("Entering trade reusing from coffer.", chartPatternSignal.timeOfSignal());
+        printWallet("Entering trade reusing from coffer", chartPatternSignal.timeOfSignal());
+      } else if ((coffer + lockedInTrades + AMOUNT_PER_TRADE) / (borrowed + AMOUNT_PER_TRADE) > 1.5) {
+        borrowed += AMOUNT_PER_TRADE;
+        lockedInTrades += AMOUNT_PER_TRADE;
+        printWallet("Entering trade with borrowed money", chartPatternSignal.timeOfSignal());
       } else {
         invested += AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
-        printWallet("Entering trade with additonal investment.", chartPatternSignal.timeOfSignal());
+        printWallet("Entering trade with additonal investment", chartPatternSignal.timeOfSignal());
       }
       numTradesLive++;
       if (!patternsWithReleaseByDateProcessed.contains(chartPatternSignal)) {
@@ -110,9 +115,13 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   }
 
   private void printWallet(String context, Date time) {
-    double cmv = coffer + lockedInTrades;
-    logger.info(String.format("%s: On %s, invested=%f, coffer=%f, locked=%f, cmv=%f, RR=%f.",
-        context, time, invested, coffer, lockedInTrades, cmv, (cmv - invested)/invested*100));
+    double totalAssetValue = coffer + lockedInTrades;
+    double netAssetValue = totalAssetValue - borrowed;
+    Double marginLevel = borrowed > 0? totalAssetValue / borrowed : null;
+    double rr = (netAssetValue - invested) /invested * 100;
+    logger.info(String.format("%s: On %s, invested=%f, coffer=%f, borrowed=%f, locked=%f, \ntotalAssetValue=%f, netAssetValue=%f, RR=%f, marginLevel=%s.",
+        context, time, invested, coffer, borrowed, lockedInTrades, totalAssetValue, netAssetValue, rr,
+        marginLevel != null ? marginLevel.toString() : "N/A"));
   }
 
   private Set<ChartPatternSignal> patternsWithReleaseByDateProcessed = new HashSet<>();

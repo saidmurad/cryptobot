@@ -8,7 +8,6 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.google.common.collect.Lists;
-import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -16,7 +15,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoJUnitRule;
 import org.mockito.junit.MockitoRule;
 
 import java.text.ParseException;
@@ -70,7 +68,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
 
-    verify(mockDao, times(10)).updateBitcoinPrice(eq(TimeFrame.FIFTEEN_MINUTES), any(), any(), any());
+    verify(mockDao, times(10)).insertBitcoinPrice(eq(TimeFrame.FIFTEEN_MINUTES), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.FIFTEEN_MINUTES), eq(TradeType.BUY));
   }
 
@@ -94,7 +92,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
 
-    verify(mockDao, times(1)).updateBitcoinPrice(eq(TimeFrame.FIFTEEN_MINUTES), any(), any(), any());
+    verify(mockDao, times(1)).insertBitcoinPrice(eq(TimeFrame.FIFTEEN_MINUTES), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.FIFTEEN_MINUTES), eq(TradeType.BUY));
   }
 
@@ -118,7 +116,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performHourlyTimeFrame();
 
-    verify(mockDao, times(10)).updateBitcoinPrice(eq(TimeFrame.HOUR), any(), any(), any());
+    verify(mockDao, times(10)).insertBitcoinPrice(eq(TimeFrame.HOUR), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.HOUR), eq(TradeType.BUY));
   }
 
@@ -142,7 +140,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performHourlyTimeFrame();
 
-    verify(mockDao, times(1)).updateBitcoinPrice(eq(TimeFrame.HOUR), any(), any(), any());
+    verify(mockDao, times(1)).insertBitcoinPrice(eq(TimeFrame.HOUR), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.HOUR), eq(TradeType.BUY));
   }
 
@@ -166,7 +164,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performFourHourlyTimeFrame();
 
-    verify(mockDao, times(10)).updateBitcoinPrice(eq(TimeFrame.FOUR_HOURS), any(), any(), any());
+    verify(mockDao, times(10)).insertBitcoinPrice(eq(TimeFrame.FOUR_HOURS), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.FOUR_HOURS), eq(TradeType.BUY));
   }
 
@@ -190,7 +188,7 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performFourHourlyTimeFrame();
 
-    verify(mockDao, times(1)).updateBitcoinPrice(eq(TimeFrame.FOUR_HOURS), any(), any(), any());
+    verify(mockDao, times(1)).insertBitcoinPrice(eq(TimeFrame.FOUR_HOURS), any(), any(), any());
     verify(mockDao).insertOverdoneTradeType(eq(new Date(11)), eq(TimeFrame.FOUR_HOURS), eq(TradeType.BUY));
   }
 
@@ -298,6 +296,7 @@ public class BitcoinMonitoringTaskTest {
     bitcoinMonitoringTask.hourlyMovementThresholdPercent = 1.5;
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
+    candlestick1.setClose("0");
     candlestick1.setOpenTime(1L);
     candlestick1.setCloseTime(2L);
     Candlestick candlestick2 = new Candlestick();
@@ -317,6 +316,7 @@ public class BitcoinMonitoringTaskTest {
     bitcoinMonitoringTask.fourHourlyMovementThresholdPercent = 1.5;
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
+    candlestick1.setClose("0");
     candlestick1.setOpenTime(1L);
     candlestick1.setCloseTime(2L);
     Candlestick candlestick2 = new Candlestick();

@@ -498,7 +498,33 @@ public class ChartPatternSignalDaoImpl {
     return count == 1;
   }
 
-  public void updateBitcoinPrice(TimeFrame timeFrame, Long openTime, String open, String close) {
-
+  public void insertBitcoinPrice(TimeFrame timeFrame, Long openTime, Double open, Double close) {
+    Date openDate = new Date(openTime);
+    boolean rowAlreadyExists = doesBitcoinPriceMonitoringRowAlreadyExist(openDate, timeFrame);
+    int ret;
+    if (!rowAlreadyExists) {
+      ret = jdbcTemplate.update(String.format("insert into BitcoinPriceMonitoring(" +
+          "Time, TimeFrame, CandleOpenPrice, CandleClosePrice) " +
+          "values('%s', '%s', %f, %f)", df.format(openDate), timeFrame.name(), open, close));
+      String msg = String.format("%s %s BitcoinPriceMonitoring for date '%s', timeframe '%s'",
+          ret == 1? "Done " : "Failed to ",
+          rowAlreadyExists? "update" : "insert", df.format(openDate), timeFrame.name());
+    } {
+      ret = jdbcTemplate.update(String.format("update BitcoinPriceMonitoring " +
+          "set CandleOpenPrice=%f, CandleClosePrice=%f " +
+          "where Time='%s' and TimeFrame='%s'", open, close, df.format(openDate), timeFrame.name()));
+      logger.info(String.format("Skipped updating already existing row in BitcoinPriceMonitoringRow for date '%s' and " +
+          "timeFrame '%s.", df.format(openDate), timeFrame.name()));
+    }
+    String msg = String.format("%s %s BitcoinPriceMonitoring for date '%s', timeframe '%s' with " +
+            "open %f, close %f",
+        ret == 1? "Done " : "Failed to ",
+        rowAlreadyExists? "update" : "insert", df.format(openDate), timeFrame.name(),
+        open, close);
+    if (ret == 0) {
+      logger.error(msg);
+    } else {
+      logger.info(msg);
+    }
   }
 }

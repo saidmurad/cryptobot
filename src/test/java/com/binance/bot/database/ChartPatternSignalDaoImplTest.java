@@ -11,6 +11,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.util.Pair;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.sqlite.SQLiteDataSource;
 
@@ -962,5 +963,36 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       return rs.getString("TradeTypeOverdone");
     });
     assertThat(ret).isEqualTo("SELL");
+  }
+
+  public void testInsertIntoBitconPriceMonitoring_priceRow() {
+    Date time = new Date();
+
+    dao.insertBitcoinPrice(TimeFrame.FIFTEEN_MINUTES, time.getTime(), 1.0, 2.0);
+    Pair<Double, Double> prices = dao.jdbcTemplate.queryForObject(String.format("select CandleOpenPrice, CandleClosePrice " +
+        "from BitcoinPriceMonitoring " +
+        "where Time='%s' " +
+        "and TimeFrame='FIFTEEN_MINUTES'", dateFormat.format(time)), new Object[]{}, (rs, rowNum) -> {
+      return Pair.of(rs.getDouble("CandleOpenPrice"), rs.getDouble("CandleClosePrice"));
+    });
+
+    assertThat(prices.getFirst()).isEqualTo(1.0);
+    assertThat(prices.getSecond()).isEqualTo(2.0);
+  }
+
+  public void testInsertIntoBitconPriceMonitoring_priceRowAlreadyExists_IsUpdated() {
+    Date time = new Date();
+
+    dao.insertBitcoinPrice(TimeFrame.FIFTEEN_MINUTES, time.getTime(), 1.0, 2.0);
+    dao.insertBitcoinPrice(TimeFrame.FIFTEEN_MINUTES, time.getTime(), 3.0, 4.0);
+    Pair<Double, Double> prices = dao.jdbcTemplate.queryForObject(String.format("select CandleOpenPrice, CandleClosePrice " +
+        "from BitcoinPriceMonitoring " +
+        "where Time='%s' " +
+        "and TimeFrame='FIFTEEN_MINUTES'", dateFormat.format(time)), new Object[]{}, (rs, rowNum) -> {
+      return Pair.of(rs.getDouble("CandleOpenPrice"), rs.getDouble("CandleClosePrice"));
+    });
+
+    assertThat(prices.getFirst()).isEqualTo(3.0);
+    assertThat(prices.getSecond()).isEqualTo(4.0);
   }
 }

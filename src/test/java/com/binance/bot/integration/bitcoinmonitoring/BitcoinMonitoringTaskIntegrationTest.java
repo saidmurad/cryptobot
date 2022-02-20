@@ -47,6 +47,9 @@ public class BitcoinMonitoringTaskIntegrationTest {
   public void setUp() throws SQLException {
     assertThat(apiKey).startsWith("31");
     Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+    try {
+      stmt.execute("drop table BitcoinPriceMonitoring");
+    } catch (SQLiteException ignore) {}
     stmt.execute(ChartPatternSignalDaoImplTest.CREATE_TABLE_STMT_BITCOIN_MONITORING);
   }
 

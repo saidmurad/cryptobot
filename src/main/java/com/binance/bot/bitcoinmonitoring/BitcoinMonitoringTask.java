@@ -71,25 +71,31 @@ public class BitcoinMonitoringTask {
   public void performFifteenMinuteTimeFrame() throws ParseException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null);
+    // Remove incomplete candlestick. TODO: Unit test.
+    if (candlesticks.get(candlesticks.size() -1).getCloseTime() >= System.currentTimeMillis()) {
+      candlesticks.remove(candlesticks.size() -1);
+    }
     TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fifteenMinuteMovementThresholdPercent);
     overdoneTradeTypes.put(TimeFrame.FIFTEEN_MINUTES, overdoneTradeType);
     updateBitcoinPrices(TimeFrame.FIFTEEN_MINUTES, candlesticks, isFirstTimeFifteenMinuteTimeframe, overdoneTradeType);
     isFirstTimeFifteenMinuteTimeframe = false;
   }
 
-  private void updateBitcoinPrices(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) {
+  private void updateBitcoinPrices(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) throws ParseException {
     int len = candlesticks.size();
     long currentCandlestickStart = candlesticks.get(len - 1).getCloseTime() + 1;
     dao.insertOverdoneTradeType(new Date(currentCandlestickStart), timeFrame, overdoneTradeType);
     if (isFirstTime) {
       // First 9 rows will normally have to insert rather than update. Handling that inside the daoImpl.
       for (int i =0; i < len -1; i++) {
-        dao.updateBitcoinPrice(timeFrame, candlesticks.get(i).getOpenTime(), candlesticks.get(i).getOpen(),
-            candlesticks.get(i).getClose());
+        dao.insertBitcoinPrice(timeFrame, candlesticks.get(i).getOpenTime(),
+            new Double(numberFormat.parse(candlesticks.get(i).getOpen()).doubleValue()),
+            new Double(numberFormat.parse(candlesticks.get(i).getClose()).doubleValue()));
       }
     }
-    dao.updateBitcoinPrice(timeFrame, candlesticks.get(len-1).getOpenTime(), candlesticks.get(len-1).getOpen(),
-        candlesticks.get(len-1).getClose());
+    dao.insertBitcoinPrice(timeFrame, candlesticks.get(len-1).getOpenTime(),
+        new Double(numberFormat.parse(candlesticks.get(len-1).getOpen()).doubleValue()),
+        new Double(numberFormat.parse(candlesticks.get(len-1).getClose()).doubleValue()));
   }
 
   @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")

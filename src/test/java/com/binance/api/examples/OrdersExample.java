@@ -24,7 +24,7 @@ import static com.binance.api.client.domain.account.NewOrder.marketBuy;
  */
 public class OrdersExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("", "", true, true);
     BinanceApiRestClient client = factory.newRestClient();
 

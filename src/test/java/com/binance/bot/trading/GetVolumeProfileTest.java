@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
+import com.binance.api.client.exception.BinanceApiException;
 import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
@@ -39,14 +40,14 @@ public class GetVolumeProfileTest {
   private GetVolumeProfile getVolumeProfile;
 
   @Before
-  public void setUp() {
+  public void setUp() throws BinanceApiException {
     MockitoAnnotations.initMocks(this);
     when(mockBinanceApiRestClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     getVolumeProfile = new GetVolumeProfile(mockBinanceApiRestClientFactory);
   }
 
   @Test
-  public void getVolumeProfile_minMaxAvg() {
+  public void getVolumeProfile_minMaxAvg() throws BinanceApiException {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES,
         1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000,
@@ -64,7 +65,7 @@ public class GetVolumeProfileTest {
   }
 
   @Test
-  public void getVolumeProfile_volNotMaintainedEven() {
+  public void getVolumeProfile_volNotMaintainedEven() throws BinanceApiException {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
         .thenReturn(getCandlesticks("100", "200"));
@@ -77,7 +78,7 @@ public class GetVolumeProfileTest {
   }
 
   @Test
-  public void getVolumeProfile_volAtleastMaintainedEven() {
+  public void getVolumeProfile_volAtleastMaintainedEven() throws BinanceApiException {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
         .thenReturn(getCandlesticks("100", "200"));
@@ -90,7 +91,7 @@ public class GetVolumeProfileTest {
   }
 
   @Test
-  public void getVolumeProfile_volNotSurged() {
+  public void getVolumeProfile_volNotSurged() throws BinanceApiException {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
         .thenReturn(getCandlesticks("100", "200"));
@@ -103,7 +104,7 @@ public class GetVolumeProfileTest {
   }
 
   @Test
-  public void getVolumeProfile_volSurged() {
+  public void getVolumeProfile_volSurged() throws BinanceApiException {
     when(clock.millis()).thenReturn(CURRENT_TIME_MILLIS);
     when(mockBinanceApiRestClient.getCandlestickBars(COIN_PAIR, CandlestickInterval.FIFTEEN_MINUTES, 1000, CURRENT_TIME_MILLIS - 150 * 60 * 1000, CURRENT_TIME_MILLIS - 30 * 60 * 100))
         .thenReturn(getCandlesticks("100", "200"));

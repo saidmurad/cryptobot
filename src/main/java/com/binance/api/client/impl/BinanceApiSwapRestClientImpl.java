@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiSwapRestClient;
 import com.binance.api.client.constant.BinanceApiConstants;
 import com.binance.api.client.domain.SwapRemoveType;
 import com.binance.api.client.domain.account.*;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -22,12 +23,12 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public List<Pool> listAllSwapPools() {
+    public List<Pool> listAllSwapPools() throws BinanceApiException {
         return executeSync(binanceApiService.listAllSwapPools());
     }
 
     @Override
-    public Liquidity getPoolLiquidityInfo(String poolId) {
+    public Liquidity getPoolLiquidityInfo(String poolId) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         List<Liquidity> liquidities = executeSync(binanceApiService.getPoolLiquidityInfo(poolId,
                 BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
@@ -39,7 +40,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public LiquidityOperationRecord addLiquidity(String poolId, String asset, String quantity) {
+    public LiquidityOperationRecord addLiquidity(String poolId, String asset, String quantity) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.addLiquidity(poolId,
                 asset,
@@ -49,7 +50,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public LiquidityOperationRecord removeLiquidity(String poolId, SwapRemoveType type, List<String> asset, String shareAmount) {
+    public LiquidityOperationRecord removeLiquidity(String poolId, SwapRemoveType type, List<String> asset, String shareAmount) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.removeLiquidity(poolId,
                 type,
@@ -60,7 +61,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public List<LiquidityOperationRecord> getPoolLiquidityOperationRecords(String poolId, Integer limit) {
+    public List<LiquidityOperationRecord> getPoolLiquidityOperationRecords(String poolId, Integer limit) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.getPoolLiquidityOperationRecords(
                 poolId,
@@ -71,7 +72,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public LiquidityOperationRecord getLiquidityOperationRecord(String operationId) {
+    public LiquidityOperationRecord getLiquidityOperationRecord(String operationId) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         List<LiquidityOperationRecord> records = executeSync(binanceApiService.getLiquidityOperationRecord(
                 operationId,
@@ -86,7 +87,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     @Override
     public SwapQuote requestQuote(String quoteAsset,
                                   String baseAsset,
-                                  String quoteQty) {
+                                  String quoteQty) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.requestQuote(quoteAsset, baseAsset, quoteQty,
                 BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
@@ -94,7 +95,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public SwapRecord swap(String quoteAsset, String baseAsset, String quoteQty) {
+    public SwapRecord swap(String quoteAsset, String baseAsset, String quoteQty) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.swap(quoteAsset, baseAsset, quoteQty,
                 BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,
@@ -102,7 +103,7 @@ public class BinanceApiSwapRestClientImpl implements BinanceApiSwapRestClient {
     }
 
     @Override
-    public SwapHistory getSwapHistory(String swapId) {
+    public SwapHistory getSwapHistory(String swapId) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         List<SwapHistory> history = executeSync(binanceApiService.getSwapHistory(swapId,
                 BinanceApiConstants.DEFAULT_RECEIVING_WINDOW,

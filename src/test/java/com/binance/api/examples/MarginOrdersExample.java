@@ -22,7 +22,7 @@ import static com.binance.api.client.domain.account.MarginNewOrder.limitBuy;
  */
 public class MarginOrdersExample {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws BinanceApiException {
         BinanceApiClientFactory factory = new BinanceApiClientFactory();
         BinanceApiMarginRestClient client = factory.newMarginRestClient();
         System.out.println("Margin account details:\n" + client.getAccount());

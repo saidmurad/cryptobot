@@ -12,6 +12,7 @@ import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
+import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
@@ -112,7 +113,7 @@ public class AltfinPatternsReader {
           processPaterns(patternFromAltfins, timeFrames[i]);
         }
       }
-    } catch (IOException | ParseException | MessagingException ex) {
+    } catch (IOException | ParseException | MessagingException | BinanceApiException ex) {
       logger.error("Exception.", ex);
       throw new RuntimeException(ex);
     }
@@ -124,7 +125,14 @@ public class AltfinPatternsReader {
     patternFromAltfins = makeUnique(patternFromAltfins);
     int origSize = patternFromAltfins.size();
     List<ChartPatternSignal> temp = patternFromAltfins.stream()
-        .filter(chartPatternSignal -> supportedSymbolsInfo.getSupportedSymbols().contains(chartPatternSignal.coinPair()))
+        .filter(chartPatternSignal -> {
+          try {
+            return supportedSymbolsInfo.getSupportedSymbols().contains(chartPatternSignal.coinPair());
+          } catch (BinanceApiException e) {
+            logger.error("SupportedSymbols failed: ", e);
+            throw new RuntimeException(e);
+          }
+        })
         .collect(Collectors.toList());
     if (patternFromAltfins.size() < origSize) {
       logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
@@ -208,7 +216,7 @@ public class AltfinPatternsReader {
     }
   }
 
-  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException {
+  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException {
     if (chartPatternSignal.profitPotentialPercent() < 0) {
       logger.warn(String.format("Skipping chart pattern signal with negative profit potential:\n%s.", chartPatternSignal));
       return;

@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.BinanceApiWebSocketClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ public class AggTradesCacheExample {
    */
   private Map<Long, AggTrade> aggTradesCache;
 
-  public AggTradesCacheExample(String symbol) {
+  public AggTradesCacheExample(String symbol) throws BinanceApiException {
     initializeAggTradesCache(symbol);
     startAggTradesEventStreaming(symbol);
   }
@@ -28,7 +29,7 @@ public class AggTradesCacheExample {
   /**
    * Initializes the aggTrades cache by using the REST API.
    */
-  private void initializeAggTradesCache(String symbol) {
+  private void initializeAggTradesCache(String symbol) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
     BinanceApiRestClient client = factory.newRestClient();
     List<AggTrade> aggTrades = client.getAggTrades(symbol.toUpperCase());
@@ -74,7 +75,7 @@ public class AggTradesCacheExample {
     return aggTradesCache;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     new AggTradesCacheExample("ETHBTC");
   }
 }

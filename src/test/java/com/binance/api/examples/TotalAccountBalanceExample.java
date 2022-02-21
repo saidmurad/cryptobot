@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.constant.Util;
 import com.binance.api.client.domain.account.Account;
 import com.binance.api.client.domain.account.AssetBalance;
+import com.binance.api.client.exception.BinanceApiException;
 
 /**
  * Example how to get total of balances on your account
@@ -12,7 +13,7 @@ import com.binance.api.client.domain.account.AssetBalance;
 public class TotalAccountBalanceExample {
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws BinanceApiException {
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("YOUR_API_KEY", "YOUR_SECRET");
         BinanceApiRestClient client = factory.newRestClient();
 
@@ -33,7 +34,7 @@ public class TotalAccountBalanceExample {
     }
 
     // Get total account balance in BTC (spot only)
-    public double getTotalAccountBalance(BinanceApiRestClient client, Account account) {
+    public double getTotalAccountBalance(BinanceApiRestClient client, Account account) throws BinanceApiException {
         double totalBalance = 0;
         for (AssetBalance balance : account.getBalances()) {
             double free = Double.parseDouble(balance.getFree());

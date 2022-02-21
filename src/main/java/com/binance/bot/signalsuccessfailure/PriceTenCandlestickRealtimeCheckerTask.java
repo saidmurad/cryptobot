@@ -2,6 +2,7 @@ package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -45,7 +46,7 @@ public class PriceTenCandlestickRealtimeCheckerTask {
   }
 
   //@Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-  public void performPriceTargetChecks() throws ParseException, IOException {
+  public void performPriceTargetChecks() throws ParseException, IOException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {

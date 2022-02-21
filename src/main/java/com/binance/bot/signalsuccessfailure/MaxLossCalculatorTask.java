@@ -3,6 +3,7 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -39,7 +40,7 @@ public class MaxLossCalculatorTask {
   }
 
   //@Scheduled(fixedDelay = 600000)
-  public void perform() throws ParseException, InterruptedException, IOException {
+  public void perform() throws ParseException, InterruptedException, IOException, BinanceApiException {
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
     logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
         chartPatternSignals.size()));

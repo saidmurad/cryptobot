@@ -7,6 +7,7 @@ import com.binance.api.client.domain.general.ExchangeInfo;
 import com.binance.api.client.domain.general.FilterType;
 import com.binance.api.client.domain.general.SymbolFilter;
 import com.binance.api.client.domain.general.SymbolInfo;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public class GeneralEndpointsExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
     BinanceApiRestClient client = factory.newRestClient();
 

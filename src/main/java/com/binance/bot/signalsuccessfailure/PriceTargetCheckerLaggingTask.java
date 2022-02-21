@@ -61,7 +61,7 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   // Caution: Not unit tested nor found worth the trouble.
   //@Scheduled(fixedDelay = 600000)
-  public void perform() throws InterruptedException, ParseException, IOException, MessagingException {
+  public void perform() throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
     logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
@@ -77,7 +77,7 @@ public abstract class PriceTargetCheckerLaggingTask {
 
   protected abstract List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime();
 
-  void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException, MessagingException {
+  void performIteration(List<Pair<ChartPatternSignal, Integer>> attemptedPatterns) throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
     Pair<ChartPatternSignal, Integer> patternPair = attemptedPatterns.remove(0);
     if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(patternPair.getKey().coinPair())) {
       //logger.warn(String.format("Skipping chart pattern signal %s not in supported symbols at the moment.", patternPair.getKey().toString()));

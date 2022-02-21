@@ -51,7 +51,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
 
   @Before
-  public void setUp() {
+  public void setUp() throws BinanceApiException {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
     altfinPatternsReader = new AltfinPatternsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
@@ -119,7 +119,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns.get(6).coinPair()).isEqualTo("XRPUSDT");
   }
 
-  public void testFilterProcessPatterns_noNewPatterns() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_noNewPatterns() throws ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patterns = Lists.newArrayList(getChartPatternSignal().build());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patterns);
 
@@ -128,7 +128,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterProcessPatterns_dedupesDuplicates() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_dedupesDuplicates() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
     when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
@@ -140,7 +140,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(chartPatternSignal, volumeProfile);
   }
 
-  public void testNegativeProfitPotential_neverInserted() throws ParseException, MessagingException {
+  public void testNegativeProfitPotential_neverInserted() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setProfitPotentialPercent(-1.0)
         .build();
@@ -153,7 +153,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterProcessPatterns_useAltfinInvalidationsIsFalse_comebackChartPatternIsIgnoredAndNotReInserted() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_useAltfinInvalidationsIsFalse_comebackChartPatternIsIgnoredAndNotReInserted() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = false;
     ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
         .setIsSignalOn(false)
@@ -172,7 +172,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_comebackChartPattern() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
         .setIsSignalOn(false)
@@ -194,7 +194,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(2);
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern_secondComeback() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_comebackChartPattern_secondComeback() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
         .setIsSignalOn(false)
@@ -219,7 +219,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(3);
   }
 
-  public void testFilterProcessPatterns_comebackTest_someSignal0_noCountingAsSecondComeback() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_comebackTest_someSignal0_noCountingAsSecondComeback() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
         .setIsSignalOn(false)
@@ -242,7 +242,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException, MessagingException {
+  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -265,7 +265,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException, ParseException, MessagingException {
+  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException, ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -289,7 +289,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException, ParseException, MessagingException {
+  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException, ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -312,7 +312,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException, ParseException, MessagingException {
+  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException, ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -335,7 +335,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException, ParseException, MessagingException {
+  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException, ParseException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patternsInDb = altfinPatternsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = altfinPatternsReader.readPatterns(getPatternsFileContents());
@@ -395,7 +395,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testInsertChartPatternSignal_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException, MessagingException {
+  public void testInsertChartPatternSignal_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
 
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
@@ -412,7 +412,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
   }
 
-  public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException, MessagingException {
+  public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal pattern = getChartPatternSignal().build();
 
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
@@ -426,7 +426,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(insertedVal.isInsertedLate()).isFalse();
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern_neverMarkedInsertedLate() throws ParseException, MessagingException {
+  public void testFilterProcessPatterns_comebackChartPattern_neverMarkedInsertedLate() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
         .setIsSignalOn(false)
@@ -448,7 +448,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().isInsertedLate()).isFalse();
   }
 
-  public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException, MessagingException {
+  public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal pattern = altfinPatternsReader.readPatterns(getPatternsFileContents()).get(0);
     TickerPrice tickerPrice = new TickerPrice();
     tickerPrice.setPrice("1,111.12");
@@ -484,7 +484,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     return new String(getClass().getResourceAsStream(TEST_PATTERNS_FILE).readAllBytes());
   }
 
-  public void testChartPatternSignalsToInvalidate_useAltfinInvalidationsIsFalse() throws ParseException, MessagingException {
+  public void testChartPatternSignalsToInvalidate_useAltfinInvalidationsIsFalse() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
@@ -497,7 +497,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockDao, never()).incrementNumTimesMissingInInput(any());
   }
 
-  public void testChartPatternSignalsToInvalidate() throws ParseException, MessagingException {
+  public void testChartPatternSignalsToInvalidate() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
@@ -513,7 +513,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   }
 
   public void testChartPatternSignalsToInvalidate_removedFromAltfins__priceIsObtained()
-      throws ParseException, MessagingException {
+      throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     Date currTime = new Date();
     Date newerOccurTimeForSignal = new Date(currTime.getTime() + 10000);
@@ -549,7 +549,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     verify(mockExitPositionAtMarketPrice).exitPositionIfStillHeld(eq(chartPatternSignal), eq(currPrice), eq(TradeExitType.REMOVED_FROM_ALTFINS));
   }
 
-  public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException, MessagingException {
+  public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException, MessagingException, BinanceApiException {
     altfinPatternsReader.useAltfinInvalidations = true;
     Date currTime = new Date();
     Date olderOccurTimeForSignal = new Date(currTime.getTime() - 10000);

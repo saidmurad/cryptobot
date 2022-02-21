@@ -7,6 +7,7 @@ import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.*;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -89,7 +90,7 @@ public class BinanceTradingBot {
         value = "app.scheduling.enable", havingValue = "true", matchIfMissing = true
     )
     @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-    public void perform() throws ParseException {
+    public void perform() throws ParseException, BinanceApiException {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 if (isTradingAllowed(timeFrames[i], tradeTypes[j])) {
@@ -165,7 +166,7 @@ public class BinanceTradingBot {
         }
     }
 
-    double usdtValueAvailabeToBorrow() throws ParseException {
+    double usdtValueAvailabeToBorrow() throws ParseException, BinanceApiException {
         MarginAccount account = binanceApiMarginRestClient.getAccount();
         double marginLevel = numberFormat.parse(account.getMarginLevel()).doubleValue();
         logger.info("Margin level=" + marginLevel);
@@ -180,7 +181,7 @@ public class BinanceTradingBot {
         return availToBorrowBtcVal * btcPrice.bestAsk();
     }
 
-    public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException {
+    public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException {
         double usdtValueAvailableToTrade;
         if (chartPatternSignal.tradeType() == TradeType.BUY) {
             usdtValueAvailableToTrade = numberFormat.parse(binanceApiRestClient.getAccount().getAssetBalance(USDT).getFree()).doubleValue();

@@ -24,7 +24,11 @@ public class BinanceApiCallbackAdapter<T> implements Callback<T> {
 
   public void onResponse(Call<T> call, Response<T> response) {
     if (response.isSuccessful()) {
-      callback.onResponse(response.body());
+      try {
+        callback.onResponse(response.body());
+      } catch (BinanceApiException e) {
+        e.printStackTrace();
+      }
     } else {
       if (response.code() == 504) {
         // HTTP 504 return code is used when the API successfully sent the message but not get a response within the timeout period.
@@ -34,7 +38,7 @@ public class BinanceApiCallbackAdapter<T> implements Callback<T> {
       try {
         BinanceApiError apiError = getBinanceApiError(response);
         onFailure(call, new BinanceApiException(apiError));
-      } catch (IOException e) {
+      } catch (IOException | BinanceApiException e) {
         onFailure(call, new BinanceApiException(e));
       }
     }
@@ -43,9 +47,17 @@ public class BinanceApiCallbackAdapter<T> implements Callback<T> {
   @Override
   public void onFailure(Call<T> call, Throwable throwable) {
     if (throwable instanceof BinanceApiException) {
-      callback.onFailure(throwable);
+      try {
+        callback.onFailure(throwable);
+      } catch (BinanceApiException e) {
+        throw new RuntimeException(e);
+      }
     } else {
-      callback.onFailure(new BinanceApiException(throwable));
+      try {
+        callback.onFailure(new BinanceApiException(throwable));
+      } catch (BinanceApiException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

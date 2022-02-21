@@ -6,6 +6,7 @@ import com.binance.api.client.domain.TransferType;
 import com.binance.api.client.domain.account.MarginAccount;
 import com.binance.api.client.domain.account.MarginTransaction;
 import com.binance.api.client.domain.account.Trade;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
  */
 public class MarginAccountEndpointsExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("", "");
     BinanceApiMarginRestClient client = factory.newMarginRestClient();
 

@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.account.Account;
 import com.binance.api.client.domain.account.Trade;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -12,7 +13,7 @@ import java.util.List;
  */
 public class AccountEndpointsExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("YOUR_API_KEY", "YOUR_SECRET");
     BinanceApiRestClient client = factory.newRestClient();
 

@@ -6,6 +6,7 @@ import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.NewOrder;
+import com.binance.api.client.exception.BinanceApiException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,7 +26,7 @@ public class OrderTest {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
   }
   @Test
-  public void orderTest() {
+  public void orderTest() throws BinanceApiException {
     NewOrder newOrder = new NewOrder("BTCUSDT", OrderSide.BUY, OrderType.LIMIT, TimeInForce.GTC,
         "12.1234567", "32000");
     binanceApiRestClient.newOrderTest(newOrder);

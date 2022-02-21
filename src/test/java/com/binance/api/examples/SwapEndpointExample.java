@@ -3,6 +3,7 @@ package com.binance.api.examples;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiSwapRestClient;
 import com.binance.api.client.domain.account.*;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 
@@ -11,7 +12,7 @@ public class SwapEndpointExample {
     public static String API_KEY = "api-key";
     public static String SECRET_KEY = "secret-key";
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws BinanceApiException {
 
         BinanceApiClientFactory binanceApiClientFactory = BinanceApiClientFactory.newInstance(API_KEY, SECRET_KEY);
         BinanceApiSwapRestClient swapClient = binanceApiClientFactory.newSwapRestClient();

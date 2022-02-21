@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.BinanceApiWebSocketClient;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,7 @@ public class CandlesticksCacheExample {
    */
   private Map<Long, Candlestick> candlesticksCache;
 
-  public CandlesticksCacheExample(String symbol, CandlestickInterval interval) {
+  public CandlesticksCacheExample(String symbol, CandlestickInterval interval) throws BinanceApiException {
     initializeCandlestickCache(symbol, interval);
     startCandlestickEventStreaming(symbol, interval);
   }
@@ -28,7 +29,7 @@ public class CandlesticksCacheExample {
   /**
    * Initializes the candlestick cache by using the REST API.
    */
-  private void initializeCandlestickCache(String symbol, CandlestickInterval interval) {
+  private void initializeCandlestickCache(String symbol, CandlestickInterval interval) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
     BinanceApiRestClient client = factory.newRestClient();
     List<Candlestick> candlestickBars = client.getCandlestickBars(symbol.toUpperCase(), interval);
@@ -80,7 +81,7 @@ public class CandlesticksCacheExample {
     return candlesticksCache;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     new CandlesticksCacheExample("ETHBTC", CandlestickInterval.ONE_MINUTE);
   }
 }

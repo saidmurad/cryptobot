@@ -18,7 +18,7 @@ import java.util.List;
  */
 public class MarketDataEndpointsExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
     BinanceApiRestClient client = factory.newRestClient();
 

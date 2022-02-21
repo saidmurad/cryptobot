@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -50,7 +51,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void activePositionButWithoutEntryOrderId_skipped() throws ParseException, IOException {
+  public void activePositionButWithoutEntryOrderId_skipped() throws ParseException, IOException, BinanceApiException {
     when(mockDao.getAllChartPatternsWithActiveTradePositions()).thenReturn(
         Lists.newArrayList(getChartPatternSignal().build()));
 
@@ -63,7 +64,7 @@ public class StopLimitOrderStatusCheckerTest {
   @Captor
   ArgumentCaptor<OrderStatusRequest> orderStatusRequestArgumentCaptor;
   @Test
-  public void stopLimitOrderFilled_statusGetsUpdatedInDB() throws ParseException, IOException {
+  public void stopLimitOrderFilled_statusGetsUpdatedInDB() throws ParseException, IOException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setEntryOrder(
             ChartPatternSignal.Order.create(1, 2.0, 3.0, OrderStatus.FILLED))

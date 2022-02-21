@@ -39,7 +39,7 @@ public class BinanceApiWebSocketListener<T> extends WebSocketListener {
     try {
       T event = objectReader.readValue(text);
       callback.onResponse(event);
-    } catch (IOException e) {
+    } catch (IOException | BinanceApiException e) {
       throw new RuntimeException(e);
     }
   }
@@ -52,7 +52,11 @@ public class BinanceApiWebSocketListener<T> extends WebSocketListener {
   @Override
   public void onFailure(WebSocket webSocket, Throwable t, Response response) {
     if (!closing) {
-      callback.onFailure(t);
+      try {
+        callback.onFailure(t);
+      } catch (BinanceApiException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

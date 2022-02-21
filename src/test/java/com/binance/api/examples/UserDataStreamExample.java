@@ -6,6 +6,7 @@ import com.binance.api.client.BinanceApiWebSocketClient;
 import com.binance.api.client.domain.event.AccountUpdateEvent;
 import com.binance.api.client.domain.event.OrderTradeUpdateEvent;
 import com.binance.api.client.domain.event.UserDataUpdateEvent.UserDataUpdateEventType;
+import com.binance.api.client.exception.BinanceApiException;
 
 /**
  * User data stream endpoints examples.
@@ -15,7 +16,7 @@ import com.binance.api.client.domain.event.UserDataUpdateEvent.UserDataUpdateEve
  */
 public class UserDataStreamExample {
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("YOUR_API_KEY", "YOUR_SECRET");
     BinanceApiRestClient client = factory.newRestClient();
 

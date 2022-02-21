@@ -7,6 +7,7 @@ import com.binance.api.client.BinanceApiWebSocketClient;
 import com.binance.api.client.domain.event.DepthEvent;
 import com.binance.api.client.domain.market.OrderBook;
 import com.binance.api.client.domain.market.OrderBookEntry;
+import com.binance.api.client.exception.BinanceApiException;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -53,7 +54,7 @@ public class DepthCacheExample {
   private long lastUpdateId = -1;
   private volatile Closeable webSocket;
 
-  public DepthCacheExample(String symbol) {
+  public DepthCacheExample(String symbol) throws BinanceApiException {
     this.symbol = symbol;
 
     BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
@@ -63,7 +64,7 @@ public class DepthCacheExample {
     initialize();
   }
 
-  private void initialize() {
+  private void initialize() throws BinanceApiException {
     // 1. Subscribe to depth events and cache any events that are received.
     final List<DepthEvent> pendingDeltas = startDepthEventStreaming();
 
@@ -91,7 +92,7 @@ public class DepthCacheExample {
   /**
    * 2. Initializes the depth cache by getting a snapshot from the REST API.
    */
-  private void initializeDepthCache() {
+  private void initializeDepthCache() throws BinanceApiException {
     OrderBook orderBook = restClient.getOrderBook(symbol.toUpperCase(), 10);
 
     this.lastUpdateId = orderBook.getLastUpdateId();
@@ -212,7 +213,7 @@ public class DepthCacheExample {
     return depthCacheEntry.getKey().toPlainString() + " / " + depthCacheEntry.getValue();
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws BinanceApiException {
     new DepthCacheExample("ETHBTC");
   }
 
@@ -231,7 +232,7 @@ public class DepthCacheExample {
     }
 
     @Override
-    public void onFailure(Throwable cause) {
+    public void onFailure(Throwable cause) throws BinanceApiException {
       System.out.println("WS connection failed. Reconnecting. cause:" + cause.getMessage());
 
       initialize();

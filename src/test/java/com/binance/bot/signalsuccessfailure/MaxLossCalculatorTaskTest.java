@@ -3,6 +3,7 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -50,7 +51,7 @@ public class MaxLossCalculatorTaskTest {
   private static final long SIGNAL_TARGET_TIME = 100L;
 
   @Before
-  public void setUp() {
+  public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     maxLossCalculatorTask = new MaxLossCalculatorTask(
         mockDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
@@ -59,7 +60,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testSymbolNotTrading_skips() throws ParseException, IOException, InterruptedException {
+  public void testSymbolNotTrading_skips() throws ParseException, IOException, InterruptedException, BinanceApiException {
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(
         getChartPatternSignal()
             .setCoinPair("BTCUSDT")
@@ -71,7 +72,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_noTradesReturned_exitsLoop() throws ParseException, IOException, InterruptedException {
+  public void testPerform_noTradesReturned_exitsLoop() throws ParseException, IOException, InterruptedException, BinanceApiException {
     when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1000, SIGNAL_TIME, SIGNAL_TARGET_TIME))
         .thenReturn(Lists.newArrayList());
 
@@ -86,7 +87,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_endTime_whenNotCappedBySignalTargetTime() throws ParseException, IOException, InterruptedException {
+  public void testPerform_endTime_whenNotCappedBySignalTargetTime() throws ParseException, IOException, InterruptedException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setPriceTargetTime(new Date(SIGNAL_TIME + 3600001))
         .build();
@@ -100,7 +101,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_tradeBeyondSignalTargetTime_exitsLoop() throws ParseException, IOException, InterruptedException {
+  public void testPerform_tradeBeyondSignalTargetTime_exitsLoop() throws ParseException, IOException, InterruptedException, BinanceApiException {
     AggTrade aggTrade = new AggTrade();
     aggTrade.setTradeTime(SIGNAL_TARGET_TIME + 1);
     aggTrade.setPrice("1.0");
@@ -118,7 +119,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_maxLoss_usingBuyTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException {
+  public void testPerform_maxLoss_usingBuyTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException, BinanceApiException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -155,7 +156,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_maxLoss_usingSellTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException {
+  public void testPerform_maxLoss_usingSellTrade_tradeIdIncrementInRequest() throws ParseException, IOException, InterruptedException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)
@@ -197,7 +198,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_data_from_two_iterations_fed_in_correctly() throws ParseException, IOException, InterruptedException {
+  public void testPerform_data_from_two_iterations_fed_in_correctly() throws ParseException, IOException, InterruptedException, BinanceApiException {
     when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);
@@ -234,7 +235,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet() throws ParseException, IOException, InterruptedException {
+  public void testPerform_isPriceTargetMet() throws ParseException, IOException, InterruptedException, BinanceApiException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -268,7 +269,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetNotMet() throws ParseException, IOException, InterruptedException {
+  public void testPerform_isPriceTargetNotMet() throws ParseException, IOException, InterruptedException, BinanceApiException {
     List<AggTrade> aggTrades = new ArrayList<>();
     AggTrade aggTrade = new AggTrade();
     aggTrade.setAggregatedTradeId(1);
@@ -302,7 +303,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet_sellTrade_yes() throws ParseException, IOException, InterruptedException {
+  public void testPerform_isPriceTargetMet_sellTrade_yes() throws ParseException, IOException, InterruptedException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)
@@ -341,7 +342,7 @@ public class MaxLossCalculatorTaskTest {
   }
 
   @Test
-  public void testPerform_isPriceTargetMet_sellTrade_no() throws ParseException, IOException, InterruptedException {
+  public void testPerform_isPriceTargetMet_sellTrade_no() throws ParseException, IOException, InterruptedException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000.0)

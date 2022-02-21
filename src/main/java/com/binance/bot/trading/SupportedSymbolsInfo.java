@@ -44,7 +44,7 @@ public class SupportedSymbolsInfo {
   }
 
   // exchangeInfo api weight is 10 and the limit is 1200 weight per minute, i.e. once ever 0.5 secs.
-  public Map<String, List<OrderType>> getTradingActiveSymbols() {
+  public Map<String, List<OrderType>> getTradingActiveSymbols() throws BinanceApiException {
     if (lastFetchTime != 0 && System.currentTimeMillis() - lastFetchTime <= 5000) {
       return tradingSymbolsMap;
     }
@@ -69,7 +69,7 @@ public class SupportedSymbolsInfo {
     return count;
   }
 
-  public Pair<Double, Integer> getMinNotionalAndLotSize(String symbol) {
+  public Pair<Double, Integer> getMinNotionalAndLotSize(String symbol) throws BinanceApiException {
     if (minNotionalAndLotSizeMap.isEmpty()) {
       binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
         Integer stepSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.LOT_SIZE).getStepSize());

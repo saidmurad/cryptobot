@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.account.AssetBalance;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.CandlestickInterval;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.TradeType;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class GetVolumeProfile {
         this.binanceApiRestClient = binanceApiClientFactory.newRestClient();
     }
 
-    public VolumeProfile getVolumeProfile(String coinPair) {
+    public VolumeProfile getVolumeProfile(String coinPair) throws BinanceApiException {
         long currentTimeMillis = clock.millis();
         // Look from 2:30 hours past till 30 min ago
         List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(

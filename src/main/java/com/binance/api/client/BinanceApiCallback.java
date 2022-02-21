@@ -1,5 +1,7 @@
 package com.binance.api.client;
 
+import com.binance.api.client.exception.BinanceApiException;
+
 import java.text.ParseException;
 
 /**
@@ -15,12 +17,12 @@ public interface BinanceApiCallback<T> {
      *
      * @param response the expected response object
      */
-    void onResponse(T response);
+    void onResponse(T response) throws BinanceApiException;
 
     /**
      * Called whenever an error occurs.
      *
      * @param cause the cause of the failure
      */
-    default void onFailure(Throwable cause) {}
+    default void onFailure(Throwable cause) throws BinanceApiException {}
 }

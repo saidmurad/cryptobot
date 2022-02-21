@@ -9,6 +9,7 @@ import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.market.TickerPrice;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -59,7 +60,7 @@ public class BinanceTradingBotTest {
   @Captor ArgumentCaptor<ChartPatternSignal.Order> chartPatternSignalOrderArgumentCaptor;
 
   @Before
-  public void setUp() {
+  public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     TickerPrice tickerPrice = new TickerPrice();
@@ -77,7 +78,7 @@ public class BinanceTradingBotTest {
     binanceTradingBot.stopLimitPercent = 5.5;
   }
 
-  private void setUsdtBalance(Double bal) {
+  private void setUsdtBalance(Double bal) throws BinanceApiException {
     Account account = new Account();
     AssetBalance usdtBalance = new AssetBalance();
     usdtBalance.setAsset("USDT");
@@ -87,7 +88,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceBuyTrade_insufficientUSDT() throws ParseException {
+  public void testPlaceBuyTrade_insufficientUSDT() throws ParseException, BinanceApiException {
     setUsdtBalance(4.9);
     binanceTradingBot.placeTrade(getChartPatternSignal().build());
   }
@@ -169,7 +170,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_tradeTypeNotAllowed_doesntPlaceTrade() throws ParseException {
+  public void perform_tradeTypeNotAllowed_doesntPlaceTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "NONE";
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -185,7 +186,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_doesntPlaceTrade() throws ParseException {
+  public void perform_insertedLate_doesntPlaceTrade() throws ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
@@ -202,7 +203,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void symbolNotTradingAtTheMoment_doesntPlaceTrade() throws ParseException {
+  public void symbolNotTradingAtTheMoment_doesntPlaceTrade() throws ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -218,7 +219,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void lotSizeMapReturnsNull_doesNothing() throws ParseException {
+  public void lotSizeMapReturnsNull_doesNothing() throws ParseException, BinanceApiException {
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(null);
@@ -236,7 +237,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Hourly_doesntPlaceTrade() throws ParseException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Hourly_doesntPlaceTrade() throws ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.HOUR)
@@ -253,7 +254,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Hourly_placesTrade() throws ParseException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Hourly_placesTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -294,7 +295,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_FourHourly_doesntPlaceTrade() throws ParseException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_FourHourly_doesntPlaceTrade() throws ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FOUR_HOURS)
@@ -311,7 +312,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_FourHourly_placesTrade() throws ParseException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_FourHourly_placesTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -352,7 +353,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Daily_doesntPlaceTrade() throws ParseException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Daily_doesntPlaceTrade() throws ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.DAY)
@@ -369,7 +370,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Daily_placesTrade() throws ParseException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Daily_placesTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -410,7 +411,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceBuyTrade_usesOnlyPerTradeAmount() throws ParseException {
+  public void testPlaceBuyTrade_usesOnlyPerTradeAmount() throws ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -472,7 +473,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void insufficientUSDTInAccount_BuyTrade_doesNothing() throws ParseException {
+  public void insufficientUSDTInAccount_BuyTrade_doesNothing() throws ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmount = 20.0;
     setUsdtBalance(19.5);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -485,7 +486,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void marginThreshold_SellTrade_doesNothing() throws ParseException {
+  public void marginThreshold_SellTrade_doesNothing() throws ParseException, BinanceApiException {
     MarginAccount marginAccount = new MarginAccount();
     marginAccount.setMarginLevel("2.0");
     when(mockBinanceApiMarginRestClient.getAccount()).thenReturn(marginAccount);
@@ -496,7 +497,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws ParseException {
+  public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmount = 11;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -537,7 +538,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits_perTradeAmountIsIgnoredIfLessThanMinNotionalWithAdjustment() throws ParseException {
+  public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits_perTradeAmountIsIgnoredIfLessThanMinNotionalWithAdjustment() throws ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmount = 10.1;
     setUsdtBalance(120.0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))

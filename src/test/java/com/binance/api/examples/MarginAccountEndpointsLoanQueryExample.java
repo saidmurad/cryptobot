@@ -5,13 +5,14 @@ import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.account.MarginTransaction;
 import com.binance.api.client.domain.account.MaxBorrowableQueryResult;
 import com.binance.api.client.domain.account.RepayQueryResult;
+import com.binance.api.client.exception.BinanceApiException;
 
 /**
  * Examples on how to get margin account information.
  */
 public class MarginAccountEndpointsLoanQueryExample {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws BinanceApiException {
         BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("YOUR_API_KEY", "YOUR_SECRET");
         BinanceApiMarginRestClient client = factory.newMarginRestClient();
         MaxBorrowableQueryResult usdt = client.queryMaxBorrowable("USDT");

@@ -261,24 +261,14 @@ where MaxLossPercent>=20 and ProfitPotentialPercent>0);
 4772.96396013576|-6.22876371597348
 
 For a particular day
-select Date(TimeOfSignal), sum(s) from (
-   select Date(TimeOfSignal) as TimeOfSignal, ProfitPotentialPercent as s from ChartPatternSignal
-   where ProfitPotentialPercent>0 and IsPriceTargetMet=1 and MaxLossPercent<5
-   UNION ALL
-   select Date(TimeOfSignal) as TimeOfSignal, -5 as s from ChartPatternSignal
-   where ProfitPotentialPercent>0 and IsPriceTargetMet=1 and MaxLossPercent >= 5
-   UNION ALL
-   select Date(TimeOfSignal) as TimeOfSignal, ProfitPercentAtSignalTargetTime as s
-   from ChartPatternSignal
-   where ProfitPotentialPercent>0 and IsPriceTargetMet=0 and MaxLossPercent<5
-   UNION ALL
-   select Date(TimeOfSignal) as TimeOfSignal, -5 as s
-   from ChartPatternSignal
-   where ProfitPotentialPercent>0 and IsPriceTargetMet=0 and MaxLossPercent>5
-   )
-   where Date(TimeOfSignal) = Date('2022-02-15')
-group by Date(TimeOfSignal)
-order by Date(TimeOfSignal);
+select Sum(ProfitPotentialPercent) as s, Avg(ProfitPotentialPercent) as A from ChartPatternSignal
+where IsPriceTargetMet=1 and ProfitPotentialPercent>0 and MaxLossPercent<20
+UNION ALL
+select Sum(ProfitPercentAtSignalTargetTime) as s, Avg(ProfitPercentAtSignalTargetTime) as A from ChartPatternSignal
+where IsPriceTargetMet=0 and MaxLossPercent<20 and ProfitPotentialPercent>0
+UNION ALL
+select Sum(-20) as s, -20 as A from ChartPatternSignal
+where MaxLossPercent>=20 and ProfitPotentialPercent>0 and Date(TimeOfSignal)=Date('2022-02-20')
 
 UNION ALLed overall without stop loss
 select sum(s) from (select sum(ProfitPotentialPercent) as s from ChartPatternSignal where IsPriceTargetMet=1

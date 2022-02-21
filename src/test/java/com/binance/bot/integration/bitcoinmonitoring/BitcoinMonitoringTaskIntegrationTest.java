@@ -2,6 +2,7 @@ package com.binance.bot.integration.bitcoinmonitoring;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.bitcoinmonitoring.BitcoinMonitoringTask;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.ChartPatternSignalDaoImplTest;
@@ -54,7 +55,7 @@ public class BitcoinMonitoringTaskIntegrationTest {
   }
 
   @Test
-  public void testFifteenMinuteTimeFrame() throws ParseException {
+  public void testFifteenMinuteTimeFrame() throws ParseException, BinanceApiException {
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
   }
 }

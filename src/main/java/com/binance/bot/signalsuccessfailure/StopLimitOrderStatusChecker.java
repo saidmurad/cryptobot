@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.BinanceTradingBot;
@@ -32,7 +33,7 @@ public class StopLimitOrderStatusChecker {
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-  public void perform() throws ParseException, IOException {
+  public void perform() throws ParseException, IOException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.util.*;
 
 /**
@@ -44,6 +45,11 @@ public class BitcoinMonitoringTask {
   double hourlyMovementThresholdPercent;
   @Value("${four_hourly_movement_threshold_percent}")
   double fourHourlyMovementThresholdPercent;
+  Clock clock = Clock.systemDefaultZone();
+
+  void setMockClock(Clock clock) {
+    this.clock = clock;
+  }
 
   @Autowired
   public BitcoinMonitoringTask(BinanceApiClientFactory binanceApiClientFactory,
@@ -63,7 +69,7 @@ public class BitcoinMonitoringTask {
   boolean isFirstTimeHourlyTimeframe = true;
   boolean isFirstTimeFourHourlyTimeframe = true;
 
-  public void backFill() throws ParseException, BinanceApiException {
+  public void backFill() throws ParseException, BinanceApiException, InterruptedException {
     Date startDate = df.parse("2022-01-11 00:00");
     backFill(TimeFrame.FIFTEEN_MINUTES, CandlestickInterval.FIFTEEN_MINUTES, startDate, 1.5);
     backFill(TimeFrame.HOUR, CandlestickInterval.HOURLY, startDate, 1.5);
@@ -71,20 +77,43 @@ public class BitcoinMonitoringTask {
   }
 
   private void backFill(TimeFrame timeFrame, CandlestickInterval candlestickTimeFrame, Date startTimeToBackfillFrom,
-                        double thresholdPercent) throws ParseException, BinanceApiException {
-    Date startTime = startTimeToBackfillFrom;
+                        double thresholdPercent) throws ParseException, BinanceApiException, InterruptedException {
+    Date endTime = null;
     boolean firstIteration = true;
     while (true) {
-      List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
-          "BTCUSDT", candlestickTimeFrame, 10, startTime.getTime(), null);
-      Candlestick lastCandlestick = candlesticks.get(candlesticks.size() - 1);
-      if (lastCandlestick.getCloseTime() > System.currentTimeMillis()) {
-        break;
+      List<Candlestick> candlesticks = null;
+      for (int i = 0; i < 3; i++) {
+        if (i == 2) {
+          throw new RuntimeException("Failed twice. Giving up.");
+        }
+        try {
+          logger.info(String.format("Getting %s candlesticks for end time %s.", candlestickTimeFrame.name(),
+                  endTime != null ? df.format(endTime) : "null"));
+          candlesticks = binanceApiRestClient.getCandlestickBars(
+              "BTCUSDT", candlestickTimeFrame, 10,
+              null, endTime != null ? endTime.getTime() : null);
+          break;
+        } catch (BinanceApiException e) {
+          logger.error("Getting candlesticks failed.", e);
+          if (e.getError().getCode() == 429) {
+            logger.error("Spam throttled by 429. Sleeping for a minute");
+            Thread.sleep(75000);
+          } else {
+            throw e;
+          }
+        }
+      }
+      // First iteration will have incomplete candlestick, so removing it.
+      if (endTime == null) {
+        candlesticks.remove(candlesticks.size() -1);
       }
       TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, thresholdPercent);
-      updateBitcoinPrices(timeFrame, candlesticks, firstIteration, overdoneTradeType);
+      updateBitcoinPricesForBackfill(timeFrame, candlesticks, firstIteration, overdoneTradeType);
       firstIteration = false;
-      startTime = new Date(lastCandlestick.getCloseTime() + 1);
+      endTime = new Date(candlesticks.get(candlesticks.size() -2).getCloseTime());
+      if (endTime.before(startTimeToBackfillFrom)) {
+        break;
+      }
     }
   }
 
@@ -92,17 +121,47 @@ public class BitcoinMonitoringTask {
   public void performFifteenMinuteTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null);
-    // Remove incomplete candlestick. TODO: Unit test.
-    if (candlesticks.get(candlesticks.size() -1).getCloseTime() >= System.currentTimeMillis()) {
+    // Remove incomplete candlestick (below condition will be true I expect nearly all the time). TODO: Unit test.
+    if (candlesticks.get(candlesticks.size() -1).getCloseTime() >= clock.millis()) {
       candlesticks.remove(candlesticks.size() -1);
     }
     TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fifteenMinuteMovementThresholdPercent);
     overdoneTradeTypes.put(TimeFrame.FIFTEEN_MINUTES, overdoneTradeType);
-    updateBitcoinPrices(TimeFrame.FIFTEEN_MINUTES, candlesticks, isFirstTimeFifteenMinuteTimeframe, overdoneTradeType);
+    updateBitcoinPricesLiveRun(TimeFrame.FIFTEEN_MINUTES, candlesticks, isFirstTimeFifteenMinuteTimeframe, overdoneTradeType);
     isFirstTimeFifteenMinuteTimeframe = false;
   }
 
-  private void updateBitcoinPrices(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) throws ParseException {
+  @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
+  public void performHourlyTimeFrame() throws ParseException, BinanceApiException {
+    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null);
+    if (candlesticks.get(candlesticks.size() -1).getCloseTime() >= clock.millis()) {
+      candlesticks.remove(candlesticks.size() -1);
+    }
+    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, hourlyMovementThresholdPercent);
+    overdoneTradeTypes.put(TimeFrame.HOUR,
+        overdoneTradeType);
+    overdoneTradeTypes.put(TimeFrame.HOUR, overdoneTradeType);
+    updateBitcoinPricesLiveRun(TimeFrame.HOUR, candlesticks, isFirstTimeHourlyTimeframe, overdoneTradeType);
+    isFirstTimeHourlyTimeframe = false;
+  }
+
+  @Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
+  public void performFourHourlyTimeFrame() throws ParseException, BinanceApiException {
+    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null);
+    if (candlesticks.get(candlesticks.size() -1).getCloseTime() >= clock.millis()) {
+      candlesticks.remove(candlesticks.size() -1);
+    }
+    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fourHourlyMovementThresholdPercent);
+    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS,
+        overdoneTradeType);
+    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS, overdoneTradeType);
+    updateBitcoinPricesLiveRun(TimeFrame.FOUR_HOURS, candlesticks, isFirstTimeFourHourlyTimeframe, overdoneTradeType);
+    isFirstTimeFourHourlyTimeframe = false;
+  }
+
+  private void updateBitcoinPricesLiveRun(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) throws ParseException {
     int len = candlesticks.size();
     long currentCandlestickStart = candlesticks.get(len - 1).getCloseTime() + 1;
     dao.insertOverdoneTradeType(new Date(currentCandlestickStart), timeFrame, overdoneTradeType);
@@ -114,36 +173,21 @@ public class BitcoinMonitoringTask {
             new Double(numberFormat.parse(candlesticks.get(i).getClose()).doubleValue()));
       }
     }
-    dao.insertBitcoinPrice(timeFrame, candlesticks.get(len-1).getOpenTime(),
-        new Double(numberFormat.parse(candlesticks.get(len-1).getOpen()).doubleValue()),
-        new Double(numberFormat.parse(candlesticks.get(len-1).getClose()).doubleValue()));
+    dao.insertBitcoinPrice(timeFrame, candlesticks.get(len - 1).getOpenTime(),
+        new Double(numberFormat.parse(candlesticks.get(len - 1).getOpen()).doubleValue()),
+        new Double(numberFormat.parse(candlesticks.get(len - 1).getClose()).doubleValue()));
   }
 
-  @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
-  public void performHourlyTimeFrame() throws ParseException, BinanceApiException {
-    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
-        "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null);
-    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, hourlyMovementThresholdPercent);
-    overdoneTradeTypes.put(TimeFrame.HOUR,
-        overdoneTradeType);
-    overdoneTradeTypes.put(TimeFrame.HOUR, overdoneTradeType);
-    updateBitcoinPrices(TimeFrame.HOUR, candlesticks, isFirstTimeHourlyTimeframe, overdoneTradeType);
-    isFirstTimeHourlyTimeframe = false;
+  private void updateBitcoinPricesForBackfill(TimeFrame timeFrame, List<Candlestick> candlesticks, boolean isFirstTime, TradeType overdoneTradeType) throws ParseException {
+    int len = candlesticks.size();
+    long currentCandlestickStart = candlesticks.get(len - 1).getCloseTime() + 1;
+    dao.insertOverdoneTradeType(new Date(currentCandlestickStart), timeFrame, overdoneTradeType);
+    dao.insertBitcoinPrice(timeFrame, candlesticks.get(len - 1).getOpenTime(),
+        new Double(numberFormat.parse(candlesticks.get(len - 1).getOpen()).doubleValue()),
+        new Double(numberFormat.parse(candlesticks.get(len - 1).getClose()).doubleValue()));
   }
 
-  @Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
-  public void performFourHourlyTimeFrame() throws ParseException, BinanceApiException {
-    List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
-        "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null);
-    TradeType overdoneTradeType = getOverdoneTradeType(candlesticks, fourHourlyMovementThresholdPercent);
-    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS,
-        overdoneTradeType);
-    overdoneTradeTypes.put(TimeFrame.FOUR_HOURS, overdoneTradeType);
-    updateBitcoinPrices(TimeFrame.FOUR_HOURS, candlesticks, isFirstTimeFourHourlyTimeframe, overdoneTradeType);
-    isFirstTimeFourHourlyTimeframe = false;
-  }
-
-  private TradeType getOverdoneTradeType(List<Candlestick> candlesticks, double movementThresholdPercent) throws ParseException {
+  public TradeType getOverdoneTradeType(List<Candlestick> candlesticks, double movementThresholdPercent) throws ParseException {
     int len = candlesticks.size();
     boolean lastCandlestickGreen = isGreenCandle(candlesticks.get(len - 1));
     if (lastCandlestickGreen) {
@@ -152,14 +196,13 @@ public class BitcoinMonitoringTask {
       for (; i >= 0; i--) {
         Candlestick thisCandlestick = candlesticks.get(i);
         double thisCandlestickOpen = numberFormat.parse(thisCandlestick.getOpen()).doubleValue();
-        if ((lastCandlestickClose - thisCandlestickOpen) / thisCandlestickOpen * 100 > movementThresholdPercent) {
+        if ((lastCandlestickClose - thisCandlestickOpen) / thisCandlestickOpen * 100 >= movementThresholdPercent) {
           return TradeType.BUY;
         }
         boolean isCandlestickGreen = isGreenCandle(thisCandlestick);
         if (!isCandlestickGreen) {
           break;
         }
-        lastCandlestickClose = numberFormat.parse(candlesticks.get(i).getClose()).doubleValue();
       }
       if (i == -1) {
         // Probably overbought.
@@ -171,14 +214,13 @@ public class BitcoinMonitoringTask {
       for (; i >= 0; i--) {
         Candlestick thisCandlestick = candlesticks.get(i);
         double thisCandlestickOpen = numberFormat.parse(thisCandlestick.getOpen()).doubleValue();
-        if ((thisCandlestickOpen - lastCandlestickClose) / thisCandlestickOpen * 100 > movementThresholdPercent) {
+        if ((thisCandlestickOpen - lastCandlestickClose) / thisCandlestickOpen * 100 >= movementThresholdPercent) {
           return TradeType.SELL;
         }
         boolean isCandlestickGreen = isGreenCandle(thisCandlestick);
         if (isCandlestickGreen) {
           break;
         }
-        lastCandlestickClose = numberFormat.parse(candlesticks.get(i).getClose()).doubleValue();
       }
       if (i == -1) {
         // Probably overbought.
@@ -192,3 +234,8 @@ public class BitcoinMonitoringTask {
     return numberFormat.parse(candlestick.getClose()).doubleValue() >= numberFormat.parse(candlestick.getOpen()).doubleValue();
   }
 }
+
+
+/**
+ * Bug: 18/02/2022 00:00 must have been overdone for SELL.
+ */

@@ -19,6 +19,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.text.ParseException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -34,6 +35,7 @@ public class BitcoinMonitoringTaskTest {
   private BinanceApiClientFactory mockBinanceApiClientFactory;
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private ChartPatternSignalDaoImpl mockDao;
+  @Mock private Clock mockClock;
   private BitcoinMonitoringTask bitcoinMonitoringTask;
 
   @Before
@@ -41,7 +43,7 @@ public class BitcoinMonitoringTaskTest {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     bitcoinMonitoringTask = new BitcoinMonitoringTask(mockBinanceApiClientFactory, mockDao);
     bitcoinMonitoringTask.fifteenMinuteMovementThresholdPercent = 1.5;
-    bitcoinMonitoringTask.isFirstTimeFifteenMinuteTimeframe = false;
+    //bitcoinMonitoringTask.isFirstTimeFifteenMinuteTimeframe = false;
   }
 
   @Test
@@ -214,6 +216,11 @@ public class BitcoinMonitoringTaskTest {
 
   @Test
   public void sellOverdone_in_twoCandlesticks() throws ParseException, BinanceApiException {
+    Candlestick candlestickStreakBreakerInGreen = new Candlestick();
+    candlestickStreakBreakerInGreen.setOpen("99.1");
+    candlestickStreakBreakerInGreen.setClose("99.2");
+    candlestickStreakBreakerInGreen.setOpenTime(1L);
+    candlestickStreakBreakerInGreen.setCloseTime(2L);
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("100");
     candlestick1.setClose("99");
@@ -225,7 +232,7 @@ public class BitcoinMonitoringTaskTest {
     candlestick2.setCloseTime(1L);
     when(mockBinanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null))
-        .thenReturn(Lists.newArrayList(candlestick1, candlestick2));
+        .thenReturn(Lists.newArrayList(candlestickStreakBreakerInGreen, candlestick1, candlestick2));
 
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
     assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.SELL);
@@ -255,8 +262,8 @@ public class BitcoinMonitoringTaskTest {
   @Test
   public void fallingStreakNotUnbroken_redGreenWhileLookingBackwards() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
-    candlestick1.setOpen("100");
-    candlestick1.setClose("101");
+    candlestick1.setOpen("98.5");
+    candlestick1.setClose("99");
     candlestick1.setOpenTime(1L);
     candlestick1.setCloseTime(2L);
 
@@ -274,9 +281,31 @@ public class BitcoinMonitoringTaskTest {
   }
 
   @Test
+  public void fallingStreakNotUnbroken_redGreenWhileLookingBackwards_butStillConsideredOverdone() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("100");
+    candlestick1.setClose("101");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("99");
+    candlestick2.setClose("98.5");
+    candlestick2.setCloseTime(1L);
+
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2));
+
+    bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.SELL);
+  }
+
+  @Test
   public void buyOverdone_in_oneCandlestick() throws ParseException, BinanceApiException {
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("0");
+    candlestick1.setClose("0");
     candlestick1.setOpenTime(1L);
     candlestick1.setCloseTime(2L);
 
@@ -290,6 +319,174 @@ public class BitcoinMonitoringTaskTest {
 
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
     assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.BUY);
+  }
+
+  @Test
+  public void lastCandlestickRemoved_fifteenMinutes() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(9L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.BUY);
+  }
+
+  @Test
+  public void lastCandlestickNotRemoved_fifteenMinutes() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(11L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.SELL);
+  }
+
+  @Test
+  public void lastCandlestickRemoved_hourly() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(9L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performHourlyTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.HOUR)).isEqualTo(TradeType.BUY);
+  }
+
+  @Test
+  public void lastCandlestickNotRemoved_hourly() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(11L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performHourlyTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.HOUR)).isEqualTo(TradeType.SELL);
+  }
+
+  @Test
+  public void lastCandlestickRemoved_fourHourly() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(9L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performFourHourlyTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FOUR_HOURS)).isEqualTo(TradeType.BUY);
+  }
+
+  @Test
+  public void lastCandlestickNotRemoved_fourHourly() throws ParseException, BinanceApiException {
+    Candlestick candlestick1 = new Candlestick();
+    candlestick1.setOpen("0");
+    candlestick1.setClose("0");
+    candlestick1.setOpenTime(1L);
+    candlestick1.setCloseTime(2L);
+
+    // This should prevail as buy overdone.
+    Candlestick candlestick2 = new Candlestick();
+    candlestick2.setOpen("100");
+    candlestick2.setClose("101.5");
+    candlestick2.setCloseTime(1L);
+
+    Candlestick incompleteCandlestick = new Candlestick();
+    incompleteCandlestick.setOpen("90");
+    incompleteCandlestick.setClose("80");
+    incompleteCandlestick.setCloseTime(10L);
+    when(mockClock.millis()).thenReturn(11L);
+    bitcoinMonitoringTask.setMockClock(mockClock);
+    when(mockBinanceApiRestClient.getCandlestickBars(
+        "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null))
+        .thenReturn(Lists.newArrayList(candlestick1, candlestick2, incompleteCandlestick));
+
+    bitcoinMonitoringTask.performFourHourlyTimeFrame();
+    assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FOUR_HOURS)).isEqualTo(TradeType.SELL);
   }
 
   @Test
@@ -334,6 +531,11 @@ public class BitcoinMonitoringTaskTest {
 
   @Test
   public void buyOverdone_in_twoCandlesticks() throws ParseException, BinanceApiException {
+    Candlestick streakBreakerInRed = new Candlestick();
+    streakBreakerInRed.setOpen("100.1");
+    streakBreakerInRed.setClose("100");
+    streakBreakerInRed.setOpenTime(1L);
+    streakBreakerInRed.setCloseTime(2L);
     Candlestick candlestick1 = new Candlestick();
     candlestick1.setOpen("100");
     candlestick1.setClose("101");
@@ -345,7 +547,7 @@ public class BitcoinMonitoringTaskTest {
     candlestick2.setCloseTime(2L);
     when(mockBinanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null))
-        .thenReturn(Lists.newArrayList(candlestick1, candlestick2));
+        .thenReturn(Lists.newArrayList(streakBreakerInRed, candlestick1, candlestick2));
 
     bitcoinMonitoringTask.performFifteenMinuteTimeFrame();
     assertThat(bitcoinMonitoringTask.getTradeTypeOverdone(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.BUY);

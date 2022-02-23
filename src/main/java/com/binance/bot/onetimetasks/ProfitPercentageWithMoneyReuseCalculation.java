@@ -5,8 +5,10 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.ChartPatternSignalMapper;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TradeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,13 +16,34 @@ import org.springframework.data.util.Pair;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+
+/**
+ * at margin level 1.5
+ * total val: 100
+ * borrowed val: 66.67
+ * net val: 33.33
+ *
+ * drop for erasure to 1.3 (margin call):
+ * total val: 86.67
+ * borrowed val: 66.67
+ * net val: 20
+ * % drop in total val (i.e drop in cmv) = 13.33
+ *
+ * drop for erasure to 1.1 (liquidation):
+ * total val: 73.33
+ * borrowed val: 66.67
+ * net val: 6.67
+ * % drop in total val = 26.67%
+ */
 @Component
 public class ProfitPercentageWithMoneyReuseCalculation {
-  private static final double STOP_LOSS_PERCENT = 20;
+  private static final double STOP_LOSS_PERCENT = 15;
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   @Autowired
@@ -36,12 +59,17 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private static final String QUERY = "select * from ChartPatternSignal " +
       // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
       // stop loss alone but not for whether profit met, better filter it out.
-      "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null " +
+      "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and TimeFrame != 'DAY'" +
+      //"and DateTime(TimeOfSignal)>=DateTime('2022-02-20 00:00') " +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
+  private final boolean avoidOverdoneTradeTypes = true;
+  private final ChartPatternSignalDaoImpl dao;
   @Autowired
-  public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory) throws BinanceApiException {
+  public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory,
+                                                   ChartPatternSignalDaoImpl dao) throws BinanceApiException {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
+    this.dao = dao;
     binanceApiRestClient.getExchangeInfo().getSymbols().forEach(symbolInfo -> {
       symbolAndIsMarginTradingAllowed.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());
     });
@@ -66,12 +94,14 @@ public class ProfitPercentageWithMoneyReuseCalculation {
 
   public void calculate() {
     List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(QUERY, new ChartPatternSignalMapper());
-    int origCount = chartPatternSignals.size();
+    if (avoidOverdoneTradeTypes) {
+      chartPatternSignals = filterOutOverdoneTradeTypes(chartPatternSignals);
+    }
     if (USE_MARGIN) {
       List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal ->
-          symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(Collectors.toList());
+          symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(toList());
       List<ChartPatternSignal> chartPatternSignalsFilteredOut = chartPatternSignals.stream().filter(chartPatternSignal ->
-          !symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(Collectors.toList());
+          !symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(toList());
       Set<String> filteredSymbols = new HashSet<>();
       chartPatternSignalsFilteredOut.forEach(chartPatternSignal -> {
         filteredSymbols.add(chartPatternSignal.coinPair());
@@ -117,6 +147,20 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     processTradeExitEventsUntilGivenDate(null);
     printWallet("The end", new Date());
     dumpStateOfLockedChartPatterns();
+  }
+
+  private List<ChartPatternSignal> filterOutOverdoneTradeTypes(List<ChartPatternSignal> chartPatternSignals) {
+    List<ChartPatternSignal> filtered = chartPatternSignals.stream().filter(chartPatternSignal -> {
+      try {
+        TradeType overdoneTradeType = dao.getOverdoneTradeType(chartPatternSignal.timeOfSignal(),
+            chartPatternSignal.timeFrame());
+        return chartPatternSignal.tradeType() != overdoneTradeType;
+      } catch (ParseException e) {
+        throw new RuntimeException(e);
+      }
+    }).collect(toList());
+    logger.info(String.format("Filtered out %d overdone chart patterns.", chartPatternSignals.size() - filtered.size()));
+    return filtered;
   }
 
   private void dumpStateOfLockedChartPatterns() {

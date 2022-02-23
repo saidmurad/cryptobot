@@ -34,12 +34,12 @@ public class BinancebotApplication implements CommandLineRunner {
 	}
 
 	@Override
-	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException {
-		calculation.calculate();
+	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException, InterruptedException {
+		//calculation.calculate();
 		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
 		//cancelOrders.cancelOrders();
 		//TODO: remove.executeExitPositions.perform();
-		//bitcoinMonitoringTask.backFill();
+		bitcoinMonitoringTask.backFill();
 	}
 }
 

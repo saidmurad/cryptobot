@@ -25,9 +25,20 @@ public class ChartPatternSignalDaoImpl {
   @Autowired
   JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private final SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
+  private final SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
+  private final SimpleDateFormat dayFormat = new SimpleDateFormat("dd");
+  private final SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
+  private final SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
+
   ChartPatternSignalDaoImpl() {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
+    yearFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    monthFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    dayFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    hourFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    minuteFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
   void setDataSource(DataSource dataSource) {
@@ -513,7 +524,7 @@ public class ChartPatternSignalDaoImpl {
       ret = jdbcTemplate.update(String.format("update BitcoinPriceMonitoring " +
           "set CandleOpenPrice=%f, CandleClosePrice=%f " +
           "where Time='%s' and TimeFrame='%s'", open, close, df.format(openDate), timeFrame.name()));
-      logger.info(String.format("Skipped updating already existing row in BitcoinPriceMonitoringRow for date '%s' and " +
+      logger.info(String.format("Updated already existing row in BitcoinPriceMonitoringRow for date '%s' and " +
           "timeFrame '%s.", df.format(openDate), timeFrame.name()));
     }
     String msg = String.format("%s %s BitcoinPriceMonitoring for date '%s', timeframe '%s' with " +
@@ -526,5 +537,53 @@ public class ChartPatternSignalDaoImpl {
     } else {
       logger.info(msg);
     }
+  }
+
+  public TradeType getOverdoneTradeType(Date time, TimeFrame timeFrame) throws ParseException {
+    Date candlestickStart = getCandlestickStart(time, timeFrame);
+    String sql = String.format("select TradeTypeOverdone from BitcoinPriceMonitoring " +
+        "where Time='%s' and TimeFrame='%s'", df.format(candlestickStart), timeFrame.name());
+    String tradeTypeOverdoneStr = jdbcTemplate.queryForObject(sql, new Object[]{},
+        (rs, numRows) -> rs.getString("TradeTypeOverdone"));
+    return TradeType.valueOf(tradeTypeOverdoneStr);
+  }
+
+  Date getCandlestickStart(Date time, TimeFrame timeFrame) throws ParseException {
+    int year = getDateComponent(yearFormat, time);
+    int month = getDateComponent(monthFormat, time);
+    int day = getDateComponent(dayFormat, time);
+    int hour = getDateComponent(hourFormat, time);
+    int minute = getDateComponent(minuteFormat, time);
+
+    switch(timeFrame) {
+      case FIFTEEN_MINUTES:
+        return getFifteenMinuteCandlestickStart(year, month, day, hour, minute);
+      case HOUR:
+        return getHourlyCandlestickStart(year, month, day, hour);
+      case FOUR_HOURS:
+      default:
+        return getFourHourlyCandlestickStart(year, month, day, hour);
+    }
+  }
+
+  private int getDateComponent(SimpleDateFormat dateFormat, Date time) {
+    return Integer.parseInt(dateFormat.format(time));
+  }
+
+  Date getFifteenMinuteCandlestickStart(int year, int month, int day, int hour, int minute) throws ParseException {
+    int roundedMin = minute / 15* 15;
+    String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, hour, roundedMin);
+    return df.parse(candlestickStartTimeStr);
+  }
+
+  Date getHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
+    String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, hour, 0);
+    return df.parse(candlestickStartTimeStr);
+  }
+
+  Date getFourHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
+    int roundedHour = hour / 4 * 4;
+    String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, roundedHour, 0);
+    return df.parse(candlestickStartTimeStr);
   }
 }

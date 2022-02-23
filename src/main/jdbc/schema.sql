@@ -24,14 +24,10 @@ Create Table ChartPatternSignal(
 );
 PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)
 
-Create Table BTCHistory(
-    FifteenMinuteCandlestickTime TEXT,
-    Price REAL NOT NULL,
-    ChangeSince1Candlestick REAL NOT NULL,
-    ChangeSince2Candlesticks REAL NOT NULL,
-    ChangeSince3Candlesticks REAL NOT NULL,
-    ChangeSince4Candlesticks REAL NOT NULL
-);
+create table BitcoinPriceMonitoring(
+      Time TEXT not Null, timeFrame TEXT not Null, candleOpenPrice REAL, candleClosePrice REAL,
+      TradeTypeOverdone TEXT,
+      Constraint PK Primary Key(time, timeFrame));
 
 alter statements pending:
 1. alter table ChartPatternSignal add column TradeExitType TEXT;

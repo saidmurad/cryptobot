@@ -995,4 +995,29 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(prices.getFirst()).isEqualTo(3.0);
     assertThat(prices.getSecond()).isEqualTo(4.0);
   }
+
+  public void testTradeTypeOverdone_query() throws ParseException {
+    Date date = dateFormat.parse("2022-01-02 11:15");
+    dao.insertOverdoneTradeType(date, TimeFrame.FIFTEEN_MINUTES, TradeType.SELL);
+
+    assertThat(dao.getOverdoneTradeType(date, TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.SELL);
+  }
+
+  public void testRoundFifteenMinute() throws ParseException {
+    Date date = dateFormat.parse("2022-01-02 21:47");
+    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FIFTEEN_MINUTES);
+    assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 21:45"));
+  }
+
+  public void testRoundHour() throws ParseException {
+    Date date = dateFormat.parse("2022-01-02 23:47");
+    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.HOUR);
+    assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 23:00"));
+  }
+
+  public void testRoundFourHour() throws ParseException {
+    Date date = dateFormat.parse("2022-01-02 23:17");
+    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FOUR_HOURS);
+    assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 20:00"));
+  }
 }

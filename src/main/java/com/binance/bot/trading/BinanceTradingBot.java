@@ -44,6 +44,7 @@ public class BinanceTradingBot {
     private final BookTickerPrices bookTickerPrices;
 
     @Value("${per_trade_amount}")
+    public
     double perTradeAmount;
     @Value("${stop_loss_percent}")
     double stopLossPercent;
@@ -98,8 +99,8 @@ public class BinanceTradingBot {
                     for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
                         if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                             || (chartPatternSignal.profitPotentialPercent() >= 0.5
-                        && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
-                        && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+                            && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
+                            && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
                             placeTrade(chartPatternSignal);
                         }
                     }
@@ -233,46 +234,47 @@ public class BinanceTradingBot {
                     OrderType.MARKET, /* timeInForce= */ null,
                     roundedQuantity);
                 NewOrderResponse marketOrderResp = binanceApiRestClient.newOrder(marketOrder);
+                logger.info(String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
+                    marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal));
+                // TODO: delayed market order executions.
+                dao.setEntryOrder(chartPatternSignal,
+                    ChartPatternSignal.Order.create(
+                        marketOrderResp.getOrderId(),
+                        numberFormat.parse(marketOrderResp.getExecutedQty()).doubleValue(),
+                        /// TODO: Find the actual price from the associated Trade
+                        entryPrice, // because the order response returns just 0 as the price for market order fill.
+                        marketOrderResp.getStatus()));
+
+                String stopPrice = String.format("%.2f", entryPrice * (100 - sign * stopLossPercent) / 100);
+                String stopLimitPrice = String.format("%.2f", entryPrice * (100 - sign * stopLimitPercent) / 100);
+                NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
+                    stopLossOrderSide,
+                    OrderType.STOP_LOSS_LIMIT,
+                    TimeInForce.GTC,
+                    marketOrderResp.getExecutedQty(),
+                    stopLimitPrice);
+                stopLossOrder.stopPrice(stopPrice);
+                NewOrderResponse stopLossOrderResp = binanceApiRestClient.newOrder(stopLossOrder);
+                logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
+                    stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
+
+                dao.setExitStopLimitOrder(chartPatternSignal,
+                    ChartPatternSignal.Order.create(
+                        stopLossOrderResp.getOrderId(),
+                        0,0,
+                        stopLossOrderResp.getStatus()));
+
                 break;
             default:
-                orderSide = OrderSide.SELL;
+                /*orderSide = OrderSide.SELL;
                 stopLossOrderSide = OrderSide.BUY;
                 sign = -1;
                 MarginNewOrder marginMarketOrder = new MarginNewOrder(chartPatternSignal.coinPair(), orderSide,
-                    OrderType.MARKET, /* timeInForce= */ null,
+                    OrderType.MARKET, null,
                     roundedQuantity);
-                MarginNewOrderResponse marginMarketOrderResp = binanceApiMarginRestClient.newOrder(marginMarketOrder);
+                MarginNewOrderResponse marginMarketOrderResp = binanceApiMarginRestClient.newOrder(marginMarketOrder);*/
         }
-/*
-        logger.info(String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
-            marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal));
-        // TODO: delayed market order executions.
-        dao.setEntryOrder(chartPatternSignal,
-            ChartPatternSignal.Order.create(
-                marketOrderResp.getOrderId(),
-                numberFormat.parse(marketOrderResp.getExecutedQty()).doubleValue(),
-                /// TODO: Find the actual price from the associated Trade
-                entryPrice, // because the order response returns just 0 as the price for market order fill.
-                marketOrderResp.getStatus()));
 
-        String stopPrice = String.format("%.2f", entryPrice * (100 - sign * stopLossPercent) / 100);
-        String stopLimitPrice = String.format("%.2f", entryPrice * (100 - sign * stopLimitPercent) / 100);
-        NewOrder stopLossOrder = new NewOrder(chartPatternSignal.coinPair(),
-            stopLossOrderSide,
-            OrderType.STOP_LOSS_LIMIT,
-            TimeInForce.GTC,
-            marketOrderResp.getExecutedQty(),
-            stopLimitPrice);
-        stopLossOrder.stopPrice(stopPrice);
-        NewOrderResponse stopLossOrderResp = binanceApiRestClient.newOrder(stopLossOrder)
-        logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
-            stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
-
-        dao.setExitStopLimitOrder(chartPatternSignal,
-            ChartPatternSignal.Order.create(
-                stopLossOrderResp.getOrderId(),
-                0,0,
-                stopLossOrderResp.getStatus()));*/
     }
 
     private double getMinQtyUSDTAdjustedForStopLoss(Double minNotional, double stopLossPercent) {

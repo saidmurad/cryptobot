@@ -28,7 +28,7 @@ public class OrderTest {
   @Test
   public void orderTest() throws BinanceApiException {
     NewOrder newOrder = new NewOrder("BTCUSDT", OrderSide.BUY, OrderType.LIMIT, TimeInForce.GTC,
-        "12.1234567", "32000");
+        "12.12345", "32000");
     binanceApiRestClient.newOrderTest(newOrder);
   }
 }

@@ -24,12 +24,12 @@ import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 public class ChartPatternSignalDaoImpl {
   @Autowired
   JdbcTemplate jdbcTemplate;
-  final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-  private final SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
-  private final SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
-  private final SimpleDateFormat dayFormat = new SimpleDateFormat("dd");
-  private final SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
-  private final SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
+  static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+  private static final SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
+  private static final SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
+  private static final SimpleDateFormat dayFormat = new SimpleDateFormat("dd");
+  private static final SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
+  private static final SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
   ChartPatternSignalDaoImpl() {
@@ -548,7 +548,7 @@ public class ChartPatternSignalDaoImpl {
     return TradeType.valueOf(tradeTypeOverdoneStr);
   }
 
-  Date getCandlestickStart(Date time, TimeFrame timeFrame) throws ParseException {
+  public static Date getCandlestickStart(Date time, TimeFrame timeFrame) throws ParseException {
     int year = getDateComponent(yearFormat, time);
     int month = getDateComponent(monthFormat, time);
     int day = getDateComponent(dayFormat, time);
@@ -566,22 +566,22 @@ public class ChartPatternSignalDaoImpl {
     }
   }
 
-  private int getDateComponent(SimpleDateFormat dateFormat, Date time) {
+  private static int getDateComponent(SimpleDateFormat dateFormat, Date time) {
     return Integer.parseInt(dateFormat.format(time));
   }
 
-  Date getFifteenMinuteCandlestickStart(int year, int month, int day, int hour, int minute) throws ParseException {
+  static Date getFifteenMinuteCandlestickStart(int year, int month, int day, int hour, int minute) throws ParseException {
     int roundedMin = minute / 15* 15;
     String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, hour, roundedMin);
     return df.parse(candlestickStartTimeStr);
   }
 
-  Date getHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
+  static Date getHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
     String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, hour, 0);
     return df.parse(candlestickStartTimeStr);
   }
 
-  Date getFourHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
+  static Date getFourHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
     int roundedHour = hour / 4 * 4;
     String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, roundedHour, 0);
     return df.parse(candlestickStartTimeStr);

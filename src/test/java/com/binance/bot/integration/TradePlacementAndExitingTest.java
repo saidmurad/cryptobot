@@ -92,6 +92,7 @@ public class TradePlacementAndExitingTest {
   public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    binanceTradingBot.perTradeAmount = 100;
     binanceTradingBot.placeTrade(chartPatternSignal);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
 
@@ -100,7 +101,7 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
     System.out.println(String.format("Executed entry order: %s.", chartPatternSignal.entryOrder()));
     assertThat(Math.abs(chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()
-    -10.555)).isLessThan(0.5);
+    -100)).isLessThan(0.5);
     assertThat(chartPatternSignal.exitStopLimitOrder()).isNotNull();
     System.out.println(String.format("Placed stop limit order: %s.", chartPatternSignal.exitStopLimitOrder()));
 
@@ -124,7 +125,7 @@ public class TradePlacementAndExitingTest {
   }
 
   private boolean isCloseEnough(double val1, double val2) {
-    return Math.abs(val1 - val2) < 0.000001;
+    return Math.abs(val1 - val2) < 0.1;
   }
   private ChartPatternSignal getChartPatternSignal() {
     return ChartPatternSignal.newBuilder()

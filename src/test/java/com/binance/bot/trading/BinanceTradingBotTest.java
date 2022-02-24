@@ -485,7 +485,7 @@ public class BinanceTradingBotTest {
     verifyNoInteractions(mockDao);
   }
 
-  @Test
+  /*@Test
   public void marginThreshold_SellTrade_doesNothing() throws ParseException, BinanceApiException {
     MarginAccount marginAccount = new MarginAccount();
     marginAccount.setMarginLevel("2.0");
@@ -494,7 +494,7 @@ public class BinanceTradingBotTest {
 
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verifyNoInteractions(mockDao);
-  }
+  }*/
 
   @Test
   public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws ParseException, BinanceApiException {

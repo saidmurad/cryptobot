@@ -39,7 +39,7 @@ public class BinancebotApplication implements CommandLineRunner {
 		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
 		//cancelOrders.cancelOrders();
 		//TODO: remove.executeExitPositions.perform();
-		bitcoinMonitoringTask.backFill();
+		//bitcoinMonitoringTask.backFill();
 	}
 }
 

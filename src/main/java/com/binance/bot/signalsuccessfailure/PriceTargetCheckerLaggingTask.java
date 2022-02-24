@@ -60,7 +60,7 @@ public abstract class PriceTargetCheckerLaggingTask {
   private static final int REQUEST_WEIGHT_1_MIN_LIMIT = 1200;
 
   // Caution: Not unit tested nor found worth the trouble.
-  //@Scheduled(fixedDelay = 600000)
+  @Scheduled(fixedDelay = 600000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();

@@ -8,6 +8,7 @@ import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.ChartPatternSignalMapper;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,7 @@ import static java.util.stream.Collectors.toList;
  */
 @Component
 public class ProfitPercentageWithMoneyReuseCalculation {
-  private static final double STOP_LOSS_PERCENT = 15;
+  private static final double STOP_LOSS_PERCENT = 20;
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   @Autowired
@@ -63,7 +64,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       //"and DateTime(TimeOfSignal)>=DateTime('2022-02-20 00:00') " +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
-  private final boolean avoidOverdoneTradeTypes = true;
+  private final boolean avoidOverdoneTradeTypes = false;
   private final ChartPatternSignalDaoImpl dao;
   @Autowired
   public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory,
@@ -92,10 +93,36 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     }
   });
 
+  private TradeType getOverdoneTradeType(Date time, TimeFrame timeFrame) {
+    double threshold = 4;
+    if (timeFrame == TimeFrame.FOUR_HOURS) {
+      threshold = 6;
+    }
+    List<Pair<Double, Double>> results = jdbcTemplate.query(
+        String.format("select CandleOpenPrice, CandleClosePrice from BitcoinPriceMonitoring where Time < '%s' and TimeFrame ='%s' " +
+            "order by Time desc limit 10", df.format(time), timeFrame.name()), new Object[]{},
+        (rs, num) -> {
+          return Pair.of(rs.getDouble("CandleOpenPrice"), rs.getDouble("CandleClosePrice"));
+        }
+    );
+    boolean isLastCandleGreen = (results.get(9).getSecond() - results.get(9).getFirst()) >= 0;
+    double lastPrice = results.get(9).getSecond();
+    for (int i = 9; i >= 0; i--) {
+      boolean isGreen = (results.get(i).getSecond() - results.get(i).getFirst()) >= 0;
+      if (isGreen != isLastCandleGreen) {
+        return TradeType.NONE;
+      }
+      if (Math.abs((lastPrice - results.get(i).getFirst())/results.get(i).getFirst() * 100) >= threshold) {
+        return isGreen ? TradeType.BUY : TradeType.SELL;
+      }
+    }
+    return TradeType.NONE;
+  }
+
   public void calculate() {
     List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(QUERY, new ChartPatternSignalMapper());
     if (avoidOverdoneTradeTypes) {
-      chartPatternSignals = filterOutOverdoneTradeTypes(chartPatternSignals);
+      chartPatternSignals = filterOutOverdoneTradeTypesUseDynamic(chartPatternSignals);
     }
     if (USE_MARGIN) {
       List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal ->
@@ -149,10 +176,25 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     dumpStateOfLockedChartPatterns();
   }
 
-  private List<ChartPatternSignal> filterOutOverdoneTradeTypes(List<ChartPatternSignal> chartPatternSignals) {
+  private List<ChartPatternSignal> filterOutOverdoneTradeTypesUsePrecalculated(List<ChartPatternSignal> chartPatternSignals) {
     List<ChartPatternSignal> filtered = chartPatternSignals.stream().filter(chartPatternSignal -> {
       try {
         TradeType overdoneTradeType = dao.getOverdoneTradeType(chartPatternSignal.timeOfSignal(),
+            chartPatternSignal.timeFrame());
+        return chartPatternSignal.tradeType() != overdoneTradeType;
+      } catch (ParseException e) {
+        throw new RuntimeException(e);
+      }
+    }).collect(toList());
+    logger.info(String.format("Filtered out %d overdone chart patterns.", chartPatternSignals.size() - filtered.size()));
+    return filtered;
+  }
+
+  private List<ChartPatternSignal> filterOutOverdoneTradeTypesUseDynamic(List<ChartPatternSignal> chartPatternSignals) {
+    List<ChartPatternSignal> filtered = chartPatternSignals.stream().filter(chartPatternSignal -> {
+      try {
+        TradeType overdoneTradeType = getOverdoneTradeType(
+            ChartPatternSignalDaoImpl.getCandlestickStart(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame()),
             chartPatternSignal.timeFrame());
         return chartPatternSignal.tradeType() != overdoneTradeType;
       } catch (ParseException e) {

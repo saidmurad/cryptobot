@@ -39,7 +39,7 @@ public class MaxLossCalculatorTask {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
   }
 
-  //@Scheduled(fixedDelay = 600000)
+  @Scheduled(fixedDelay = 600000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws ParseException, InterruptedException, IOException, BinanceApiException {
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
     logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",

@@ -608,11 +608,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(dao.setExitStopLimitOrder(chartPatternSignalInDB,
         ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))).isTrue();
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    Order exitStopLimitOrderStatus = new Order();
-    exitStopLimitOrderStatus.setOrderId(2L);
-    exitStopLimitOrderStatus.setExecutedQty("100");
-    exitStopLimitOrderStatus.setPrice("205");
-    exitStopLimitOrderStatus.setStatus(OrderStatus.FILLED);
+    ChartPatternSignal.Order exitStopLimitOrderStatus = ChartPatternSignal.Order.create(2L, 100, 205, OrderStatus.FILLED);
 
     assertThat(dao.updateExitStopLimitOrder(chartPatternSignalInDB, exitStopLimitOrderStatus)).isTrue();
 
@@ -638,11 +634,8 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(dao.setExitStopLimitOrder(chartPatternSignalInDB,
         ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))).isTrue();
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    Order exitStopLimitOrderStatus = new Order();
-    exitStopLimitOrderStatus.setOrderId(2L);
-    exitStopLimitOrderStatus.setExecutedQty("50");
-    exitStopLimitOrderStatus.setPrice("205");
-    exitStopLimitOrderStatus.setStatus(OrderStatus.PARTIALLY_FILLED);
+    ChartPatternSignal.Order exitStopLimitOrderStatus = ChartPatternSignal.Order.create(
+        2L, 50, 205, OrderStatus.PARTIALLY_FILLED);
 
     assertThat(dao.updateExitStopLimitOrder(chartPatternSignalInDB, exitStopLimitOrderStatus)).isTrue();
 
@@ -668,11 +661,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(dao.setExitStopLimitOrder(chartPatternSignalInDB,
         ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))).isTrue();
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    Order exitStopLimitOrderStatus = new Order();
-    exitStopLimitOrderStatus.setOrderId(2L);
-    exitStopLimitOrderStatus.setExecutedQty("100");
-    exitStopLimitOrderStatus.setPrice("205");
-    exitStopLimitOrderStatus.setStatus(OrderStatus.FILLED);
+    ChartPatternSignal.Order exitStopLimitOrderStatus = ChartPatternSignal.Order.create(2L, 100, 205, OrderStatus.FILLED);
 
     assertThat(dao.updateExitStopLimitOrder(chartPatternSignalInDB, exitStopLimitOrderStatus)).isTrue();
 
@@ -698,11 +687,7 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertThat(dao.setExitStopLimitOrder(chartPatternSignalInDB,
         ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))).isTrue();
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    Order exitStopLimitOrderStatus = new Order();
-    exitStopLimitOrderStatus.setOrderId(2L);
-    exitStopLimitOrderStatus.setExecutedQty("50");
-    exitStopLimitOrderStatus.setPrice("205");
-    exitStopLimitOrderStatus.setStatus(OrderStatus.PARTIALLY_FILLED);
+    ChartPatternSignal.Order exitStopLimitOrderStatus = ChartPatternSignal.Order.create(2L, 50, 205, (OrderStatus.PARTIALLY_FILLED));
 
     assertThat(dao.updateExitStopLimitOrder(chartPatternSignalInDB, exitStopLimitOrderStatus)).isTrue();
 

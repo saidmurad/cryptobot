@@ -84,7 +84,8 @@ public class StopLimitOrderStatusCheckerTest {
     verify(mockBinanceApiRestClient).getOrderStatus(orderStatusRequestArgumentCaptor.capture());
     assertThat(orderStatusRequestArgumentCaptor.getValue().getOrderId()).isEqualTo(2);
     assertThat(orderStatusRequestArgumentCaptor.getValue().getSymbol()).isEqualTo("ETHUSDT");
-    verify(mockDao).updateExitStopLimitOrder(chartPatternSignal, exitLimitOrderStatus);
+    verify(mockDao).updateExitStopLimitOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(2L, 5, 4, OrderStatus.FILLED));
   }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {

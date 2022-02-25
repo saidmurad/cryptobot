@@ -354,15 +354,15 @@ public class ChartPatternSignalDaoImpl {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   public boolean updateExitStopLimitOrder(ChartPatternSignal chartPatternSignal,
-                                          Order exitStopLimitOrderStatus) throws ParseException {
-    double executedQty = numberFormat.parse(exitStopLimitOrderStatus.getExecutedQty()).doubleValue();
-    double executedPrice = numberFormat.parse(exitStopLimitOrderStatus.getPrice()).doubleValue();
+                                          ChartPatternSignal.Order exitStopLimitOrderStatus) throws ParseException {
+    double executedQty = exitStopLimitOrderStatus.executedQty();
+    double executedPrice = exitStopLimitOrderStatus.avgPrice();
     Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(
         chartPatternSignal,
         executedQty,
-        numberFormat.parse(exitStopLimitOrderStatus.getPrice()).doubleValue(),
+        exitStopLimitOrderStatus.avgPrice(),
         TradeExitType.STOP_LOSS,
-        exitStopLimitOrderStatus.getStatus());
+        exitStopLimitOrderStatus.status());
     double realizedPercent = realizedUnRealized.getFirst() /
         (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
     double unRealizedPercent = realizedUnRealized.getSecond() /
@@ -374,13 +374,13 @@ public class ChartPatternSignalDaoImpl {
         "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS' where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
-    int ret = jdbcTemplate.update(sql, exitStopLimitOrderStatus.getOrderId(),
-        exitStopLimitOrderStatus.getExecutedQty(),
+    int ret = jdbcTemplate.update(sql, exitStopLimitOrderStatus.orderId(),
+        exitStopLimitOrderStatus.executedQty(),
         executedPrice,
-        exitStopLimitOrderStatus.getStatus().name(),
+        exitStopLimitOrderStatus.status().name(),
         realizedUnRealized.getFirst(), realizedPercent, realizedUnRealized.getSecond(), unRealizedPercent,
-        exitStopLimitOrderStatus.getStatus() == OrderStatus.FILLED,
-        exitStopLimitOrderStatus.getStatus() == OrderStatus.FILLED ? 0 : 1,
+        exitStopLimitOrderStatus.status() == OrderStatus.FILLED,
+        exitStopLimitOrderStatus.status() == OrderStatus.FILLED ? 0 : 1,
         chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
@@ -388,9 +388,9 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal()),
         chartPatternSignal.attempt());
     if (ret == 1) {
-      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit stop limit order id %d.", chartPatternSignal.toString(), exitStopLimitOrderStatus.getOrderId()));
+      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit stop limit order id %d.", chartPatternSignal.toString(), exitStopLimitOrderStatus.orderId()));
     } else {
-      logger.error(String.format("Failed to update chart pattern signal \n%s\nwith exit stop limit id %d.", chartPatternSignal.toString(), exitStopLimitOrderStatus.getOrderId()));
+      logger.error(String.format("Failed to update chart pattern signal \n%s\nwith exit stop limit id %d.", chartPatternSignal.toString(), exitStopLimitOrderStatus.orderId()));
     }
     return ret == 1;
   }

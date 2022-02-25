@@ -45,7 +45,10 @@ public class StopLimitOrderStatusChecker {
       Order orderStatus = binanceApiRestClient.getOrderStatus(orderStatusRequest);
       if (orderStatus.getStatus() == OrderStatus.FILLED ||
           orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
-        dao.updateExitStopLimitOrder(activePosition, orderStatus);
+        double qty = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
+        double price = numberFormat.parse(orderStatus.getPrice()).doubleValue();
+        dao.updateExitStopLimitOrder(activePosition, ChartPatternSignal.Order.create(orderStatus.getOrderId(), qty,
+            price, orderStatus.getStatus()));
       }
     }
   }

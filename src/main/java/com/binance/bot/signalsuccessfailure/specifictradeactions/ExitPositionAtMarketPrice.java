@@ -46,7 +46,9 @@ public class ExitPositionAtMarketPrice {
   public void exitPositionIfStillHeld(
       ChartPatternSignal chartPatternSignal, double currMarketPrice, TradeExitType tradeExitType)
       throws MessagingException, ParseException, BinanceApiException {
-    if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
+    if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
+        // This is for backward compatibility.
+    || chartPatternSignal.exitStopLimitOrder() == null)) {
       return;
     }
     OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
@@ -54,7 +56,10 @@ public class ExitPositionAtMarketPrice {
     // To get the most update from binance.
     Order stopLimitOrderStatus = restClient.getOrderStatus(stopLimitOrderStatusRequest);
     logger.info(String.format("Status of the stop limit order: %s.", stopLimitOrderStatus));
-    dao.updateExitStopLimitOrder(chartPatternSignal, stopLimitOrderStatus);
+    dao.updateExitStopLimitOrder(chartPatternSignal, ChartPatternSignal.Order.create(stopLimitOrderStatus.getOrderId(),
+        stopLimitOrderStatus.getExecutedQty() != null ? numberFormat.parse(stopLimitOrderStatus.getExecutedQty()).doubleValue() : 0,
+        stopLimitOrderStatus.getPrice() != null ? numberFormat.parse(stopLimitOrderStatus.getPrice()).doubleValue(): 0,
+        stopLimitOrderStatus.getStatus()));
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
       return;

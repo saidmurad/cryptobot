@@ -30,8 +30,10 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import javax.mail.MessagingException;
+import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Date;
+import java.util.Locale;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.*;
@@ -46,6 +48,7 @@ public class ExitPositionAtMarketPriceTest {
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private Mailer mockMailer;
   private final long timeOfSignal = System.currentTimeMillis();
+  private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   @Before
   public void setUp() {
@@ -138,7 +141,11 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(
+        ChartPatternSignal.Order.create(exitStopLossOrderStatus.getOrderId(),
+            0,
+            0, exitStopLossOrderStatus.getStatus())
+    ));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);
@@ -183,7 +190,11 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(
+        ChartPatternSignal.Order.create(exitStopLossOrderStatus.getOrderId(),
+            0,
+            0, exitStopLossOrderStatus.getStatus())
+    ));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);
@@ -231,7 +242,11 @@ public class ExitPositionAtMarketPriceTest {
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, 1.0, TradeExitType.TARGET_TIME_PASSED);
 
     verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao).updateExitStopLimitOrder(any(), eq(exitStopLossOrderStatus));
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(
+        ChartPatternSignal.Order.create(exitStopLossOrderStatus.getOrderId(),
+            numberFormat.parse(exitStopLossOrderStatus.getExecutedQty()).doubleValue(),
+            numberFormat.parse(exitStopLossOrderStatus.getPrice()).doubleValue(), exitStopLossOrderStatus.getStatus())
+    ));
     assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
     verify(mockBinanceApiRestClient).cancelOrder(cancelOrderRequestCapture.capture());
     assertThat(cancelOrderRequestCapture.getValue().getOrderId()).isEqualTo(2);

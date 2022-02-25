@@ -8,6 +8,7 @@ import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
@@ -44,6 +45,7 @@ public class ProfitTakerTask {
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws IOException, MessagingException, ParseException, BinanceApiException {
+    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {
       marketPriceStream.addSymbol(activePosition.coinPair());

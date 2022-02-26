@@ -6,6 +6,7 @@ import com.binance.api.client.BinanceApiWebSocketClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.Closeable;
@@ -31,47 +32,17 @@ public class MarketPriceStream {
     this.bookTickerPrices = bookTickerPrices;
   }
 
-  public void addSymbol(String symbol) throws IOException {
-    if (coinPairs.contains(symbol)) {
-      return;
-    }
-    coinPairs.add(symbol);
-    restartStream();
-  }
-
-  public void removeSymbol(String symbol) throws IOException {
-    if (!symbol.equals("BTCUSDT")) {
-      coinPairs.remove(symbol);
-    }
-    restartStream();
-  }
-
-  private void restartStream() throws IOException {
+  @Scheduled(fixedDelay = 82800000, initialDelayString = "${timing.initialDelay}")
+  public void restartStream() throws IOException {
     if (tickrStream != null) {
       tickrStream.close();
     }
-    tickrStream = listenToTickerEvents();
-  }
-
-  private Closeable listenToTickerEvents() {
-    return binanceApiWebSocketClient.onBookTickerEvent(getSymbolsList(), callback -> {
+    tickrStream = binanceApiWebSocketClient.onAllBookTickersEvent(callback -> {
       try {
         bookTickerPrices.setBookTicker(callback);
       } catch (ParseException e) {
         logger.error(String.format("Exception in parsing book ticker %s.", callback), e);
       }
     });
-  }
-
-  private String getSymbolsList() {
-    StringBuilder symbolsList = new StringBuilder();
-    Iterator itr = coinPairs.iterator();
-    while (itr.hasNext()) {
-      if (symbolsList.length() > 0) {
-        symbolsList.append(",");
-      }
-      symbolsList.append(((String)itr.next()).toLowerCase());
-    }
-    return symbolsList.toString();
   }
 }

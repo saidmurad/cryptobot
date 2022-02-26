@@ -22,18 +22,15 @@ import java.util.List;
 public class ProfitTakerTask {
   private final ChartPatternSignalDaoImpl dao;
   private final BookTickerPrices bookTickerPrices;
-  private final MarketPriceStream marketPriceStream;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
   @Autowired
   ProfitTakerTask(ChartPatternSignalDaoImpl dao,
                   BookTickerPrices bookTickerPrices,
-                  MarketPriceStream marketPriceStream,
                   ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.dao = dao;
     this.bookTickerPrices = bookTickerPrices;
-    this.marketPriceStream = marketPriceStream;
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
@@ -42,7 +39,6 @@ public class ProfitTakerTask {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {
-      marketPriceStream.addSymbol(activePosition.coinPair());
       BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(activePosition.coinPair());
       if (bookTicker == null) {
         continue;

@@ -34,14 +34,15 @@ public class ProfitTakerTaskTest {
   public final MockitoRule mocks = MockitoJUnit.rule();
   @Mock private ChartPatternSignalDaoImpl dao;
   @Mock private BookTickerPrices bookTickerPrices;
-  @Mock private MarketPriceStream marketPriceStream;
   @Mock private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
   private final long timeOfSignal = System.currentTimeMillis();
   private ProfitTakerTask profitTakerTask;
+
   @Before
   public void setUp() {
-    profitTakerTask = new ProfitTakerTask(dao, bookTickerPrices, marketPriceStream, exitPositionAtMarketPrice);
+    profitTakerTask = new ProfitTakerTask(dao, bookTickerPrices, exitPositionAtMarketPrice);
   }
+
   @Test
   public void testPerform_noBookTickerCurrentlyAvailable_doesNthing() throws MessagingException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));

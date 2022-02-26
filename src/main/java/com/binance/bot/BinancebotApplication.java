@@ -19,16 +19,13 @@ import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client"})
 @Configuration
-//@EnableScheduling
+@EnableScheduling
 public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
-	//@Autowired private CancelOrders cancelOrders;
 	@Autowired private MarketPriceStream marketPriceStream;
 	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
-	@Autowired private BitcoinMonitoringTask bitcoinMonitoringTask;
-
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
 	}
@@ -36,10 +33,7 @@ public class BinancebotApplication implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException, InterruptedException {
 		//calculation.calculate();
-		// TODO: remove.marketPriceStream.addSymbol("BTCUSDT");
-		//cancelOrders.cancelOrders();
 		//TODO: remove.executeExitPositions.perform();
-		//bitcoinMonitoringTask.backFill();
 	}
 }
 

@@ -13,7 +13,9 @@ import java.util.Map;
 @Component
 public class BookTickerPrices {
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
+
   public void setBookTicker(BookTickerEvent callback) throws ParseException {
+    System.out.println(String.format("%s: %s", callback.getSymbol().toUpperCase(), callback.getAskPrice()));
     bookTickerMap.put(callback.getSymbol().toUpperCase(),
         BookTicker.create(
             numberFormat.parse(callback.getAskPrice()).doubleValue(),

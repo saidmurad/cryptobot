@@ -8,7 +8,6 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
@@ -65,7 +64,7 @@ public class ExecuteExitPositions {
         continue;
       }
       double currPrice = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, currPrice, TradeExitType.ORDERED_TO_EXIT_POSITIONS);
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.ORDERED_TO_EXIT_POSITIONS);
     }
   }
 

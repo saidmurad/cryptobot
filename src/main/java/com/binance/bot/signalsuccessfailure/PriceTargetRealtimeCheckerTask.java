@@ -20,13 +20,11 @@ import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
 import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
-import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
 public class PriceTargetRealtimeCheckerTask {
@@ -61,7 +59,7 @@ public class PriceTargetRealtimeCheckerTask {
         continue;
       }
       double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, priceAtTargetTime, TradeExitType.TARGET_TIME_PASSED);
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
       boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
       logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
     }

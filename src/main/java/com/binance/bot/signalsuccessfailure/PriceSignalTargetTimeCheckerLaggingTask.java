@@ -15,7 +15,6 @@ import java.text.ParseException;
 import java.util.List;
 
 import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
-import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
 @Component
 public class PriceSignalTargetTimeCheckerLaggingTask extends PriceTargetCheckerLaggingTask {
@@ -47,7 +46,7 @@ public class PriceSignalTargetTimeCheckerLaggingTask extends PriceTargetCheckerL
   // TODO: Unit test doesn't exist for this calss as it is a subclass providing only the overrides.
   @Override
   protected boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double targetTimePrice) throws MessagingException, ParseException, BinanceApiException {
-    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, targetTimePrice, TradeExitType.TARGET_TIME_PASSED);
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
     return dao.setSignalTargetTimePrice(chartPatternSignal, targetTimePrice,
         getProfitPercentAtWithPrice(chartPatternSignal, targetTimePrice));
   }

@@ -1,22 +1,22 @@
 package com.binance.bot.signalsuccessfailure.specifictradeactions;
 
 import com.binance.api.client.BinanceApiClientFactory;
-import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.OrderType;
-import com.binance.api.client.domain.account.AssetBalance;
-import com.binance.api.client.domain.account.NewOrder;
-import com.binance.api.client.domain.account.NewOrderResponse;
-import com.binance.api.client.domain.account.Order;
+import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.account.request.CancelOrderRequest;
 import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
+import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
+import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,26 +25,30 @@ import org.springframework.stereotype.Component;
 import javax.mail.MessagingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Locale;
 
 @Component
 /** For exiting at market price either due to signal invalidation, target time elapsed, or profit taking. */
 public class ExitPositionAtMarketPrice {
-  private final BinanceApiRestClient restClient;
+  private final BinanceApiMarginRestClient binanceApiMarginRestClient;
   private final ChartPatternSignalDaoImpl dao;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final Mailer mailer;
+  private final RepayBorrowedOnMargin repayBorrowedOnMargin;
 
   @Autowired
-  ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao, Mailer mailer) {
-    this.restClient = binanceApiClientFactory.newRestClient();
+  ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao,
+                            Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin) {
+    this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.dao = dao;
     this.mailer = mailer;
+    this.repayBorrowedOnMargin = repayBorrowedOnMargin;
   }
 
   public void exitPositionIfStillHeld(
-      ChartPatternSignal chartPatternSignal, double currMarketPrice, TradeExitType tradeExitType)
+      ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType)
       throws MessagingException, ParseException, BinanceApiException {
     if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
         // This is for backward compatibility.
@@ -54,7 +58,7 @@ public class ExitPositionAtMarketPrice {
     OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
         chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
     // To get the most update from binance.
-    Order stopLimitOrderStatus = restClient.getOrderStatus(stopLimitOrderStatusRequest);
+    Order stopLimitOrderStatus = binanceApiMarginRestClient.getOrderStatus(stopLimitOrderStatusRequest);
     logger.info(String.format("Status of the stop limit order: %s.", stopLimitOrderStatus));
     dao.updateExitStopLimitOrder(chartPatternSignal, ChartPatternSignal.Order.create(stopLimitOrderStatus.getOrderId(),
         stopLimitOrderStatus.getExecutedQty() != null ? numberFormat.parse(stopLimitOrderStatus.getExecutedQty()).doubleValue() : 0,
@@ -76,17 +80,16 @@ public class ExitPositionAtMarketPrice {
     }
     CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
         chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-    CancelOrderResponse cancelStopLimitOrderResponse = restClient.cancelOrder(cancelStopLimitOrderRequest);
+    CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
     logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
     dao.cancelStopLimitOrder(chartPatternSignal);
-    exitSpotAccountQty(chartPatternSignal, qtyToExit, currMarketPrice, tradeExitType);
+    exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
   }
 
-  private void exitSpotAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, double currPrice,
-                                  TradeExitType tradeExitType)
+  private void exitMarginAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, TradeExitType tradeExitType)
       throws ParseException, MessagingException, BinanceApiException {
-    String baseAsset = chartPatternSignal.coinPair().substring(0, chartPatternSignal.coinPair().length() - 4);
-    AssetBalance assetBalance = restClient.getAccount().getAssetBalance(baseAsset);
+    String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
+    MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
     double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
     double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
     logger.info(String.format("Asset %s quantity free: %f and quantity locked: %f", baseAsset, freeBalance, lockedBalance));
@@ -98,16 +101,42 @@ public class ExitPositionAtMarketPrice {
       return;
     }
     if (qtyToExit > 0) {
-      NewOrder sellOrder = new NewOrder(chartPatternSignal.coinPair(), OrderSide.SELL,
+      MarginNewOrder sellOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
+          chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
           OrderType.MARKET, /* timeInForce= */ null,
           // TODO: In corner cases, will have to round up this quantity.
           "" + qtyToExit);
-      NewOrderResponse sellOrderResponse = restClient.newOrder(sellOrder);
-      logger.info(String.format("Executed sell order and got the response: %s.", sellOrderResponse));
+      MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(sellOrder);
+      logger.info(String.format("Executed %s order and got the response: %s.",
+          chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
+          marketExitOrderResponse));
+      double executedQty = numberFormat.parse(marketExitOrderResponse.getExecutedQty()).doubleValue();
+      double avgTradePrice = getAvgTradePrice(marketExitOrderResponse);
       dao.setExitMarketOrder(chartPatternSignal,
-          ChartPatternSignal.Order.create(sellOrderResponse.getOrderId(),
-              numberFormat.parse(sellOrderResponse.getExecutedQty()).doubleValue(),
-              currPrice, sellOrderResponse.getStatus()), tradeExitType);
+          ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
+              executedQty,
+              avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);
+      if (chartPatternSignal.tradeType() == TradeType.BUY) {
+        repayBorrowedOnMargin.repay("USDT", executedQty * avgTradePrice);
+      } else {
+        repayBorrowedOnMargin.repay(baseAsset, executedQty);
+      }
     }
+  }
+
+  private double getAvgTradePrice(MarginNewOrderResponse sellOrderResponse) throws ParseException {
+    List<Trade> fills = sellOrderResponse.getFills();
+    double weightedSum=0, weight = 0;
+    for (Trade fill: fills) {
+      double fillPrice = getDoubleValue(fill.getPrice());
+      double fillQty = getDoubleValue(fill.getQty());
+      weightedSum += fillPrice * fillQty;
+      weight += fillQty;
+    }
+    return weightedSum / weight;
+  }
+
+  private double getDoubleValue(String price) throws ParseException {
+    return numberFormat.parse(price).doubleValue();
   }
 }

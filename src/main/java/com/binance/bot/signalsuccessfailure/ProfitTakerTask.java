@@ -1,11 +1,5 @@
 package com.binance.bot.signalsuccessfailure;
 
-import com.binance.api.client.BinanceApiClientFactory;
-import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.OrderStatus;
-import com.binance.api.client.domain.account.request.CancelOrderRequest;
-import com.binance.api.client.domain.account.request.CancelOrderResponse;
-import com.binance.api.client.domain.account.request.OrderRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
@@ -56,7 +50,7 @@ public class ProfitTakerTask {
       double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
       if (isPriceTargetMet(activePosition, currMarketPrice)) {
         logger.info(String.format("Price target met for chart pattern signal:\n.", activePosition));
-        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, currMarketPrice, TradeExitType.PROFIT_TARGET_MET);
+        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
       }
     }
   }

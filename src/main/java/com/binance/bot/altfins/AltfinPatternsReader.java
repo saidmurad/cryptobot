@@ -8,11 +8,9 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.*;
-import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
-import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
@@ -177,7 +175,7 @@ public class AltfinPatternsReader {
           boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
               chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
           logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
-          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, priceAtTimeOfInvalidation, TradeExitType.REMOVED_FROM_ALTFINS);
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
         }
       }
     }

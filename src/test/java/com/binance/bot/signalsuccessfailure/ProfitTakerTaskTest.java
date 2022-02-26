@@ -1,6 +1,5 @@
 package com.binance.bot.signalsuccessfailure;
 
-import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
@@ -9,8 +8,6 @@ import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
 import com.google.common.collect.Lists;
-import junit.framework.TestCase;
-import org.hibernate.annotations.SelectBeforeUpdate;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -69,7 +66,6 @@ public class ProfitTakerTaskTest {
   @Captor
   ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
   @Captor ArgumentCaptor<TradeExitType> tradeExitTypeArgumentCaptor;
-  @Captor ArgumentCaptor<Double> priceArgumentCaptor;
 
   @Test
   public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException, BinanceApiException {
@@ -81,9 +77,8 @@ public class ProfitTakerTaskTest {
     profitTakerTask.perform();
 
     verify(exitPositionAtMarketPrice).exitPositionIfStillHeld(
-        chartPatternSignalArgumentCaptor.capture(), priceArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
+        chartPatternSignalArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
     assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(getChartPatternSignal().build());
-    assertThat(priceArgumentCaptor.getValue()).isEqualTo(6000.0);
     assertThat(tradeExitTypeArgumentCaptor.getValue()).isEqualTo(TradeExitType.PROFIT_TARGET_MET);
   }
 
@@ -109,9 +104,8 @@ public class ProfitTakerTaskTest {
     profitTakerTask.perform();
 
     verify(exitPositionAtMarketPrice).exitPositionIfStillHeld(
-        chartPatternSignalArgumentCaptor.capture(), priceArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
+        chartPatternSignalArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
     assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
-    assertThat(priceArgumentCaptor.getValue()).isEqualTo(3000.0);
     assertThat(tradeExitTypeArgumentCaptor.getValue()).isEqualTo(TradeExitType.PROFIT_TARGET_MET);
   }
 

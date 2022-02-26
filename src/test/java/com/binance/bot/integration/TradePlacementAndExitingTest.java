@@ -37,12 +37,12 @@ import java.util.Locale;
 import static com.binance.bot.database.ChartPatternSignalDaoImplTest.createTableStmt;
 import static com.google.common.truth.Truth.assertThat;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+/*@RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest
 @EnableConfigurationProperties
 @TestPropertySource(locations = {
     "classpath:application.properties"},
-    properties = "app.scheduling.enable=false")
+    properties = "app.scheduling.enable=false")*/
 /**
  * Disabled for frequent running becaause cross margin test doesn't have a testnet to use.
  */
@@ -63,7 +63,7 @@ public class TradePlacementAndExitingTest {
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private VolumeProfile volProfile;
 
-  @Before
+  //@Before
   public void setUp() throws SQLException {
     assertThat(apiKey).startsWith("31");
     Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
@@ -87,7 +87,7 @@ public class TradePlacementAndExitingTest {
         .build();
   }
 
-  @Test
+  //@Test
   public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
@@ -106,7 +106,7 @@ public class TradePlacementAndExitingTest {
 
     // Exit the trade now.
     double currPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, currPrice, TradeExitType.REMOVED_FROM_ALTFINS);
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignal.isSignalOn()).isFalse();
     assertThat(chartPatternSignal.isPositionExited()).isTrue();

@@ -25,9 +25,9 @@ public class BinanceApiClientFactory {
    */
   private String apiSecret;
   @Value("${margin_acct_api_key}")
-  private String marginAcctApiKey = "JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";
+  private String marginAcctApiKey = "eg1YAeAUPX1OGg4N9DcEUdT8iOh7jebyTRwXdvJqJLCqcL7llepdq0nUEGCTK0vh" ;//"JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";
       @Value("${margin_acct_api_secret}")
-  private String marginAcctApiSecret="LZdi5SFRq2p1gWeDaTP7uh4eumkI91h1Oc4lcoykGBL5KBBtysP8O0sUZmMcX1h8";
+  private String marginAcctApiSecret="LAXIRwXTBzmrg7QZ4YNGA7Oy55azNCrTVBmSm0O9fN1JI6Go2Xl8dJ5smeeYwe9E";
   private String futuresApiKey = "87314199199403b9416250d3105716317a7973bc5a1ae21e9fe10ba45d542abf";
   private String futuresApiSecret = "8c206e8e8f1fdd8b1183c604ba26cbd7de81cd1dbb812d6907e6b091c0e31247";
   private boolean useTestnet = true;

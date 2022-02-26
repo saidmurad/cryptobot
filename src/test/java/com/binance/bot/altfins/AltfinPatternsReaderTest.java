@@ -8,13 +8,11 @@ import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.*;
-import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
-import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -546,7 +544,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     double currPrice = numberFormat.parse(tickerPrice.getPrice()).doubleValue();
     verify(mockDao).invalidateChartPatternSignal(
         eq(chartPatternSignal), eq(currPrice), any());
-    verify(mockExitPositionAtMarketPrice).exitPositionIfStillHeld(eq(chartPatternSignal), eq(currPrice), eq(TradeExitType.REMOVED_FROM_ALTFINS));
+    verify(mockExitPositionAtMarketPrice).exitPositionIfStillHeld(eq(chartPatternSignal), eq(TradeExitType.REMOVED_FROM_ALTFINS));
   }
 
   public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException, MessagingException, BinanceApiException {

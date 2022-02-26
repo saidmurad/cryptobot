@@ -29,14 +29,18 @@ create table BitcoinPriceMonitoring(
       TradeTypeOverdone TEXT,
       Constraint PK Primary Key(time, timeFrame));
 
-create table CrossMarginBalanceHistory(
+create table CrossMarginAccountFundingHistory(
+    Time TEXT not NULL,
+    Principal REAL not NULL
+)
+create table CrossMarginAccountBalanceHistory(
     Time TEXT not NULL,
     FreeUSDT INTEGER not NULL,
     TotalValue INTEGER not NULL,
     LiabilityValue INTEGER not NULL,
     MarginLevel REAL not NULL,
-    LockedInTrades INTEGER NULL,
-    Constraint PK Primary Key(Time);
+    LockedInTrades INTEGER not NULL,
+    ReturnRate REAL
 );
 
 alter statements pending:

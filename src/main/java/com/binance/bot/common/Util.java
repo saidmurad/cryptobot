@@ -51,4 +51,8 @@ public class Util {
         return TimeUnit.DAYS.toMillis(10);
     }
   }
+
+  public static String getBaseAsset(String coinPair) {
+      return coinPair.substring(0, coinPair.length() - 4);
+  }
 }

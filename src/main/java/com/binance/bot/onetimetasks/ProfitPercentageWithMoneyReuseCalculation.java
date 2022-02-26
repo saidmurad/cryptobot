@@ -53,14 +53,17 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final BinanceApiRestClient binanceApiRestClient;
   private final static double AMOUNT_PER_TRADE = 10;
-  /*private static final String QUERY_USING_ALTFINS_INVALIDATION = "select * from ChartPatternSignal
-  where ProfitPotentialPercent > 0" +
+  /*private static final String QUERY = "select * from ChartPatternSignal " +
+  "where ProfitPotentialPercent > 0 and " +
       "DateTime(TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
       "order by TimeOfSignal";*/
   private static final String QUERY = "select * from ChartPatternSignal " +
       // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
       // stop loss alone but not for whether profit met, better filter it out.
-      "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and TimeFrame != 'DAY'" +
+      "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
+      //TODO: Investigate this
+      " ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtTimeOfSignalInvalidation <30 and " +
+      "TimeFrame != 'DAY'" +
       //"and DateTime(TimeOfSignal)>=DateTime('2022-02-20 00:00') " +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
@@ -217,6 +220,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     }
     logger.info("Total number of locked trades=" + total);
     logger.info("Total nmber of trades expected="  + numTradesLive);
+    logger.info("Missing for count=" + missingForCount);
   }
 
   private void processTradeExitEventsUntilGivenDate(Date timeOfSignal) {
@@ -284,6 +288,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return amountsReleasedByDate;
   }
 
+  private int missingForCount = 0;
   private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
@@ -295,7 +300,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
             chartPatternSignal.profitPotentialPercent() / 100;
       } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.maxLossPercent() < STOP_LOSS_PERCENT) {
-        tradeExitTime = chartPatternSignal.timeOfSignalInvalidation();
+        tradeExitTime = chartPatternSignal.priceTargetTime();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
             chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
       } else if (chartPatternSignal.maxLossPercent() >= STOP_LOSS_PERCENT) {

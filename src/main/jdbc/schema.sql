@@ -29,6 +29,16 @@ create table BitcoinPriceMonitoring(
       TradeTypeOverdone TEXT,
       Constraint PK Primary Key(time, timeFrame));
 
+create table CrossMarginBalanceHistory(
+    Time TEXT not NULL,
+    FreeUSDT INTEGER not NULL,
+    TotalValue INTEGER not NULL,
+    LiabilityValue INTEGER not NULL,
+    MarginLevel REAL not NULL,
+    LockedInTrades INTEGER NULL,
+    Constraint PK Primary Key(Time);
+);
+
 alter statements pending:
 1. alter table ChartPatternSignal add column TradeExitType TEXT;
 isInsertedLate no longer used.

@@ -21,15 +21,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.sqlite.SQLiteException;
 
 import javax.mail.MessagingException;
-import java.io.File;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.NumberFormat;
@@ -44,9 +41,11 @@ import static com.google.common.truth.Truth.assertThat;
 @SpringBootTest
 @EnableConfigurationProperties
 @TestPropertySource(locations = {
-    "classpath:application.properties",
-    "classpath:test-application.properties" },
+    "classpath:application.properties"},
     properties = "app.scheduling.enable=false")
+/**
+ * Disabled for frequent running becaause cross margin test doesn't have a testnet to use.
+ */
 public class TradePlacementAndExitingTest {
   @Autowired
   private BinanceTradingBot binanceTradingBot;
@@ -92,7 +91,7 @@ public class TradePlacementAndExitingTest {
   public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
-    binanceTradingBot.perTradeAmount = 100;
+    binanceTradingBot.perTradeAmountConfigured = 10;
     binanceTradingBot.placeTrade(chartPatternSignal);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
 
@@ -101,7 +100,7 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
     System.out.println(String.format("Executed entry order: %s.", chartPatternSignal.entryOrder()));
     assertThat(Math.abs(chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()
-    -100)).isLessThan(0.5);
+    -10)).isLessThan(0.5);
     assertThat(chartPatternSignal.exitStopLimitOrder()).isNotNull();
     System.out.println(String.format("Placed stop limit order: %s.", chartPatternSignal.exitStopLimitOrder()));
 

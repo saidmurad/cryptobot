@@ -19,7 +19,7 @@ import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client"})
 @Configuration
-@EnableScheduling
+//@EnableScheduling
 public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired

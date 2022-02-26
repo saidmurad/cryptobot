@@ -25,8 +25,13 @@ import static com.binance.api.client.domain.account.NewOrder.marketBuy;
 public class OrdersExample {
 
   public static void main(String[] args) throws BinanceApiException {
-    BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("", "", true, true);
+    BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance(
+        "JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig",
+        "LZdi5SFRq2p1gWeDaTP7uh4eumkI91h1Oc4lcoykGBL5KBBtysP8O0sUZmMcX1h8", false, false);
     BinanceApiRestClient client = factory.newRestClient();
+    OrderStatusRequest orderStatusRequest = new OrderStatusRequest("BTCUSDT", 9561612645L);
+    Order orderStatus = client.getOrderStatus(orderStatusRequest);
+
 
     // Getting list of open orders
     List<Order> openOrders = client.getOpenOrders(new OrderRequest("BTCUSDT"));

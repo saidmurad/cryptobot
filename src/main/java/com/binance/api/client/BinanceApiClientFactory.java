@@ -18,11 +18,13 @@ public class BinanceApiClientFactory {
   /**
    * API Key
    */
+  @Value("${api_key}")
   private String apiKey;
 
   /**
    * Secret.B
    */
+  @Value("${api_secret}")
   private String apiSecret;
   @Value("${margin_acct_api_key}")
   private String marginAcctApiKey = "eg1YAeAUPX1OGg4N9DcEUdT8iOh7jebyTRwXdvJqJLCqcL7llepdq0nUEGCTK0vh" ;//"JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";

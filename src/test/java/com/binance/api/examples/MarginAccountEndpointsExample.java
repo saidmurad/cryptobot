@@ -26,7 +26,7 @@ public class MarginAccountEndpointsExample {
     System.out.println(marginAccount.getMarginLevel());
 
     // Get list of trades
-    List<Trade> myTrades = client.getMyTrades("NEOETH");
+    List<Trade> myTrades = client.getMyTrades("NEOETH", null);
     System.out.println(myTrades);
 
     // Transfer, borrow, repay

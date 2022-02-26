@@ -47,12 +47,13 @@ public interface BinanceApiMarginRestClient {
     Order getOrderStatus(OrderStatusRequest orderStatusRequest) throws BinanceApiException;
 
     /**
-     * Get margin trades for a specific symbol.
+     * Get margin trades for a specific symbol and an order.
      *
      * @param symbol symbol to get trades from
+     * @param orderId order id to get the trade fills for.
      * @return a list of trades
      */
-    List<Trade> getMyTrades(String symbol) throws BinanceApiException;
+    List<Trade> getMyTrades(String symbol, Long orderId) throws BinanceApiException;
 
     // User stream endpoints
 

@@ -3,11 +3,15 @@ package com.binance.bot.common;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.VolumeProfile;
 
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 public class Util {
+  private static final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     /**
      *
      * @param timeInMillis Timein millis.
@@ -54,5 +58,9 @@ public class Util {
 
   public static String getBaseAsset(String coinPair) {
       return coinPair.substring(0, coinPair.length() - 4);
+  }
+
+  public static double getDoubleValue(String price) throws ParseException {
+    return numberFormat.parse(price).doubleValue();
   }
 }

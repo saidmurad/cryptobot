@@ -128,15 +128,11 @@ public class ExitPositionAtMarketPrice {
     List<Trade> fills = sellOrderResponse.getFills();
     double weightedSum=0, weight = 0;
     for (Trade fill: fills) {
-      double fillPrice = getDoubleValue(fill.getPrice());
-      double fillQty = getDoubleValue(fill.getQty());
+      double fillPrice = Util.getDoubleValue(fill.getPrice());
+      double fillQty = Util.getDoubleValue(fill.getQty());
       weightedSum += fillPrice * fillQty;
       weight += fillQty;
     }
     return weightedSum / weight;
-  }
-
-  private double getDoubleValue(String price) throws ParseException {
-    return numberFormat.parse(price).doubleValue();
   }
 }

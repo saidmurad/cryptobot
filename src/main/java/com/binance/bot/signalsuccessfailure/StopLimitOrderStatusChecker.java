@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.Order;
+import com.binance.api.client.domain.account.Trade;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Util;
@@ -23,6 +24,8 @@ import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Locale;
+
+import static com.binance.bot.common.Util.getDoubleValue;
 
 @Component
 public class StopLimitOrderStatusChecker {
@@ -53,7 +56,7 @@ public class StopLimitOrderStatusChecker {
       if (orderStatus.getStatus() == OrderStatus.FILLED ||
           orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
         Double qty = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
-        double price = numberFormat.parse(orderStatus.getPrice()).doubleValue();
+        double price = getAvgFillPrice(activePosition.coinPair(),orderStatus.getOrderId());
         dao.updateExitStopLimitOrder(activePosition,
             ChartPatternSignal.Order.create(orderStatus.getOrderId(), qty,
             price, orderStatus.getStatus()));
@@ -66,5 +69,15 @@ public class StopLimitOrderStatusChecker {
         }
       }
     }
+  }
+
+  private double getAvgFillPrice(String coinPair, long orderId) throws BinanceApiException, ParseException {
+    List<Trade> trades = binanceApiMarginRestClient.getMyTrades(coinPair, orderId);
+    double weightedSum =0.0, weight = 0.0;
+    for (Trade trade: trades) {
+      weightedSum += getDoubleValue(trade.getQty()) * getDoubleValue(trade.getPrice());
+      weight += getDoubleValue(trade.getQty());
+    }
+    return weightedSum / weight;
   }
 }

@@ -208,7 +208,7 @@ public class BinanceApiRestClientImpl implements BinanceApiRestClient {
 
 	@Override
 	public List<Trade> getMyTrades(String symbol, Integer limit, Long fromId, Long recvWindow, Long timestamp) throws BinanceApiException {
-		return executeSync(binanceApiService.getMyTrades(symbol, limit, fromId, recvWindow, timestamp));
+		return executeSync(binanceApiService.getMyTrades(symbol, null, limit, fromId, recvWindow, timestamp));
 	}
 
 	@Override

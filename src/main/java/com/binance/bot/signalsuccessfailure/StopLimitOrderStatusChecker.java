@@ -13,7 +13,6 @@ import com.binance.bot.common.Util;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.AccountBalanceDao;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.slf4j.Logger;
@@ -37,19 +36,16 @@ public class StopLimitOrderStatusChecker {
   private final ChartPatternSignalDaoImpl dao;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final BinanceApiMarginRestClient binanceApiMarginRestClient;
-  private final AccountBalanceDao accountBalanceDao;
   private final Mailer mailer = new Mailer();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   @Autowired
   StopLimitOrderStatusChecker(ChartPatternSignalDaoImpl dao, RepayBorrowedOnMargin repayBorrowedOnMargin,
-                              BinanceApiClientFactory binanceApiClientFactory,
-                              AccountBalanceDao accountBalanceDao) {
+                              BinanceApiClientFactory binanceApiClientFactory) {
     this.dao = dao;
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
-    this.accountBalanceDao = accountBalanceDao;
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
@@ -79,7 +75,7 @@ public class StopLimitOrderStatusChecker {
             }
           }
         }
-        accountBalanceDao.writeAccountBalanceToDB();
+        dao.writeAccountBalanceToDB();
       }
     } catch (Exception ex) {
       logger.error("Exception.", ex);

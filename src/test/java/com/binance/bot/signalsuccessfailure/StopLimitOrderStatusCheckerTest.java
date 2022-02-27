@@ -12,7 +12,6 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.AccountBalanceDao;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
@@ -48,8 +47,6 @@ public class StopLimitOrderStatusCheckerTest {
   RepayBorrowedOnMargin mockRepayBorrowedOnMargin;
   @Mock
   ChartPatternSignalDaoImpl mockDao;
-  @Mock
-  AccountBalanceDao mockAccountBalanceDao;
 
   private StopLimitOrderStatusChecker stopLimitOrderStatusChecker;
 
@@ -57,7 +54,7 @@ public class StopLimitOrderStatusCheckerTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     stopLimitOrderStatusChecker = new StopLimitOrderStatusChecker(mockDao, mockRepayBorrowedOnMargin,
-        mockBinanceApiClientFactory, mockAccountBalanceDao);
+        mockBinanceApiClientFactory);
   }
 
   @Test
@@ -69,7 +66,7 @@ public class StopLimitOrderStatusCheckerTest {
 
     verifyNoInteractions(mockBinanceApiMarginRestClient);
     verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
-    verify(mockAccountBalanceDao, never()).writeAccountBalanceToDB();
+    verify(mockDao, never()).writeAccountBalanceToDB();
   }
 
   @Captor
@@ -104,7 +101,7 @@ public class StopLimitOrderStatusCheckerTest {
     verify(mockDao).updateExitStopLimitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2L, 5, 4, OrderStatus.FILLED));
     verify(mockRepayBorrowedOnMargin).repay(eq("USDT"), eq(20.0));
-    verify(mockAccountBalanceDao).writeAccountBalanceToDB();
+    verify(mockDao).writeAccountBalanceToDB();
   }
 
   @Test

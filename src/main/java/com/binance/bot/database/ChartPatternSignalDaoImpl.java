@@ -1,8 +1,14 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.OrderStatus;
+import com.binance.api.client.domain.account.MarginAccount;
+import com.binance.api.client.domain.account.MarginAssetBalance;
 import com.binance.api.client.domain.account.Order;
+import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Util;
+import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
 import org.slf4j.Logger;
@@ -31,9 +37,14 @@ public class ChartPatternSignalDaoImpl {
   private static final SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
   private static final SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  private final BinanceApiMarginRestClient binanceApiMarginRestClient;
+  private final BookTickerPrices bookTickerPrices;
 
-  ChartPatternSignalDaoImpl() {
+  @Autowired
+  ChartPatternSignalDaoImpl(BinanceApiClientFactory binanceApiClientFactory, BookTickerPrices bookTickerPrices) {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
+    this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
+    this.bookTickerPrices = bookTickerPrices;
     yearFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     monthFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     dayFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -45,7 +56,7 @@ public class ChartPatternSignalDaoImpl {
     jdbcTemplate = new JdbcTemplate(dataSource);
   }
 
-  public boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
+  public synchronized boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {
     String sql = "insert into ChartPatternSignal(CoinPair, TimeFrame, TradeType, Pattern, Attempt, PriceAtTimeOfSignal, PriceAtTimeOfSignalReal," +
         "PriceRelatedToPattern, TimeOfSignal, TimeOfInsertion, IsInsertedLate, NumTimesMissingInInput, " +
         "VolumeAtSignalCandlestick, VolumeAverage, IsVolumeSurge, PriceTarget, PriceTargetTime, ProfitPotentialPercent, " +
@@ -78,7 +89,7 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.update(sql, params) > 0;
   }
 
-  public boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation,
+  public synchronized boolean invalidateChartPatternSignal(ChartPatternSignal chartPatternSignal, double priceAtTimeOfInvalidation,
                                               ReasonForSignalInvalidation reasonForSignalInvalidation) {
     String sql = "update ChartPatternSignal set IsSignalOn=0, TimeOfSignalInvalidation=?, " +
         "PriceAtTimeOfSignalInvalidation=?, ProfitPercentAtTimeOfSignalInvalidation=?, " +
@@ -180,7 +191,7 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
-  public boolean setTenCandleStickTimePrice(ChartPatternSignal chartPatternSignal,
+  public synchronized boolean setTenCandleStickTimePrice(ChartPatternSignal chartPatternSignal,
                                             double tenCandleStickTimePrice,
                                             double tenCandleStickTimeProfitPercent) {
     String sql = "update ChartPatternSignal set PriceAtTenCandlestickTime=?, ProfitPercentAtTenCandlestickTime=? where " +
@@ -191,7 +202,7 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
   }
 
-  public boolean setSignalTargetTimePrice(ChartPatternSignal chartPatternSignal,
+  public synchronized boolean setSignalTargetTimePrice(ChartPatternSignal chartPatternSignal,
                                             double price,
                                             double profitPercent) {
     String sql = "update ChartPatternSignal set PriceAtSignalTargetTime=?, ProfitPercentAtSignalTargetTime=?, IsSignalOn=0" +
@@ -202,7 +213,7 @@ public class ChartPatternSignalDaoImpl {
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
   }
 
-  public boolean incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
+  public synchronized boolean incrementNumTimesMissingInInput(List<ChartPatternSignal> chartPatternsMissingInInput) {
     String sql = "update ChartPatternSignal set NumTimesMissingInInput = NumTimesMissingInInput + 1 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
         "Attempt=?";
@@ -221,7 +232,7 @@ public class ChartPatternSignalDaoImpl {
     return retVal;
   }
 
-  public void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {
+  public synchronized void resetNumTimesMissingInInput(List<ChartPatternSignal> chartPatternSignalsReappearedInTime) {
     String sql = "update ChartPatternSignal set NumTimesMissingInInput = 0, IsSignalOn=1 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
@@ -245,7 +256,7 @@ public class ChartPatternSignalDaoImpl {
     }
   }
 
-  public void failedToGetPriceAtTenCandlestickTime(ChartPatternSignal chartPatternSignal) {
+  public synchronized void failedToGetPriceAtTenCandlestickTime(ChartPatternSignal chartPatternSignal) {
     String sql = "update ChartPatternSignal set FailedToGetPriceAtTenCandlestickTime = 1 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
@@ -259,7 +270,7 @@ public class ChartPatternSignalDaoImpl {
     }
   }
 
-  public void failedToGetPriceAtSignalTargetTime(ChartPatternSignal chartPatternSignal) {
+  public synchronized void failedToGetPriceAtSignalTargetTime(ChartPatternSignal chartPatternSignal) {
     String sql = "update ChartPatternSignal set FailedToGetPriceAtSignalTargetTime = 1, IsSignalOn=0 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
@@ -284,7 +295,7 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
-  public boolean setEntryOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order entryOrder) {
+  public synchronized boolean setEntryOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order entryOrder) {
     String sql = "update ChartPatternSignal set EntryOrderId=?, EntryExecutedQty=?, EntryAvgPrice=?, EntryOrderStatus=?, " +
         "IsPositionExited=0 where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
@@ -302,7 +313,7 @@ public class ChartPatternSignalDaoImpl {
   }
 
   // Called when signal is invalidated or target time has elapsed.
-  public boolean setExitMarketOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder,
+  public synchronized boolean setExitMarketOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder,
                                     TradeExitType tradeExitType) {
     Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(
         chartPatternSignal, exitMarketOrder.executedQty(), exitMarketOrder.avgPrice(), tradeExitType, exitMarketOrder.status());
@@ -333,7 +344,7 @@ public class ChartPatternSignalDaoImpl {
     return ret == 1;
   }
 
-  public boolean setExitStopLimitOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder) {
+  public synchronized boolean setExitStopLimitOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder) {
     // Assumes that the pattern is already uptodate with the DB value, so doesn't query for it.
     String sql = "update ChartPatternSignal set ExitStopLossOrderId=?, ExitStopLossOrderStatus=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
@@ -353,7 +364,7 @@ public class ChartPatternSignalDaoImpl {
 
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
-  public boolean updateExitStopLimitOrder(ChartPatternSignal chartPatternSignal,
+  public synchronized boolean updateExitStopLimitOrder(ChartPatternSignal chartPatternSignal,
                                           ChartPatternSignal.Order exitStopLimitOrderStatus) throws ParseException {
     double executedQty = exitStopLimitOrderStatus.executedQty();
     double executedPrice = exitStopLimitOrderStatus.avgPrice();
@@ -418,7 +429,7 @@ public class ChartPatternSignalDaoImpl {
   }
 
   // As the column i`s a late addition, this is for backfilling the column.
-  public boolean setTenCandleSticktime(ChartPatternSignal chartPatternSignal) {
+  public synchronized boolean setTenCandleSticktime(ChartPatternSignal chartPatternSignal) {
     Date tenCandlestickTime = new Date(chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal));
     boolean shouldEraseSuperflousTenCandlestickPrice = tenCandlestickTime.after(chartPatternSignal.priceTargetTime());
     if (shouldEraseSuperflousTenCandlestickPrice) {
@@ -437,7 +448,7 @@ public class ChartPatternSignalDaoImpl {
     return ret;
   }
 
-  public boolean updateMaxLossAndTargetMetValues(ChartPatternSignal chartPatternSignal) {
+  public synchronized boolean updateMaxLossAndTargetMetValues(ChartPatternSignal chartPatternSignal) {
     String updateSql = "update ChartPatternSignal set MaxLoss=?, MaxLossPercent=?, MaxLossTime=?, IsPriceTargetMet=?, " +
         "PriceTargetMetTime=? " +
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
@@ -463,7 +474,7 @@ public class ChartPatternSignalDaoImpl {
     return ret == 1;
   }
 
-  public void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) {
+  public synchronized void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) {
     String updateSql = String.format("update ChartPatternSignal set ExitStopLossOrderStatus='%s' " +
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)",
         OrderStatus.CANCELED);
@@ -478,7 +489,7 @@ public class ChartPatternSignalDaoImpl {
     }
   }
 
-  public void insertOverdoneTradeType(Date date, TimeFrame timeFrame, TradeType tradeTypeOverdone) {
+  public synchronized void insertOverdoneTradeType(Date date, TimeFrame timeFrame, TradeType tradeTypeOverdone) {
     boolean rowAlreadyExists = doesBitcoinPriceMonitoringRowAlreadyExist(date, timeFrame);
     int ret;
     if (rowAlreadyExists) {
@@ -509,7 +520,7 @@ public class ChartPatternSignalDaoImpl {
     return count == 1;
   }
 
-  public void insertBitcoinPrice(TimeFrame timeFrame, Long openTime, Double open, Double close) {
+  public synchronized void insertBitcoinPrice(TimeFrame timeFrame, Long openTime, Double open, Double close) {
     Date openDate = new Date(openTime);
     boolean rowAlreadyExists = doesBitcoinPriceMonitoringRowAlreadyExist(openDate, timeFrame);
     int ret;
@@ -568,6 +579,41 @@ public class ChartPatternSignalDaoImpl {
 
   private static int getDateComponent(SimpleDateFormat dateFormat, Date time) {
     return Integer.parseInt(dateFormat.format(time));
+  }
+
+  public synchronized void writeAccountBalanceToDB() throws BinanceApiException, ParseException {
+    MarginAccount account = binanceApiMarginRestClient.getAccount();
+    double btcPrice = bookTickerPrices.getBookTicker("BTCUSDT").bestAsk();
+    int principal = getPrincipal();
+    int totalAssetValueInUSDT = (int) (numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue() * btcPrice);
+    int netAssetValueInUSDT = (int) (numberFormat.parse(account.getTotalNetAssetOfBtc()).doubleValue() * btcPrice);
+    double rr = (double) (netAssetValueInUSDT - principal) / principal * 100;
+    int liabilityValueInUSDT = (int) (numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue() * btcPrice);
+    MarginAssetBalance usdtBalance = account.getAssetBalance("USDT");
+    String sql = String.format("insert into CrossMarginAccountBalanceHistory(Time, FreeUSDT, " +
+            "LockedUSDT, BorrowedUSDT, NetUSDT," +
+            "TotalValue, LiabilityValue, NetValue, MarginLevel, ReturnRate) values(" +
+            "'%s', %d, %d, %d, %d, %d, %d, %d, %f, %f)",
+        df.format(new Date()),
+        numberFormat.parse(usdtBalance.getFree()).intValue(),
+        numberFormat.parse(usdtBalance.getLocked()).intValue(),
+        numberFormat.parse(usdtBalance.getBorrowed()).intValue(),
+        numberFormat.parse(usdtBalance.getNetAsset()).intValue(),
+        totalAssetValueInUSDT,
+        liabilityValueInUSDT,
+        netAssetValueInUSDT,
+        numberFormat.parse(account.getMarginLevel()).doubleValue(),
+        rr
+    );
+    if (jdbcTemplate.update(sql) != 1) {
+      logger.error("Failed to insert row into CrossMarginAccountBalanceHistory.");
+    }
+  }
+
+  private int getPrincipal() {
+    String sql = "select principal from CrossMarginAccountFundingHistory " +
+        "where rowid=(select max(rowid) from CrossMarginAccountFundingHistory)";
+    return jdbcTemplate.queryForObject(sql, new Object[]{}, (rs, rowNum) -> rs.getInt("principal"));
   }
 
   static Date getFifteenMinuteCandlestickStart(int year, int month, int day, int hour, int minute) throws ParseException {

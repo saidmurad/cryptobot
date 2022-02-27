@@ -44,7 +44,6 @@ public class BinanceTradingBot {
     private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
-    private final AccountBalanceDao accountBalanceDao;
     private final Mailer mailer = new Mailer();
     @Value("${per_trade_amount}")
     public
@@ -60,14 +59,12 @@ public class BinanceTradingBot {
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ChartPatternSignalDaoImpl dao,
-                             BookTickerPrices bookTickerPrices,
-                             AccountBalanceDao accountBalanceDao) {
+                             BookTickerPrices bookTickerPrices) {
         this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.binanceApiMarginRestClient = binanceApiRestClientFactory.newMarginRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
         this.bookTickerPrices = bookTickerPrices;
-        this.accountBalanceDao = accountBalanceDao;
     }
 
     String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
@@ -300,7 +297,7 @@ public class BinanceTradingBot {
                 stopLossOrderResp.getOrderId(),
                 0,0,
                 stopLossOrderResp.getStatus()));
-        accountBalanceDao.writeAccountBalanceToDB();
+        dao.writeAccountBalanceToDB();
     }
 
     private double getMinNotionalAdjustedForStopLoss(Double minNotional, double stopLossPercent) {

@@ -17,7 +17,6 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.AccountBalanceDao;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
 import com.google.common.collect.Lists;
 import org.junit.Before;
@@ -50,7 +49,6 @@ public class ExitPositionAtMarketPriceTest {
   @Mock private BinanceApiMarginRestClient mockBinanceApiRestClient;
   @Mock private Mailer mockMailer;
   @Mock private RepayBorrowedOnMargin mockRepayBorrowedOnMargin;
-  @Mock private AccountBalanceDao mockAccountBalanceDao;
   private final long timeOfSignal = System.currentTimeMillis();
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
@@ -58,7 +56,7 @@ public class ExitPositionAtMarketPriceTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiRestClient);
     exitPositionAtMarketPrice = new ExitPositionAtMarketPrice(
-        mockBinanceApiClientFactory, mockDao, mockMailer, mockRepayBorrowedOnMargin, mockAccountBalanceDao);
+        mockBinanceApiClientFactory, mockDao, mockMailer, mockRepayBorrowedOnMargin);
   }
 
   private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
@@ -174,7 +172,7 @@ public class ExitPositionAtMarketPriceTest {
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockRepayBorrowedOnMargin).repay("USDT", 10.0);
-    verify(mockAccountBalanceDao).writeAccountBalanceToDB();
+    verify(mockDao).writeAccountBalanceToDB();
   }
 
   @Test

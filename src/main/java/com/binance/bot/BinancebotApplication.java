@@ -6,7 +6,6 @@ import com.binance.bot.onetimetasks.ExecuteExitPositions;
 import com.binance.bot.onetimetasks.ProfitPercentageWithMoneyReuseCalculation;
 import com.binance.bot.signalsuccessfailure.MarketPriceStream;
 import com.binance.bot.testing.CancelOrders;
-import com.binance.bot.trading.AccountBalanceDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -27,7 +26,6 @@ public class BinancebotApplication implements CommandLineRunner {
 	private ExecuteExitPositions executeExitPositions;
 	@Autowired private MarketPriceStream marketPriceStream;
 	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
-	@Autowired private AccountBalanceDao accountBalanceDao;
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
 	}

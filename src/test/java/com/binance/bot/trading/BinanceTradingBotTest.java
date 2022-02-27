@@ -55,7 +55,6 @@ public class BinanceTradingBotTest {
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
   @Mock private BookTickerPrices mockBookTickerPrices;
-  @Mock private AccountBalanceDao mockAccountBalanceDao;
   @Captor
   ArgumentCaptor<MarginNewOrder> orderCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
@@ -71,7 +70,7 @@ public class BinanceTradingBotTest {
     tickerPrice.setPrice("4000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
     binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao,
-        mockBookTickerPrices, mockAccountBalanceDao);
+        mockBookTickerPrices);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     BookTickerPrices.BookTicker btcBookTicker = BookTickerPrices.BookTicker.create(BTC_PRICE, BTC_PRICE); 
@@ -313,7 +312,7 @@ public class BinanceTradingBotTest {
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
-    verify(mockAccountBalanceDao).writeAccountBalanceToDB();
+    verify(mockDao).writeAccountBalanceToDB();
   }
 
   @Test

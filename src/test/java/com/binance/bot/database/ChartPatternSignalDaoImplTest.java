@@ -1,8 +1,14 @@
 package com.binance.bot.database;
 
+import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.OrderStatus;
+import com.binance.api.client.domain.account.MarginAccount;
+import com.binance.api.client.domain.account.MarginAssetBalance;
 import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.market.Candlestick;
+import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
 import com.binance.bot.util.SetupDatasource;
@@ -10,14 +16,24 @@ import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoJUnitRule;
+import org.mockito.junit.MockitoRule;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.util.Pair;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.ParseException;
@@ -28,8 +44,14 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
-public class ChartPatternSignalDaoImplTest extends TestCase {
+@RunWith(JUnit4.class)
+public class ChartPatternSignalDaoImplTest {
+  @Rule
+  public final MockitoRule mocks = MockitoJUnit.rule();
 
   private final long currentTimeMillis = 1642258800000L; // 2022-01-15 15:00
   ChartPatternSignalDaoImpl dao;
@@ -97,18 +119,42 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
       "time TEXT not Null, timeFrame TEXT not Null, candleOpenPrice REAL, candleClosePrice REAL, " +
       "tradeTypeOverdone TEXT," +
       "Constraint PK Primary Key(time, timeFrame))";
+
+  private static final String CREATE_CROSS_MARGIN_FUNDING_HISTORY_TABLE = "create table CrossMarginAccountFundingHistory(\n" +
+      "    Time TEXT not NULL,\n" +
+      "    Principal REAL not NULL\n" +
+      ")";
+
+  private static final String CREATE_CROSS_MARGIN_ACCOUNT_BALANCE_HISTORY_TABLE = "create table CrossMarginAccountBalanceHistory(\n" +
+      "    Time TEXT not NULL,\n" +
+      "    FreeUSDT INTEGER not NULL,\n" +
+      "    LockedUSDT INTEGER not NULL,\n" +
+      "    BorrowedUSDT INTEGER NOT NULL,\n" +
+      "    NetUSDT INTEGER not NULL,    \n" +
+      "    TotalValue INTEGER not NULL,\n" +
+      "    LiabilityValue INTEGER not NULL,\n" +
+      "    NetValue INTEGER not NULL,\n" +
+      "    MarginLevel REAL not NULL,\n" +
+      "    ReturnRate REAL\n" +
+      ")";
+
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   /*
   create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);
    */
   public ChartPatternSignalDaoImplTest() {
   }
-
+  @Mock
+  BinanceApiClientFactory mockBinanceApiClientFactory;
+  @Mock
+  BinanceApiMarginRestClient mockBinanceApiMarginRestClient;
+  @Mock private BookTickerPrices mockBookTickerPrices;
   @Before
   public void setUp() throws SQLException {
+    when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     DataSource dataSource = SetupDatasource.getDataSource();
-    dao = new ChartPatternSignalDaoImpl();
+    dao = new ChartPatternSignalDaoImpl(mockBinanceApiClientFactory, mockBookTickerPrices);
     dao.setDataSource(dataSource);
     Statement stmt = dataSource.getConnection().createStatement();
     stmt.execute(createTableStmt);
@@ -125,6 +171,10 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
         .setIsVolSurged(true)
         .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
         .build();
+    stmt.execute(CREATE_CROSS_MARGIN_FUNDING_HISTORY_TABLE);
+    stmt.execute(CREATE_CROSS_MARGIN_ACCOUNT_BALANCE_HISTORY_TABLE);
+    dao.jdbcTemplate.update(String.format("insert into CrossMarginAccountFundingHistory(Time, Principal) values('%s',12345)",
+        new Date()));
   }
 
   @Test
@@ -469,11 +519,11 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     assertEquals(TimeFrame.FIFTEEN_MINUTES, chartPatternSignal.timeFrame());
     assertEquals("Resistance", chartPatternSignal.pattern());
     assertEquals(TradeType.BUY, chartPatternSignal.tradeType());
-    assertEquals(4000.0, chartPatternSignal.priceAtTimeOfSignal());
+    assertThat(chartPatternSignal.priceAtTimeOfSignal()).isEqualTo(4000.0);
     assertEquals(new Date(currentTimeMillis), chartPatternSignal.timeOfSignal());
-    assertEquals(6000.0, chartPatternSignal.priceTarget());
+    assertThat(chartPatternSignal.priceTarget()).isEqualTo(6000.0);
     assertEquals(new Date(currentTimeMillis + 360000), chartPatternSignal.priceTargetTime());
-    assertEquals(2.3, chartPatternSignal.profitPotentialPercent());
+    assertThat(chartPatternSignal.profitPotentialPercent()).isEqualTo(2.3);
 
     assertThat(chartPatternSignal.volumeAtSignalCandlestick()).isEqualTo(100);
     assertThat(chartPatternSignal.volumeAverage()).isEqualTo(volProfile.avgVol());
@@ -1004,5 +1054,50 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
     Date date = dateFormat.parse("2022-01-02 23:17");
     Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FOUR_HOURS);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 20:00"));
+  }
+
+
+  @Test
+  public void writeAccountBalanceToDB() throws BinanceApiException, ParseException {
+    MarginAccount account = new MarginAccount();
+    when(mockBinanceApiMarginRestClient.getAccount()).thenReturn(account);
+    MarginAssetBalance usdtAssetBalance = new MarginAssetBalance();
+    usdtAssetBalance.setAsset("USDT");
+    usdtAssetBalance.setNetAsset("4");
+    usdtAssetBalance.setBorrowed("4");
+    usdtAssetBalance.setFree("6");
+    usdtAssetBalance.setLocked("2");
+
+    account.setUserAssets(Lists.newArrayList(usdtAssetBalance));
+    account.setMarginLevel("1.5");
+    account.setTotalAssetOfBtc("3");
+    account.setTotalNetAssetOfBtc("1");
+    account.setTotalLiabilityOfBtc("2");
+
+    BookTickerPrices.BookTicker btcBookTicker = BookTickerPrices.BookTicker.create(40000, 40000);
+    when(mockBookTickerPrices.getBookTicker("BTCUSDT")).thenReturn(btcBookTicker);
+
+    dao.writeAccountBalanceToDB();
+
+    Boolean result =
+        dao.jdbcTemplate.query("select * from CrossMarginAccountBalanceHistory",
+            new ResultSetExtractor<Boolean>() {
+              @Override
+              public Boolean extractData(ResultSet rs) throws SQLException, DataAccessException {
+                assertThat(rs.getInt("FreeUSDT")).isEqualTo(6);
+                assertThat(rs.getInt("NetUSDT")).isEqualTo(4);
+                assertThat(rs.getInt("LockedUSDT")).isEqualTo(2);
+                assertThat(rs.getInt("BorrowedUSDT")).isEqualTo(4);
+                // 3 * 40000
+                assertThat(rs.getInt("TotalValue")).isEqualTo(120000);
+                // 2 * 40000
+                assertThat(rs.getInt("LiabilityValue")).isEqualTo(80000);
+                assertThat(rs.getInt("NetValue")).isEqualTo(40000);
+                assertThat(rs.getDouble("MarginLevel")).isEqualTo(1.5);
+                assertThat(rs.getDouble("ReturnRate")).isEqualTo(224.017821);
+                return true;
+              }
+            });
+    assertThat(result).isTrue();
   }
 }

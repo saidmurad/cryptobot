@@ -32,7 +32,8 @@ public class MarketPriceStream {
     this.bookTickerPrices = bookTickerPrices;
   }
 
-  @Scheduled(fixedDelay = 82800000, initialDelayString = "${timing.initialDelay}")
+  // The only task with no initial delay.
+  @Scheduled(fixedDelay = 82800000)
   public void restartStream() throws IOException {
     if (tickrStream != null) {
       tickrStream.close();

@@ -12,6 +12,7 @@ import com.binance.bot.common.Util;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.AccountBalanceDao;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +33,17 @@ public class StopLimitOrderStatusChecker {
   private final ChartPatternSignalDaoImpl dao;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final BinanceApiMarginRestClient binanceApiMarginRestClient;
+  private final AccountBalanceDao accountBalanceDao;
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   @Autowired
   StopLimitOrderStatusChecker(ChartPatternSignalDaoImpl dao, RepayBorrowedOnMargin repayBorrowedOnMargin,
-                              BinanceApiClientFactory binanceApiClientFactory) {
+                              BinanceApiClientFactory binanceApiClientFactory,
+                              AccountBalanceDao accountBalanceDao) {
     this.dao = dao;
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
+    this.accountBalanceDao = accountBalanceDao;
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
@@ -69,6 +73,7 @@ public class StopLimitOrderStatusChecker {
         }
       }
     }
+    accountBalanceDao.writeAccountBalanceToDB();
   }
 
   private double getAvgFillPrice(String coinPair, long orderId) throws BinanceApiException, ParseException {

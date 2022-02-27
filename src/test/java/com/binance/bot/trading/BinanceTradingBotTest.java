@@ -41,7 +41,6 @@ import static org.mockito.Mockito.*;
 
 @RunWith(JUnit4.class)
 public class BinanceTradingBotTest {
-  private static final int BNBUSDT = 600;
   private static final double BNBBTC = 0.015;
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock
@@ -55,6 +54,7 @@ public class BinanceTradingBotTest {
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
   @Mock private BookTickerPrices mockBookTickerPrices;
+  @Mock private AccountBalanceDao mockAccountBalanceDao;
   @Captor
   ArgumentCaptor<MarginNewOrder> orderCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
@@ -69,7 +69,8 @@ public class BinanceTradingBotTest {
     TickerPrice tickerPrice = new TickerPrice();
     tickerPrice.setPrice("4000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
-    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao, mockBookTickerPrices);
+    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao,
+        mockBookTickerPrices, mockAccountBalanceDao);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     BookTickerPrices.BookTicker btcBookTicker = BookTickerPrices.BookTicker.create(BTC_PRICE, BTC_PRICE); 
@@ -87,23 +88,20 @@ public class BinanceTradingBotTest {
   }
 
   private void setUsdtBalanceForStraightBuys(Integer usdtBal) throws BinanceApiException {
-    setUsdtBalance(usdtBal, 0,0.0 );
+    setUsdtBalance(usdtBal, 0);
   }
 
-  private void setUsdtBalance(Integer usdtFreeBal, Integer usdtValBorrowedAndLocked, Double interestInBNB) throws BinanceApiException {
+  private void setUsdtBalance(Integer usdtFreeBal, Integer usdtValBorrowed) throws BinanceApiException {
     MarginAccount account = new MarginAccount();
     MarginAssetBalance usdtBalance = new MarginAssetBalance();
     usdtBalance.setAsset("USDT");
     usdtBalance.setFree(usdtFreeBal.toString());
-    usdtBalance.setBorrowed(usdtValBorrowedAndLocked.toString());
-    usdtBalance.setLocked(usdtValBorrowedAndLocked.toString());
-    MarginAssetBalance bnbBalance = new MarginAssetBalance();
-    bnbBalance.setAsset("BNB");
-    bnbBalance.setInterest(interestInBNB.toString());
-    account.setUserAssets(Lists.newArrayList(usdtBalance, bnbBalance));
+    usdtBalance.setBorrowed(usdtValBorrowed.toString());
+    //We don't care about this: usdtBalance.setLocked(usdtValBorrowed.toString());
+    account.setUserAssets(Lists.newArrayList(usdtBalance));
     Double netValBtc = usdtFreeBal / BTC_PRICE;
-    Double totalValBtc = (usdtFreeBal + usdtValBorrowedAndLocked)/ BTC_PRICE;
-    Double liabValBtc = usdtValBorrowedAndLocked / BTC_PRICE;
+    Double totalValBtc = (usdtFreeBal + usdtValBorrowed)/ BTC_PRICE;
+    Double liabValBtc = usdtValBorrowed / BTC_PRICE;
     account.setTotalAssetOfBtc(totalValBtc.toString());
     account.setTotalNetAssetOfBtc(netValBtc.toString());
     account.setTotalLiabilityOfBtc(liabValBtc.toString());
@@ -314,6 +312,7 @@ public class BinanceTradingBotTest {
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
+    verify(mockAccountBalanceDao).writeAccountBalanceToDB();
   }
 
   @Test
@@ -562,93 +561,10 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_includeInterest_ableToBorrow() throws ParseException, BinanceApiException {
-    binanceTradingBot.perTradeAmountConfigured = 20.0;
-    // Total liability is $4 - $2 borrowed and $2 in interest.
-    // Allows for an additional $20 to be borrowed and new margin level will be 1.5
-    setUsdtBalance(12, 2, 2.0 / BNBUSDT);
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
-    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
-    buyOrderResp.setOrderId(1L);
-    buyOrderResp.setPrice("0.0");
-    buyOrderResp.setExecutedQty("0.005");
-    buyOrderResp.setStatus(OrderStatus.FILLED);
-
-    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
-    sellStopLossOrderResp.setOrderId(2L);
-    sellStopLossOrderResp.setExecutedQty("0");
-    sellStopLossOrderResp.setPrice("3800");
-    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
-
-    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
-      private int count = 0;
-      @Override
-      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
-        if (count == 0) {
-          count ++;
-          return buyOrderResp;
-        }
-        return sellStopLossOrderResp;
-      }
-    });
-
-    binanceTradingBot.placeTrade(chartPatternSignal);
-
-    verify(mockBinanceApiMarginRestClient).getAccount();
-    verify(mockBinanceApiMarginRestClient).borrow("USDT", "8");
-    verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
-    MarginNewOrder buyOrder = orderCaptor.getAllValues().get(0);
-    assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
-    assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
-    assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
-    assertThat(buyOrder.getQuantity()).isEqualTo("0.005"); // assuming market price $4000, and buying for $100.
-    verify(mockDao).setEntryOrder(chartPatternSignalArgumentCaptor.capture(),
-        chartPatternSignalOrderArgumentCaptor.capture());
-    assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
-    assertThat(chartPatternSignalOrderArgumentCaptor.getValue()).isEqualTo(ChartPatternSignal.Order.create(
-        buyOrderResp.getOrderId(),
-        0.005,
-        /* TODO: Find the actual price from the associated Trade */
-        chartPatternSignal.priceAtTimeOfSignalReal(),
-        OrderStatus.FILLED));
-    MarginNewOrder sellStopLossOrder = orderCaptor.getAllValues().get(1);
-    assertThat(sellStopLossOrder.getSymbol()).isEqualTo("ETHUSDT");
-    assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.SELL);
-    assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
-    assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
-    assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("3800.00");
-    assertThat(sellStopLossOrder.getPrice()).isEqualTo("3780.00");
-    verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
-        ChartPatternSignal.Order.create(
-            sellStopLossOrderResp.getOrderId(), 0.0, 0,
-            OrderStatus.NEW));
-  }
-
-  @Test
   public void buyTrade_atTheBorrowLimit_doesntPlaceTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Can't borrow the $1 more needed because borrowed amount is maxed out at margin level 1.5 (3 * 19 / (2 * 19)).
-    setUsdtBalance(19, 38, 0.0);
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
-        .thenReturn(Lists.newArrayList(chartPatternSignal));
-
-    binanceTradingBot.perform();
-
-    verify(mockBinanceApiMarginRestClient).getAccount();
-    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
-    verify(mockDao, never()).setEntryOrder(any(), any());
-  }
-
-  @Test
-  public void buyTrade_atTheBorrowLimitWhenInterestIsIncluded_doesntPlaceTrade() throws ParseException, BinanceApiException {
-    binanceTradingBot.perTradeAmountConfigured = 20.0;
-    // Can't borrow the $1 more needed because borrowed amount is maxed out at margin level. Liability will be same
-    // as the other test that uses 38 for borrowed and 0 for interest.
-    setUsdtBalance(19, 36, 2.0 / BNBUSDT);
+    setUsdtBalance(19, 38);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
@@ -760,7 +676,7 @@ public class BinanceTradingBotTest {
   public void testPlaceSellTrade_underBorrowLimit_borrows() throws ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
-    setUsdtBalance(12, 4, 0.0);
+    setUsdtBalance(12, 4);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -827,7 +743,7 @@ public class BinanceTradingBotTest {
   public void sellTrade_atTheBorrowLimit_doesntPlaceTrade() throws ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Can't borrow the $20 more needed because new margin level will be 37/25=1.48 whihc is < 1.5
-    setUsdtBalance(12, 5, 0.0);
+    setUsdtBalance(12, 5);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)

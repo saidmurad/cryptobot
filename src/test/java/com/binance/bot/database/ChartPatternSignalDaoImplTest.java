@@ -5,6 +5,7 @@ import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
+import com.binance.bot.util.SetupDatasource;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.apache.commons.lang3.time.DateUtils;
@@ -15,6 +16,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.sqlite.SQLiteDataSource;
 
+import javax.sql.DataSource;
 import java.io.File;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -104,10 +106,8 @@ public class ChartPatternSignalDaoImplTest extends TestCase {
 
   @Before
   public void setUp() throws SQLException {
-    new File("/home/kannanj/IdeaProjects/binance-java-api/testcryptobot.db").delete();
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    SQLiteDataSource dataSource = new SQLiteDataSource();
-    dataSource.setUrl("jdbc:sqlite:testcryptobot.db");
+    DataSource dataSource = SetupDatasource.getDataSource();
     dao = new ChartPatternSignalDaoImpl();
     dao.setDataSource(dataSource);
     Statement stmt = dataSource.getConnection().createStatement();

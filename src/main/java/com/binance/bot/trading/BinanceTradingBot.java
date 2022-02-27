@@ -42,6 +42,7 @@ public class BinanceTradingBot {
     private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
+    private final AccountBalanceDao accountBalanceDao;
 
     @Value("${per_trade_amount}")
     public
@@ -57,12 +58,14 @@ public class BinanceTradingBot {
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ChartPatternSignalDaoImpl dao,
-                             BookTickerPrices bookTickerPrices) {
+                             BookTickerPrices bookTickerPrices,
+                             AccountBalanceDao accountBalanceDao) {
         this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.binanceApiMarginRestClient = binanceApiRestClientFactory.newMarginRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
         this.bookTickerPrices = bookTickerPrices;
+        this.accountBalanceDao = accountBalanceDao;
     }
 
     String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
@@ -169,16 +172,6 @@ public class BinanceTradingBot {
         }
     }
 
-    private double getInterestInBtc(MarginAccount account) throws ParseException {
-        MarginAssetBalance bnbBal = account.getAssetBalance("BNB");
-        double bnbInterest = numberFormat.parse(bnbBal.getInterest()).doubleValue();
-        if (bnbInterest == 0) {
-            return 0;
-        }
-        double bnbPriceBTC = bookTickerPrices.getBookTicker("BNBBTC").bestAsk();
-        return bnbInterest * bnbPriceBTC;
-    }
-
     /** Return Pair of usdt free and value in usdt available to borrow. **/
     Pair<Integer, Integer> getAccountBalance() throws ParseException, BinanceApiException {
         MarginAccount account = binanceApiMarginRestClient.getAccount();
@@ -187,7 +180,6 @@ public class BinanceTradingBot {
         double netBtcVal = numberFormat.parse(account.getTotalNetAssetOfBtc()).doubleValue();
         double totalBtcVal = numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue();
         double liabBtcVal = numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue();
-        liabBtcVal += getInterestInBtc(account);
         double moreBorrowableVal;
         BookTickerPrices.BookTicker btcPrice = bookTickerPrices.getBookTicker("BTCUSDT");
         if (marginLevel > minMarginLevel) {
@@ -297,6 +289,7 @@ public class BinanceTradingBot {
                 stopLossOrderResp.getOrderId(),
                 0,0,
                 stopLossOrderResp.getStatus()));
+        accountBalanceDao.writeAccountBalanceToDB();
     }
 
     private double getMinNotionalAdjustedForStopLoss(Double minNotional, double stopLossPercent) {

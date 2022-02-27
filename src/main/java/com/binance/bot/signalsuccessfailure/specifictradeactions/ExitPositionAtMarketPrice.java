@@ -16,6 +16,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.AccountBalanceDao;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,14 +38,17 @@ public class ExitPositionAtMarketPrice {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final Mailer mailer;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
+  private final AccountBalanceDao accountBalanceDao;
 
   @Autowired
   ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao,
-                            Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin) {
+                            Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin,
+                            AccountBalanceDao accountBalanceDao) {
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.dao = dao;
     this.mailer = mailer;
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
+    this.accountBalanceDao = accountBalanceDao;
   }
 
   public void exitPositionIfStillHeld(
@@ -84,6 +88,7 @@ public class ExitPositionAtMarketPrice {
     logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
     dao.cancelStopLimitOrder(chartPatternSignal);
     exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
+    accountBalanceDao.writeAccountBalanceToDB();
   }
 
   private void exitMarginAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, TradeExitType tradeExitType)

@@ -1,4 +1,4 @@
-package com.binance.bot.trading;
+ package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiMarginRestClient;
@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 
+import javax.sql.DataSource;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -36,21 +37,32 @@ public class AccountBalanceDao {
     this.bookTickerPrices = bookTickerPrices;
   }
 
+  public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+    this.jdbcTemplate = jdbcTemplate;
+  }
+
   public void writeAccountBalanceToDB() throws BinanceApiException, ParseException {
     MarginAccount account = binanceApiMarginRestClient.getAccount();
     double btcPrice = bookTickerPrices.getBookTicker("BTCUSDT").bestAsk();
-    double principal = getPrincipal();
-    double totalAssetValueInUSDT = numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue() * btcPrice;
-    double rr = (totalAssetValueInUSDT - principal) / principal * 100;
-    double liabilityValueInUSDT = numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue() * btcPrice;
-    liabilityValueInUSDT += getInterestInUSDT(account);
-    String sql = String.format("insert into CrossMarginAccountBalanceHistory values('%s', %d, %d, %d, %f, %d, %f)",
+    int principal = getPrincipal();
+    int totalAssetValueInUSDT = (int) (numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue() * btcPrice);
+    int netAssetValueInUSDT = (int) (numberFormat.parse(account.getTotalNetAssetOfBtc()).doubleValue() * btcPrice);
+    double rr = (double) (netAssetValueInUSDT - principal) / principal * 100;
+    int liabilityValueInUSDT = (int) (numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue() * btcPrice);
+    MarginAssetBalance usdtBalance = account.getAssetBalance("USDT");
+    String sql = String.format("insert into CrossMarginAccountBalanceHistory(Time, FreeUSDT, " +
+            "LockedUSDT, BorrowedUSDT, NetUSDT," +
+            "TotalValue, LiabilityValue, NetValue, MarginLevel, ReturnRate) values(" +
+            "'%s', %d, %d, %d, %d, %d, %d, %d, %f, %f)",
         df.format(new Date()),
-        numberFormat.parse(account.getAssetBalance("USDT").getFree()).intValue(),
+        numberFormat.parse(usdtBalance.getFree()).intValue(),
+        numberFormat.parse(usdtBalance.getLocked()).intValue(),
+        numberFormat.parse(usdtBalance.getBorrowed()).intValue(),
+        numberFormat.parse(usdtBalance.getNetAsset()).intValue(),
         totalAssetValueInUSDT,
         liabilityValueInUSDT,
+        netAssetValueInUSDT,
         numberFormat.parse(account.getMarginLevel()).doubleValue(),
-        getLockedInTrades(account.getUserAssets()),
         rr
         );
     if (jdbcTemplate.update(sql) != 1) {
@@ -58,30 +70,9 @@ public class AccountBalanceDao {
     }
   }
 
-  private double getInterestInUSDT(MarginAccount account) throws ParseException {
-    MarginAssetBalance bnbBal = account.getAssetBalance("BNB");
-    double bnbInterest = numberFormat.parse(bnbBal.getInterest()).doubleValue();
-    if (bnbInterest == 0) {
-      return 0;
-    }
-    double bnbPrice = bookTickerPrices.getBookTicker("BNBUSDT").bestAsk();
-    return bnbInterest * bnbPrice;
-  }
-
-  private int getLockedInTrades(List<MarginAssetBalance> userAssets) throws ParseException {
-    int totalLocked = 0;
-    for (MarginAssetBalance asset: userAssets) {
-      double locked = numberFormat.parse(asset.getLocked()).doubleValue();
-      if (locked > 0) {
-
-      }
-    }
-    return 0;
-  }
-
   private int getPrincipal() {
-    String sql = "select principal from CrossMarginAccountBalanceHistory " +
-        "where rowid=(select max(rowid) from CrossMarginAccountBalanceHistory)";
+    String sql = "select principal from CrossMarginAccountFundingHistory " +
+        "where rowid=(select max(rowid) from CrossMarginAccountFundingHistory)";
     return jdbcTemplate.queryForObject(sql, new Object[]{}, (rs, rowNum) -> rs.getInt("principal"));
   }
 }

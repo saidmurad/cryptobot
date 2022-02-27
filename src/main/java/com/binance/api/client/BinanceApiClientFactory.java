@@ -26,7 +26,7 @@ public class BinanceApiClientFactory {
    */
   @Value("${api_secret}")
   private String apiSecret;
-  @Value("${api_secret}")
+  @Value("${api_key}")
   private String marginAcctApiKey;
       @Value("${api_secret}")
   private String marginAcctApiSecret;

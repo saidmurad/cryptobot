@@ -48,7 +48,6 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
   @Captor
   private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
-  @Captor private ArgumentCaptor<BinanceApiCallback<VolumeProfile>> volumeProfileCallbackCaptor;
   @Before
   public void setUp() throws BinanceApiException {
     MockitoAnnotations.openMocks(this);
@@ -67,8 +66,7 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setIsVolSurged(true)
         .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
         .build();
-    verify(mockGetVolumeProfile).getVolumeProfile(any(), volumeProfileCallbackCaptor.capture());
-    volumeProfileCallbackCaptor.getValue().onResponse(volumeProfile);
+    when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
     tickerPrice = new TickerPrice();
     tickerPrice.setPrice("1,111.12");
   }

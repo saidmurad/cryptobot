@@ -220,16 +220,14 @@ public class AltfinPatternsReader {
       return;
     }
     Date currTime = new Date();
-    final ChartPatternSignal chartPatternSignalFinal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
+    chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))
         .build();
-    getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair(),
-        volProfile -> {
-          //logger.info("Inserting chart pattern signal " + chartPatternSignal);
-          boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignalFinal, volProfile);
-          //logger.info("Ret value: " + ret);
-        });
+    VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
+    //logger.info("Inserting chart pattern signal " + chartPatternSignal);
+    boolean ret = chartPatternSignalDao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    //logger.info("Ret value: " + ret);
   }
 
   private List<ChartPatternSignal> makeUnique(List<ChartPatternSignal> patterns) {

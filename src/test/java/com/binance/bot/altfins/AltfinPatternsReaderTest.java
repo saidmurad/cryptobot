@@ -1,5 +1,6 @@
 package com.binance.bot.altfins;
 
+import com.binance.api.client.BinanceApiCallback;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
@@ -47,7 +48,7 @@ public class AltfinPatternsReaderTest extends TestCase {
   @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
   @Captor
   private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
-
+  @Captor private ArgumentCaptor<BinanceApiCallback<VolumeProfile>> volumeProfileCallbackCaptor;
   @Before
   public void setUp() throws BinanceApiException {
     MockitoAnnotations.openMocks(this);
@@ -66,7 +67,8 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setIsVolSurged(true)
         .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
         .build();
-    when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
+    verify(mockGetVolumeProfile).getVolumeProfile(any(), volumeProfileCallbackCaptor.capture());
+    volumeProfileCallbackCaptor.getValue().onResponse(volumeProfile);
     tickerPrice = new TickerPrice();
     tickerPrice.setPrice("1,111.12");
   }

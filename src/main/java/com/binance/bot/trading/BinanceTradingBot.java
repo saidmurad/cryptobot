@@ -8,6 +8,7 @@ import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.*;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
@@ -23,6 +24,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.mail.MessagingException;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -43,7 +45,7 @@ public class BinanceTradingBot {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
     private final AccountBalanceDao accountBalanceDao;
-
+    private final Mailer mailer = new Mailer();
     @Value("${per_trade_amount}")
     public
     double perTradeAmountConfigured;
@@ -96,17 +98,22 @@ public class BinanceTradingBot {
         value = "app.scheduling.enable", havingValue = "true", matchIfMissing = true
     )
     @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-    public void perform() throws ParseException, BinanceApiException {
+    public void perform() throws MessagingException {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 if (isTradingAllowed(timeFrames[i], tradeTypes[j])) {
                     List<ChartPatternSignal> signalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(timeFrames[i], tradeTypes[j]);
                     for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
-                        if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
-                            || (chartPatternSignal.profitPotentialPercent() >= 0.5
-                            && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
-                            && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-                            placeTrade(chartPatternSignal);
+                        try {
+                            if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
+                                || (chartPatternSignal.profitPotentialPercent() >= 0.5
+                                && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
+                                && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+                                placeTrade(chartPatternSignal);
+                            }
+                        } catch (Exception ex) {
+                            logger.error("Exception.", ex);
+                            mailer.sendEmail("Exception in BinanceTradingBot", ex.getMessage());
                         }
                     }
                 }
@@ -200,7 +207,7 @@ public class BinanceTradingBot {
         return Pair.of(usdtFree, (int) (moreBorrowableVal * btcPrice.bestAsk()));
     }
 
-    public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException {
+    public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException, MessagingException {
         Pair<Integer, Integer> accountBalance = getAccountBalance();
         Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
             chartPatternSignal.coinPair());
@@ -224,7 +231,9 @@ public class BinanceTradingBot {
                     logger.info("Borrowing %d USDT.", usdtToBorrow);
                     binanceApiMarginRestClient.borrow("USDT", usdtToBorrow.toString());
                 } else {
-                    logger.warn(String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal));
+                    String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
+                    logger.warn(msg);
+                    mailer.sendEmail("Insufficient funds.", msg);
                     return;
                 }
                 break;
@@ -235,7 +244,9 @@ public class BinanceTradingBot {
                     logger.info("Borrowing %d coins of %s.", numCoinsToBorrow, baseAsset);
                     binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow.toString());
                 } else {
-                    logger.warn(String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal));
+                    String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
+                    logger.warn(msg);
+                    mailer.sendEmail("Insufficient funds.", msg);
                     return;
                 }
             default:

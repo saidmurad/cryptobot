@@ -63,7 +63,6 @@ public class ExecuteExitPositions {
         logger.warn(String.format("CoinPair %s not trading at the moment. Skipping", chartPatternSignal.coinPair()));
         continue;
       }
-      double currPrice = numberFormat.parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
       exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.ORDERED_TO_EXIT_POSITIONS);
     }
   }

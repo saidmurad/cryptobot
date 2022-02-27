@@ -34,10 +34,7 @@ public class BinancebotApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException, InterruptedException {
-		marketPriceStream.restartStream();
-		Thread.sleep(5000);
-		accountBalanceDao.writeAccountBalanceToDB();
 		//calculation.calculate();
-		//TODO: remove.executeExitPositions.perform();
+		//executeExitPositions.perform();
 	}
 }

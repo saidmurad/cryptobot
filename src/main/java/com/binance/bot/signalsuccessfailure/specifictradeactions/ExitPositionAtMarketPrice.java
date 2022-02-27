@@ -53,42 +53,47 @@ public class ExitPositionAtMarketPrice {
 
   public void exitPositionIfStillHeld(
       ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType)
-      throws MessagingException, ParseException, BinanceApiException {
-    if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
-        // This is for backward compatibility.
-    || chartPatternSignal.exitStopLimitOrder() == null)) {
-      return;
+      throws MessagingException {
+    try {
+      if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
+          // This is for backward compatibility.
+          || chartPatternSignal.exitStopLimitOrder() == null)) {
+        return;
+      }
+      OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
+          chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
+      // To get the most update from binance.
+      Order stopLimitOrderStatus = binanceApiMarginRestClient.getOrderStatus(stopLimitOrderStatusRequest);
+      logger.info(String.format("Status of the stop limit order: %s.", stopLimitOrderStatus));
+      dao.updateExitStopLimitOrder(chartPatternSignal, ChartPatternSignal.Order.create(stopLimitOrderStatus.getOrderId(),
+          stopLimitOrderStatus.getExecutedQty() != null ? numberFormat.parse(stopLimitOrderStatus.getExecutedQty()).doubleValue() : 0,
+          stopLimitOrderStatus.getPrice() != null ? numberFormat.parse(stopLimitOrderStatus.getPrice()).doubleValue() : 0,
+          stopLimitOrderStatus.getStatus()));
+      chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+      if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
+        return;
+      }
+      logger.info(String.format("Found position to exit: %s.", chartPatternSignal.toStringOrderValues()));
+      double qtyToExit = chartPatternSignal.entryOrder().executedQty();
+      // If partial order has been executed it could only be the stop limit order.
+      // exitStopLimitOrder can never be null.
+      if (chartPatternSignal.exitStopLimitOrder().status() == OrderStatus.PARTIALLY_FILLED) {
+        qtyToExit -= chartPatternSignal.exitStopLimitOrder().executedQty();
+        logger.info(String.format("Need to exit the remaining %f qty.", qtyToExit));
+      } else {
+        logger.info(String.format("Need to exit the %f qty.", qtyToExit));
+      }
+      CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
+          chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
+      CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
+      logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
+      dao.cancelStopLimitOrder(chartPatternSignal);
+      exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
+      accountBalanceDao.writeAccountBalanceToDB();
+    } catch (Exception ex) {
+      logger.error("Exception for trade exit type %s." , tradeExitType.name(), ex);
+      mailer.sendEmail("ExitPositionAtMarketPrice uncaught exception for trade exit type" + tradeExitType.name(), ex.getMessage());
     }
-    OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
-        chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-    // To get the most update from binance.
-    Order stopLimitOrderStatus = binanceApiMarginRestClient.getOrderStatus(stopLimitOrderStatusRequest);
-    logger.info(String.format("Status of the stop limit order: %s.", stopLimitOrderStatus));
-    dao.updateExitStopLimitOrder(chartPatternSignal, ChartPatternSignal.Order.create(stopLimitOrderStatus.getOrderId(),
-        stopLimitOrderStatus.getExecutedQty() != null ? numberFormat.parse(stopLimitOrderStatus.getExecutedQty()).doubleValue() : 0,
-        stopLimitOrderStatus.getPrice() != null ? numberFormat.parse(stopLimitOrderStatus.getPrice()).doubleValue(): 0,
-        stopLimitOrderStatus.getStatus()));
-    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
-    if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
-      return;
-    }
-    logger.info(String.format("Found position to exit: %s.", chartPatternSignal.toStringOrderValues()));
-    double qtyToExit = chartPatternSignal.entryOrder().executedQty();
-    // If partial order has been executed it could only be the stop limit order.
-    // exitStopLimitOrder can never be null.
-    if (chartPatternSignal.exitStopLimitOrder().status() == OrderStatus.PARTIALLY_FILLED) {
-      qtyToExit -= chartPatternSignal.exitStopLimitOrder().executedQty();
-      logger.info(String.format("Need to exit the remaining %f qty.", qtyToExit));
-    } else {
-      logger.info(String.format("Need to exit the %f qty.", qtyToExit));
-    }
-    CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
-        chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-    CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
-    logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
-    dao.cancelStopLimitOrder(chartPatternSignal);
-    exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
-    accountBalanceDao.writeAccountBalanceToDB();
   }
 
   private void exitMarginAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, TradeExitType tradeExitType)

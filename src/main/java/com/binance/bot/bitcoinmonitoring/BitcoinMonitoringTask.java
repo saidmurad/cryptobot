@@ -117,7 +117,7 @@ public class BitcoinMonitoringTask {
     }
   }
 
-  @Scheduled(fixedRate = 900000, initialDelayString = "${timing.initialDelay}")
+  //@Scheduled(fixedRate = 900000, initialDelayString = "${timing.initialDelay}")
   public void performFifteenMinuteTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FIFTEEN_MINUTES, 10, null, null);
@@ -131,7 +131,7 @@ public class BitcoinMonitoringTask {
     isFirstTimeFifteenMinuteTimeframe = false;
   }
 
-  @Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
+  //@Scheduled(fixedRate = 3600000, initialDelayString = "${timing.initialDelay}")
   public void performHourlyTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.HOURLY, 10, null, null);
@@ -146,7 +146,7 @@ public class BitcoinMonitoringTask {
     isFirstTimeHourlyTimeframe = false;
   }
 
-  @Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
+  //@Scheduled(fixedRate = 14400000, initialDelayString = "${timing.initialDelay}")
   public void performFourHourlyTimeFrame() throws ParseException, BinanceApiException {
     List<Candlestick> candlesticks = binanceApiRestClient.getCandlestickBars(
         "BTCUSDT", CandlestickInterval.FOUR_HOURLY, 10, null, null);

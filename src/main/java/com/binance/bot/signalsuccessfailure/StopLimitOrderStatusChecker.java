@@ -79,8 +79,8 @@ public class StopLimitOrderStatusChecker {
             }
           }
         }
+        accountBalanceDao.writeAccountBalanceToDB();
       }
-      accountBalanceDao.writeAccountBalanceToDB();
     } catch (Exception ex) {
       logger.error("Exception.", ex);
       mailer.sendEmail("StopLimitOrderStatusChecker uncaught exception.", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getCanonicalName());

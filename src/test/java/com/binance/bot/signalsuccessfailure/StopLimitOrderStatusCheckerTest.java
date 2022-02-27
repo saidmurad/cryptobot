@@ -69,6 +69,7 @@ public class StopLimitOrderStatusCheckerTest {
 
     verifyNoInteractions(mockBinanceApiMarginRestClient);
     verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
+    verify(mockAccountBalanceDao, never()).writeAccountBalanceToDB();
   }
 
   @Captor

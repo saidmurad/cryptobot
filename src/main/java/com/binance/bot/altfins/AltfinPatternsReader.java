@@ -251,10 +251,11 @@ public class AltfinPatternsReader {
       count ++;
       counts.put(chartPatternSignal, count);
     }
+    /*
     List<Map.Entry<ChartPatternSignal, Integer>> duplicates = counts.entrySet().stream().filter(entry -> entry.getValue() > 1).collect(Collectors.toList());
     for (Map.Entry<ChartPatternSignal, Integer> entry : duplicates) {
       logger.warn(String.format("ChartPatternSignal %s occurred %d times.", entry.getKey().toString(), entry.getValue()));
-    }
+    }*/
   }
 
   public List<ChartPatternSignal> readPatterns(String content) {

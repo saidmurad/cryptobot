@@ -6,7 +6,7 @@ at the time of signal invalidation. Removed backlog_from_coldstart as a reason f
 invalidation. 
 
 Next steps:
-0. Ignore invalidation signal.
+0. What causes the duplicate trades in the same list so often?
 1. Set Profit percent at time of signal invalidation for the time period from
 06/02/2022 07:38 pm to 08/02/2022 02:25 pm
 2. Symbol may not be in trading stage at the time of signal arrival and at the time of signal 

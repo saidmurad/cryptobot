@@ -52,7 +52,7 @@ public class PriceTenCandlestickRealtimeCheckerTask {
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-        logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
+        //logger.info("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
         continue;
       }
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);

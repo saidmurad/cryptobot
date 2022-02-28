@@ -50,10 +50,14 @@ public class ChartPatternSignalDaoImpl {
     dayFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     hourFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     minuteFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    if (jdbcTemplate != null) {
+      jdbcTemplate.execute("pragma journal_mode=WAL");
+    }
   }
 
   void setDataSource(DataSource dataSource) {
     jdbcTemplate = new JdbcTemplate(dataSource);
+    jdbcTemplate.execute("pragma journal_mode=WAL");
   }
 
   public synchronized boolean insertChartPatternSignal(ChartPatternSignal chartPatternSignal, VolumeProfile volProfile) {

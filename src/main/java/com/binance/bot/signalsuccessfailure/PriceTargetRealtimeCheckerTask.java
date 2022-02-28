@@ -55,7 +55,7 @@ public class PriceTargetRealtimeCheckerTask {
     for (int i = 0; i < signalsTargetTime.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTargetTime.get(i);
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-        logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
+        //logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
         continue;
       }
       double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();

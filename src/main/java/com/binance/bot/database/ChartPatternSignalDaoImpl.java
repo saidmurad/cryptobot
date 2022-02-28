@@ -85,7 +85,7 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.failedToGetPriceAtTenCandlestickTime()? 1:0
     };
 
-    logger.info("Inserting into db chart pattern signal: \n" + chartPatternSignal);
+    //logger.info("Inserting into db chart pattern signal: \n" + chartPatternSignal);
     return jdbcTemplate.update(sql, params) > 0;
   }
 
@@ -223,7 +223,7 @@ public class ChartPatternSignalDaoImpl {
           chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
           df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
       if (ret == 1) {
-        logger.info("Updated chart pattern signal missing count to " + (chartPatternSignal.numTimesMissingInInput() + 1) + " for chart pattern signal: " + chartPatternSignal.toString());
+        //logger.info("Updated chart pattern signal missing count to " + (chartPatternSignal.numTimesMissingInInput() + 1) + " for chart pattern signal: " + chartPatternSignal.toString());
       } else {
         logger.error("Failed to increment numTimesMissingInInput for chart pattern signal: " + chartPatternSignal.toString());
       }

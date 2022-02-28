@@ -64,7 +64,7 @@ public abstract class PriceTargetCheckerLaggingTask {
   public void perform() throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
-    logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
+    //logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
     for (ChartPatternSignal pattern: patterns) {
       attemptedPatterns.add(Pair.of(pattern, 1));
@@ -72,7 +72,7 @@ public abstract class PriceTargetCheckerLaggingTask {
     while (!attemptedPatterns.isEmpty()) {
       performIteration(attemptedPatterns);
     }
-    logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");
+    //logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");
   }
 
   protected abstract List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime();
@@ -105,7 +105,7 @@ public abstract class PriceTargetCheckerLaggingTask {
       double price = numberFormat.parse(tradesList.get(0).getPrice()).doubleValue();
       // This call is for the signal itself, regardless of whether I hold a trade. This call sets IsSignalOn=0
       boolean ret = setTargetPrice(chartPatternSignal, price);
-      logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
+      //logger.info("Set " + targetTimeTypeName() + " price for '" + chartPatternSignal.coinPair() + "' with time due at '" + dateFormat.format(startTimeWindow) + "' using api: aggTrades. Ret val=" + ret);
     }
     else {
       attemptCount++;

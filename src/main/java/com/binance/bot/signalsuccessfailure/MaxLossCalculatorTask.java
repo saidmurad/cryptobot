@@ -43,14 +43,14 @@ public class MaxLossCalculatorTask {
   public void perform() throws ParseException, InterruptedException, IOException, BinanceApiException {
     logger.info("Issuing query.");
     List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
-    logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
-        chartPatternSignals.size()));
+    /*logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
+        chartPatternSignals.size()));*/
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
       HeartBeatChecker.logHeartBeat(getClass());
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         continue;
       }
-      logger.info(String.format("Calculating max loss and profit target met for chart pattern signal:\n%s.", chartPatternSignal));
+      //logger.info(String.format("Calculating max loss and profit target met for chart pattern signal:\n%s.", chartPatternSignal));
       Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
       long maxLossTime = 0;
       boolean isProfitTargetMet = false;
@@ -89,8 +89,8 @@ public class MaxLossCalculatorTask {
           fromId = aggTrades.get(aggTrades.size() - 1).getAggregatedTradeId() + 1;
         }
       }
-      logger.info(String.format("Getting all aggTrades took %d seconds.",
-          (System.currentTimeMillis() - beginTime) / 1000));
+      /*logger.info(String.format("Getting all aggTrades took %d seconds.",
+          (System.currentTimeMillis() - beginTime) / 1000));*/
       ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
           .copy(chartPatternSignal)
           .setMaxLoss(maxLossAndPercent.getFirst())

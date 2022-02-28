@@ -39,7 +39,7 @@ public class SupportedSymbolsInfo {
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       supportedSymbols.add(symbolInfo.getSymbol());
     });
-    logger.info(String.format("Returning %d symbols.", supportedSymbols.size()));
+    //logger.info(String.format("Returning %d symbols.", supportedSymbols.size()));
     return supportedSymbols;
   }
 
@@ -50,7 +50,7 @@ public class SupportedSymbolsInfo {
     }
     tradingSymbolsMap = new HashMap();
     lastFetchTime = System.currentTimeMillis();
-    logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date(lastFetchTime)));
+    //logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date(lastFetchTime)));
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
         tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());

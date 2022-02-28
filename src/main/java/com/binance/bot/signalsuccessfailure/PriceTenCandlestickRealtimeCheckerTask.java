@@ -58,12 +58,12 @@ public class PriceTenCandlestickRealtimeCheckerTask {
       long tenCandleStickTime = chartPatternSignal.timeOfSignal().getTime() + getTenCandleStickTimeIncrementMillis(chartPatternSignal);
       if (tenCandleStickTime > chartPatternSignal.priceTargetTime().getTime()) {
         // TODO: Unit test this.
-        logger.info(String.format("Not setting 10 candlestick time %s price for %s since it falls after target time.",
-            dateFormat.format(new Date(tenCandleStickTime)), chartPatternSignal));
+        //logger.info(String.format("Not setting 10 candlestick time %s price for %s since it falls after target time.",
+        //    dateFormat.format(new Date(tenCandleStickTime)), chartPatternSignal));
       } else {
         double tenCandleStickTimePrice = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
         boolean ret = dao.setTenCandleStickTimePrice(chartPatternSignal, tenCandleStickTimePrice, getProfitPercentAtWithPrice(chartPatternSignal, tenCandleStickTimePrice));
-        logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
+        //logger.info("Set 10 candlestick time price for '" + chartPatternSignal.coinPair() + "' with 10 candlestick time due at '" + dateFormat.format(tenCandleStickTime) + "' using api: Price. Ret val=" + ret);
       }
     }
   }

@@ -38,7 +38,7 @@ public class ChartPatternSignalDeserializer implements JsonDeserializer<List<Cha
     for (JsonElement arrayElement: jsonArray) {
       try {
         if (arrayElement instanceof JsonNull) {
-          logger.info("Null ChartPaternSignal array element. Skipping.");
+          //logger.info("Null ChartPaternSignal array element. Skipping.");
           continue;
         }
         ChartPatternSignal chartPatternSignal = performMapping((JsonObject) arrayElement);

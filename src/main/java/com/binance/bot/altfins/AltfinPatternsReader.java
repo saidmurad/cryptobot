@@ -106,7 +106,7 @@ public class AltfinPatternsReader {
             Files.delete(Path.of(tmpAltfinsPatternsFilePath));
           }
           Files.copy(file.toPath(), Path.of(tmpAltfinsPatternsFilePath));
-          logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
+          //logger.info(MessageFormat.format("Read {0} patterns for timeframe {1} for file modified at {2}.", patternFromAltfins.size(), i, dateFormat.format(new Date(file.lastModified()))));
           lastProcessedTimes[i] = file.lastModified();
           processPaterns(patternFromAltfins, timeFrames[i]);
         }
@@ -133,12 +133,12 @@ public class AltfinPatternsReader {
         })
         .collect(Collectors.toList());
     if (patternFromAltfins.size() < origSize) {
-      logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
-          getCoinPairsInDifferenceBetween(patternFromAltfins, temp)));
+      /*logger.info(String.format("Filtered out %d symbols not supported on Binance: %s.", (origSize - patternFromAltfins.size()),
+          getCoinPairsInDifferenceBetween(patternFromAltfins, temp)));*/
     }
     patternFromAltfins = temp;
     if (patternFromAltfins.size() == 0) {
-      logger.info("Left with empty patterns list now.");
+      //logger.info("Left with empty patterns list now.");
     }
     List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
     List<ChartPatternSignal> chartPatternsThatAreBack = null;
@@ -148,9 +148,9 @@ public class AltfinPatternsReader {
     }
     List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(
         chartPatternsInDB, patternFromAltfins);
-    if (!newChartPatternSignals.isEmpty()) {
+    /*if (!newChartPatternSignals.isEmpty()) {
       logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrame.name()));
-    }
+    }*/
     if (useAltfinInvalidations) {
       newChartPatternSignals.addAll(chartPatternsThatAreBack);
     }
@@ -234,7 +234,7 @@ public class AltfinPatternsReader {
     Set<ChartPatternSignal> signalSet = new HashSet<>();
     signalSet.addAll(patterns);
     List<ChartPatternSignal> condensedList = signalSet.stream().collect(Collectors.toList());
-    logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
+    //logger.info(String.format("Condensed %d patterns to %d after removing duplicates.", patterns.size(), condensedList.size()));
     if (signalSet.size() < patterns.size()) {
       printDuplicatePatterns(patterns);
     }

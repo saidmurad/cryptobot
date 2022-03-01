@@ -174,7 +174,7 @@ public class ChartPatternSignalDaoImpl {
         "    where (PriceAtSignalTargetTime is null or PriceAtSignalTargetTime = 0)\n" +
         "    and (FailedToGetPriceAtSignalTargetTime is null or FailedToGetPriceAtSignalTargetTime = 0)\n" +
         "    and DATETIME(PriceTargetTime) <= DATETIME('now') " +
-        "`and DATETIME(PriceTargetTime) >= DATETIME('now', '-10 minute')";
+        "and DATETIME(PriceTargetTime) >= DATETIME('now', '-10 minute')";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 

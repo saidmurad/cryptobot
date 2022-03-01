@@ -58,8 +58,6 @@ public class AltfinPatternsReader {
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
-  @Value("${use_altfin_invalidations}")
-  boolean useAltfinInvalidations;
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
@@ -141,42 +139,35 @@ public class AltfinPatternsReader {
       //logger.info("Left with empty patterns list now.");
     }
     List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
-    List<ChartPatternSignal> chartPatternsThatAreBack = null;
-    if (useAltfinInvalidations) {
-      chartPatternsThatAreBack = getChartPatternSignalsThatAreBack(patternFromAltfins, chartPatternsInDB);
-      printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
-    }
+    List<ChartPatternSignal> chartPatternsThatAreBack = getChartPatternSignalsThatAreBack(patternFromAltfins, chartPatternsInDB);
+    printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
     List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(
         chartPatternsInDB, patternFromAltfins);
     /*if (!newChartPatternSignals.isEmpty()) {
       logger.info(String.format("Received %d new chart patterns for time frame %s.", newChartPatternSignals.size(), timeFrame.name()));
     }*/
-    if (useAltfinInvalidations) {
-      newChartPatternSignals.addAll(chartPatternsThatAreBack);
-    }
+    newChartPatternSignals.addAll(chartPatternsThatAreBack);
     if (!newChartPatternSignals.isEmpty()) {
       for (ChartPatternSignal chartPatternSignal : newChartPatternSignals) {
         insertNewChartPatternSignal(chartPatternSignal);
       }
     }
 
-    if (useAltfinInvalidations) {
-      List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(
-          patternFromAltfins, chartPatternsInDB);
-      if (!invalidatedChartPatternSignals.isEmpty()) {
-        logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.",
-            invalidatedChartPatternSignals.size(), timeFrame.name()));
+    List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(
+        patternFromAltfins, chartPatternsInDB);
+    if (!invalidatedChartPatternSignals.isEmpty()) {
+      logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.",
+          invalidatedChartPatternSignals.size(), timeFrame.name()));
 
-        for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
-          ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
-          double priceAtTimeOfInvalidation = numberFormat.parse(
-              restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-          logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
-          boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
-              chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
-          logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
-          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
-        }
+      for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
+        ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
+        double priceAtTimeOfInvalidation = numberFormat.parse(
+            restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+        logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
+        boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
+            chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
+        logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
+        exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
       }
     }
   }

@@ -13,6 +13,7 @@ import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
@@ -49,6 +50,7 @@ public class ExitPositionAtMarketPriceTest {
   @Mock private BinanceApiMarginRestClient mockBinanceApiRestClient;
   @Mock private Mailer mockMailer;
   @Mock private RepayBorrowedOnMargin mockRepayBorrowedOnMargin;
+  @Mock private OutstandingTrades mockOutstandingTrades;
   private final long timeOfSignal = System.currentTimeMillis();
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
@@ -56,22 +58,25 @@ public class ExitPositionAtMarketPriceTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiRestClient);
     exitPositionAtMarketPrice = new ExitPositionAtMarketPrice(
-        mockBinanceApiClientFactory, mockDao, mockMailer, mockRepayBorrowedOnMargin);
+        mockBinanceApiClientFactory, mockDao, mockMailer, mockRepayBorrowedOnMargin, mockOutstandingTrades);
   }
 
   private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
   @Test
   public void exitPositionIfStillHeld_isExitedReturnsNull_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(null).build();
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
     verifyNoInteractions(mockDao);
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Test
   public void exitPositionIfStillHeld_isExitedReturnsTrue_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setIsPositionExited(true).build();
 
@@ -87,7 +92,8 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_stopLossStatusReturnsFILLED_returnsRightAfter()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -110,11 +116,13 @@ public class ExitPositionAtMarketPriceTest {
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verify(mockDao, never()).setExitMarketOrder(any(), any(), any());
     verifyNoInteractions(mockRepayBorrowedOnMargin);
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Test
   public void exitPositionIfStillHeld_buySignal_noPartialStopLossTrade_exitsTradeForFullQty()
       throws MessagingException, ParseException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -173,6 +181,50 @@ public class ExitPositionAtMarketPriceTest {
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockRepayBorrowedOnMargin).repay("USDT", 10.0);
     verify(mockDao).writeAccountBalanceToDB();
+    verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+  }
+
+  @Test
+  public void decrementNumOutstandingTrades()
+      throws MessagingException, ParseException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = true;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
+        .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
+        .build();
+    Order exitStopLossOrderStatus = new Order();
+    exitStopLossOrderStatus.setOrderId(1L);
+    exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
+    when(mockBinanceApiRestClient.getOrderStatus(any())).thenReturn(exitStopLossOrderStatus);
+    // Return the same unchanged exit stop loss order status as NEW.
+    when(mockDao.getChartPattern(chartPatternSignal)).thenReturn(chartPatternSignal);
+    CancelOrderResponse cancelOrderResponse = new CancelOrderResponse();
+    cancelOrderResponse.setOrderId(2L);
+    cancelOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.cancelOrder(any(CancelOrderRequest.class))).thenReturn(cancelOrderResponse);
+    MarginAssetBalance ethBalance = new MarginAssetBalance();
+    ethBalance.setAsset("ETH");
+    ethBalance.setFree("10.0");
+    ethBalance.setLocked("0.0");
+    MarginAccount account = new MarginAccount();
+    account.setUserAssets(Lists.newArrayList(ethBalance));
+    when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("10.0");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Test
@@ -237,6 +289,7 @@ public class ExitPositionAtMarketPriceTest {
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockRepayBorrowedOnMargin).repay("ETH", 10);
+    verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
   }
 
   @Test

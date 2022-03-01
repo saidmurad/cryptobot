@@ -9,6 +9,7 @@ import com.binance.api.client.domain.account.Trade;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -47,6 +48,8 @@ public class StopLimitOrderStatusCheckerTest {
   RepayBorrowedOnMargin mockRepayBorrowedOnMargin;
   @Mock
   ChartPatternSignalDaoImpl mockDao;
+  @Mock
+  OutstandingTrades mockOutstandingTrades;
 
   private StopLimitOrderStatusChecker stopLimitOrderStatusChecker;
 
@@ -54,11 +57,12 @@ public class StopLimitOrderStatusCheckerTest {
   public void setUp() {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     stopLimitOrderStatusChecker = new StopLimitOrderStatusChecker(mockDao, mockRepayBorrowedOnMargin,
-        mockBinanceApiClientFactory);
+        mockBinanceApiClientFactory, mockOutstandingTrades);
   }
 
   @Test
   public void activePositionButWithoutEntryOrderId_skipped() throws MessagingException, ParseException, IOException, BinanceApiException {
+    stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = false;
     when(mockDao.getAllChartPatternsWithActiveTradePositions()).thenReturn(
         Lists.newArrayList(getChartPatternSignal().build()));
 
@@ -67,12 +71,14 @@ public class StopLimitOrderStatusCheckerTest {
     verifyNoInteractions(mockBinanceApiMarginRestClient);
     verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
     verify(mockDao, never()).writeAccountBalanceToDB();
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Captor
   ArgumentCaptor<OrderStatusRequest> orderStatusRequestArgumentCaptor;
   @Test
   public void stopLimitOrderFilled_buyTrade_statusGetsUpdatedInDB_borrowedAmountRepaid() throws MessagingException, ParseException, IOException, BinanceApiException {
+    stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setEntryOrder(
             ChartPatternSignal.Order.create(1, 2.0, 3.0, OrderStatus.FILLED))
@@ -100,8 +106,37 @@ public class StopLimitOrderStatusCheckerTest {
     assertThat(orderStatusRequestArgumentCaptor.getValue().getSymbol()).isEqualTo("ETHUSDT");
     verify(mockDao).updateExitStopLimitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2L, 5, 4, OrderStatus.FILLED));
+    verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
     verify(mockRepayBorrowedOnMargin).repay(eq("USDT"), eq(20.0));
     verify(mockDao).writeAccountBalanceToDB();
+  }
+
+  @Test
+  public void doNotDecrementOutstandingTradeCount() throws MessagingException, ParseException, IOException, BinanceApiException {
+    stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = true;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setEntryOrder(
+            ChartPatternSignal.Order.create(1, 2.0, 3.0, OrderStatus.FILLED))
+        .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0.0, 0.0, OrderStatus.NEW))
+        .build();
+    when(mockDao.getAllChartPatternsWithActiveTradePositions()).thenReturn(
+        Lists.newArrayList(chartPatternSignal));
+    Order exitLimitOrderStatus = new Order();
+    exitLimitOrderStatus.setOrderId(2L);
+    exitLimitOrderStatus.setStatus(OrderStatus.FILLED);
+    exitLimitOrderStatus.setExecutedQty("5.0");
+    when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
+    Trade fill1 = new Trade();
+    fill1.setQty("2.5");
+    fill1.setPrice("3.0");
+    Trade fill2 = new Trade();
+    fill2.setQty("2.5");
+    fill2.setPrice("5.0");
+    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
+        Lists.newArrayList(fill1, fill2));
+    stopLimitOrderStatusChecker.perform();
+
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Test
@@ -130,6 +165,7 @@ public class StopLimitOrderStatusCheckerTest {
     stopLimitOrderStatusChecker.perform();
 
     verify(mockRepayBorrowedOnMargin, never()).repay(any(), anyLong());
+    verifyNoInteractions(mockOutstandingTrades);
   }
 
   @Test

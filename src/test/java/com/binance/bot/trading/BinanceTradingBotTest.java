@@ -10,6 +10,7 @@ import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
@@ -57,7 +58,8 @@ public class BinanceTradingBotTest {
   private BinanceTradingBot binanceTradingBot;
   @Mock private BookTickerPrices mockBookTickerPrices;
   @Mock private OutstandingTrades mockOutstandingTrades;
-  
+  @Mock private Mailer mockMailer;
+
   @Captor
   ArgumentCaptor<MarginNewOrder> orderCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
@@ -80,6 +82,7 @@ public class BinanceTradingBotTest {
     when(mockBookTickerPrices.getBookTicker("BTCUSDT")).thenReturn(btcBookTicker);
     BookTickerPrices.BookTicker bnbBtcBookTicker = BookTickerPrices.BookTicker.create(BNBBTC, BNBBTC);
     when(mockBookTickerPrices.getBookTicker("BNBBTC")).thenReturn(bnbBtcBookTicker);
+    binanceTradingBot.setMockMailer(mockMailer);
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     binanceTradingBot.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BOTH";
     binanceTradingBot.hourlyTimeFrameAllowedTradeTypeConfig = "BOTH";

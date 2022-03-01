@@ -13,6 +13,7 @@ import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
@@ -20,6 +21,7 @@ import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.mail.MessagingException;
@@ -37,14 +39,19 @@ public class ExitPositionAtMarketPrice {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final Mailer mailer;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
+  private final OutstandingTrades outstandingTrades;
+  @Value("${do_not_decrement_num_outstanding_trades}")
+  boolean doNotDecrementNumOutstandingTrades;
 
   @Autowired
   ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao,
-                            Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin) {
+                            Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin,
+                            OutstandingTrades outstandingTrades) {
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.dao = dao;
     this.mailer = mailer;
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
+    this.outstandingTrades = outstandingTrades;
   }
 
   public void exitPositionIfStillHeld(
@@ -126,6 +133,9 @@ public class ExitPositionAtMarketPrice {
         repayBorrowedOnMargin.repay("USDT", executedQty * avgTradePrice);
       } else {
         repayBorrowedOnMargin.repay(baseAsset, executedQty);
+      }
+      if (!doNotDecrementNumOutstandingTrades) {
+        outstandingTrades.decrementNumOutstandingTrades(chartPatternSignal.timeFrame());
       }
     }
   }

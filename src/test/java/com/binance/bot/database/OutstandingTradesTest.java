@@ -33,8 +33,14 @@ public class OutstandingTradesTest {
   }
 
   @Test
-  public void testGetNumOutstandingTrades() {
+  public void testincrementOutstandingTrades() {
     outstandingTrades.incrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
     assertThat(outstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(1);
+  }
+
+  @Test
+  public void testDecrementOutstandingTrades() {
+    outstandingTrades.decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+    assertThat(outstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).isEqualTo(-1);
   }
 }

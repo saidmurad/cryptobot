@@ -23,4 +23,9 @@ public class OutstandingTrades {
     return jdbcTemplate.queryForObject(String.format("select NumOutstandingTrades from NumOutstandingTrades" +
         " where TimeFrame='%s'", timeFrame.name()), new Object[]{}, (rs, numRows) -> rs.getInt("NumOutstandingTrades"));
   }
+
+  public void decrementNumOutstandingTrades(TimeFrame timeFrame) {
+    jdbcTemplate.update(String.format("update NumOutstandingTrades set NumOutstandingTrades=NumOutstandingTrades-1 where TimeFrame='%s'",
+        timeFrame.name()));
+  }
 }

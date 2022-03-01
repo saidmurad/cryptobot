@@ -10,6 +10,7 @@ import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
@@ -18,6 +19,7 @@ import com.binance.bot.trading.RepayBorrowedOnMargin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
@@ -36,16 +38,21 @@ public class StopLimitOrderStatusChecker {
   private final ChartPatternSignalDaoImpl dao;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final BinanceApiMarginRestClient binanceApiMarginRestClient;
+  private final OutstandingTrades outstandingTrades;
   private final Mailer mailer = new Mailer();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
+  @Value("${do_not_decrement_num_outstanding_trades}")
+  boolean doNotDecrementNumOutstandingTrades;
 
   @Autowired
   StopLimitOrderStatusChecker(ChartPatternSignalDaoImpl dao, RepayBorrowedOnMargin repayBorrowedOnMargin,
-                              BinanceApiClientFactory binanceApiClientFactory) {
+                              BinanceApiClientFactory binanceApiClientFactory,
+                              OutstandingTrades outstandingTrades) {
     this.dao = dao;
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
+    this.outstandingTrades = outstandingTrades;
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
@@ -72,6 +79,9 @@ public class StopLimitOrderStatusChecker {
               repayBorrowedOnMargin.repay(Util.getBaseAsset(activePosition.coinPair()), qty);
             } else {
               repayBorrowedOnMargin.repay("USDT", qty * price);
+            }
+            if (!doNotDecrementNumOutstandingTrades) {
+              outstandingTrades.decrementNumOutstandingTrades(activePosition.timeFrame());
             }
           }
         }

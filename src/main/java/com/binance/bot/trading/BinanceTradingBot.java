@@ -45,7 +45,7 @@ public class BinanceTradingBot {
     private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
-    private final Mailer mailer = new Mailer();
+    private Mailer mailer = new Mailer();
     private final OutstandingTrades outstandingTrades;
     @Value("${per_trade_amount}")
     public
@@ -57,13 +57,13 @@ public class BinanceTradingBot {
     @Value("${min_margin_level}")
     double minMarginLevel;
 
-    @Value("${num_outstanding_trades_limit_fifteen_minute_timeframe")
+    @Value("${num_outstanding_trades_limit_fifteen_minute_timeframe}")
     int numOutstandingTradesLimitFifteenMinuteTimeFrame;
-    @Value("${num_outstanding_trades_limit_hourly_timeframe")
+    @Value("${num_outstanding_trades_limit_hourly_timeframe}")
     int numOutstandingTradesLimitHourlyTimeFrame;
-    @Value("${num_outstanding_trades_limit_four_hourly_timeframe")
+    @Value("${num_outstanding_trades_limit_four_hourly_timeframe}")
     int numOutstandingTradesLimitFourHourlyTimeFrame;
-    @Value("${num_outstanding_trades_limit_daily_timeframe")
+    @Value("${num_outstanding_trades_limit_daily_timeframe}")
     int numOutstandingTradesLimitDailyTimeFrame;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
 
@@ -83,6 +83,10 @@ public class BinanceTradingBot {
         numOutstandingTradesLimitByTimeFrame[1] = numOutstandingTradesLimitHourlyTimeFrame;
         numOutstandingTradesLimitByTimeFrame[2] = numOutstandingTradesLimitFourHourlyTimeFrame;
         numOutstandingTradesLimitByTimeFrame[3] = numOutstandingTradesLimitDailyTimeFrame;
+    }
+
+    void setMockMailer(Mailer mailer) {
+        this.mailer = mailer;
     }
 
     String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {

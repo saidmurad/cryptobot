@@ -56,7 +56,7 @@ public class MaxLossCalculatorTaskTest {
     maxLossCalculatorTask = new MaxLossCalculatorTask(
         mockDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
-    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
   }
 
   @Test

@@ -44,7 +44,7 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   @Before
   public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
-    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
     priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(
         mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
   }

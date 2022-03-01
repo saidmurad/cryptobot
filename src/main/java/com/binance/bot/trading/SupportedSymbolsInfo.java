@@ -2,7 +2,6 @@ package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.general.FilterType;
 import com.binance.api.client.domain.general.SymbolStatus;
 import com.binance.api.client.exception.BinanceApiException;
@@ -22,7 +21,7 @@ public class SupportedSymbolsInfo {
   private Set<String> supportedSymbols = new HashSet<>();
   private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new HashMap<>();
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  private Map<String, List<OrderType>> tradingSymbolsMap = new HashMap<>();
+  private Map<String, Boolean> tradingSymbolsMap = new HashMap<String, Boolean>();
   private long lastFetchTime = 0;
 
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -44,7 +43,7 @@ public class SupportedSymbolsInfo {
   }
 
   // exchangeInfo api weight is 10 and the limit is 1200 weight per minute, i.e. once ever 0.5 secs.
-  public Map<String, List<OrderType>> getTradingActiveSymbols() throws BinanceApiException {
+  public Map<String, Boolean> getTradingActiveSymbols() throws BinanceApiException {
     if (lastFetchTime != 0 && System.currentTimeMillis() - lastFetchTime <= 5000) {
       return tradingSymbolsMap;
     }
@@ -53,7 +52,7 @@ public class SupportedSymbolsInfo {
     //logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date(lastFetchTime)));
     binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
       if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
-        tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.getOrderTypes());
+        tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());
       }
     });
     return tradingSymbolsMap;

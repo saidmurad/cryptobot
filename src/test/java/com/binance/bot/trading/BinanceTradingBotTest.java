@@ -68,7 +68,7 @@ public class BinanceTradingBotTest {
   
   @Before
   public void setUp() throws MessagingException, BinanceApiException {
-    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()));
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     TickerPrice tickerPrice = new TickerPrice();
@@ -328,6 +328,23 @@ public class BinanceTradingBotTest {
   @Test
   public void symbolNotTradingAtTheMoment_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of());
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void marginNotAvailableForSymbol_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETH", false));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)

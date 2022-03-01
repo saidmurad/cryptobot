@@ -138,7 +138,7 @@ public class BinanceTradingBot {
                             if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                                 || (chartPatternSignal.profitPotentialPercent() >= 0.5
                                 && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
-                                && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+                                && isActiveSymbolAndMarginAllowed(chartPatternSignal.coinPair())) {
                                 int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
                                 if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]) {
                                   placeTrade(chartPatternSignal, numOutstandingTrades);
@@ -152,6 +152,11 @@ public class BinanceTradingBot {
                 }
             }
         }
+    }
+
+    private boolean isActiveSymbolAndMarginAllowed(String coinPair) throws BinanceApiException {
+        Boolean isMarginAllowed = supportedSymbolsInfo.getTradingActiveSymbols().get(coinPair);
+        return isMarginAllowed != null && isMarginAllowed;
     }
 
     private boolean isLate(TimeFrame timeFrame, Date timeOfSignal) {

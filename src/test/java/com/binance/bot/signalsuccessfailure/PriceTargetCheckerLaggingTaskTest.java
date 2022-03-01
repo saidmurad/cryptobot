@@ -54,8 +54,8 @@ public class PriceTargetCheckerLaggingTaskTest {
     priceTargetCheckerLaggingTask = new PriceTenCandlestickTimeCheckerLaggingTask(
         mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo);
     priceTargetCheckerLaggingTask.clock = mockClock;
-    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", Lists.newArrayList()),
-        Map.of("BTCUSDT", Lists.newArrayList()));
+    when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true),
+        Map.of("BTCUSDT", true));
   }
 
   @Test

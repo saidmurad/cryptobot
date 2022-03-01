@@ -105,7 +105,8 @@ public class ChartPatternSignalDaoImpl {
         reasonForSignalInvalidation.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
-    String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal, InvalidationEventTime, Event)" +
+    String sql2 = "insert into ChartPatternSignalInvalidationEvents(CoinPair, TimeFrame, TradeType, Pattern, " +
+        "TimeOfSignal, InvalidationEventTime, Event)" +
         "values(?, ?, ?, ?, ?, ?, ?)";
 
     boolean ret2 = jdbcTemplate.update(sql2, chartPatternSignal.coinPair(),
@@ -172,7 +173,8 @@ public class ChartPatternSignalDaoImpl {
     String sql = "select * from ChartPatternSignal \n" +
         "    where (PriceAtSignalTargetTime is null or PriceAtSignalTargetTime = 0)\n" +
         "    and (FailedToGetPriceAtSignalTargetTime is null or FailedToGetPriceAtSignalTargetTime = 0)\n" +
-        "    and DATETIME(PriceTargetTime) <= DATETIME('now') and DATETIME(PriceTargetTime) >= DATETIME('now', '-10 minute')";
+        "    and DATETIME(PriceTargetTime) <= DATETIME('now') " +
+        "`and DATETIME(PriceTargetTime) >= DATETIME('now', '-10 minute')";
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
@@ -386,7 +388,7 @@ public class ChartPatternSignalDaoImpl {
         "ExitStopLossOrderAvgPrice=?," +
         "ExitStopLossOrderStatus=?," +
         "Realized=?, RealizedPercent=?, Unrealized=?, UnRealizedPercent=?," +
-        "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS' where " +
+        "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS`' where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
     int ret = jdbcTemplate.update(sql, exitStopLimitOrderStatus.orderId(),

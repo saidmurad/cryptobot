@@ -65,6 +65,14 @@ public class BinanceTradingBot {
     int numOutstandingTradesLimitFourHourlyTimeFrame;
     @Value("${num_outstanding_trades_limit_daily_timeframe}")
     int numOutstandingTradesLimitDailyTimeFrame;
+    @Value("${late_time_fifteen_minute_timeframe}")
+    int lateTimeFifteenMinuteTimeFrame;
+    @Value("${late_time_hourly_timeframe}")
+    int lateTimeHourlyTimeFrame;
+    @Value("${late_time_four_hourly_timeframe}")
+    int lateTimeFourHourlyTimeFrame;
+    @Value("${late_time_daily_timeframe}")
+    int lateTimeDailyTimeFrame;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
 
     @Autowired
@@ -148,13 +156,13 @@ public class BinanceTradingBot {
         long timeLagMins = (currTime - timeOfSignal.getTime()) / 60000;
         switch (timeFrame) {
             case FIFTEEN_MINUTES:
-                return timeLagMins > 15;
+                return timeLagMins > lateTimeFifteenMinuteTimeFrame;
             case HOUR:
-                return timeLagMins > 30;
+                return timeLagMins > lateTimeHourlyTimeFrame;
             case FOUR_HOURS:
-                return timeLagMins > 30;
+                return timeLagMins > lateTimeFourHourlyTimeFrame;
             default:
-                return timeLagMins > 120;
+                return timeLagMins > lateTimeDailyTimeFrame;
         }
     }
 

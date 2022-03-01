@@ -91,6 +91,11 @@ public class BinanceTradingBotTest {
     binanceTradingBot.minMarginLevel = 1.5;
     binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.stopLimitPercent = 5.5;
+
+    binanceTradingBot.lateTimeFifteenMinuteTimeFrame = 15;
+    binanceTradingBot.lateTimeHourlyTimeFrame = 30;
+    binanceTradingBot.lateTimeFourHourlyTimeFrame = 30;
+    binanceTradingBot.lateTimeDailyTimeFrame = 120;
     setUpDefaultNumOutstandingTradesLimit();
   }
 

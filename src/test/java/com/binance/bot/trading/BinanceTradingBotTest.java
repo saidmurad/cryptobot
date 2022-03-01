@@ -102,9 +102,11 @@ public class BinanceTradingBotTest {
 
   private void setUpDefaultNumOutstandingTradesLimit() {
     // Allow one trade for each timeframe by default.
-    for (int i=0; i<4; i++) {
-      binanceTradingBot.numOutstandingTradesLimitByTimeFrame[i] = 1;
-    }
+    binanceTradingBot.numOutstandingTradesLimitFifteenMinuteTimeFrame = 1;
+    binanceTradingBot.numOutstandingTradesLimitHourlyTimeFrame = 1;
+    binanceTradingBot.numOutstandingTradesLimitFourHourlyTimeFrame = 1;
+    binanceTradingBot.numOutstandingTradesLimitDailyTimeFrame = 1;
+
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(0);
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.HOUR)).thenReturn(0);
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FOUR_HOURS)).thenReturn(0);
@@ -976,6 +978,7 @@ public class BinanceTradingBotTest {
     binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
+    verify(mockBinanceApiMarginRestClient).borrow("ETH", "0.005");
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
     MarginNewOrder buyOrder = orderCaptor.getAllValues().get(0);
     assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");

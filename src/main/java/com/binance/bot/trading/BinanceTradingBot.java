@@ -89,10 +89,6 @@ public class BinanceTradingBot {
         this.dao = dao;
         this.bookTickerPrices = bookTickerPrices;
         this.outstandingTrades = outstandingTrades;
-        numOutstandingTradesLimitByTimeFrame[0] = numOutstandingTradesLimitFifteenMinuteTimeFrame;
-        numOutstandingTradesLimitByTimeFrame[1] = numOutstandingTradesLimitHourlyTimeFrame;
-        numOutstandingTradesLimitByTimeFrame[2] = numOutstandingTradesLimitFourHourlyTimeFrame;
-        numOutstandingTradesLimitByTimeFrame[3] = numOutstandingTradesLimitDailyTimeFrame;
     }
 
     void setMockMailer(Mailer mailer) {
@@ -128,6 +124,10 @@ public class BinanceTradingBot {
     )
     @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
     public void perform() throws MessagingException {
+        numOutstandingTradesLimitByTimeFrame[0] = numOutstandingTradesLimitFifteenMinuteTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[1] = numOutstandingTradesLimitHourlyTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[2] = numOutstandingTradesLimitFourHourlyTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[3] = numOutstandingTradesLimitDailyTimeFrame;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 if (isTradingAllowed(timeFrames[i], tradeTypes[j])) {
@@ -272,10 +272,10 @@ public class BinanceTradingBot {
                 break;
             case SELL:
                 if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
-                    Integer numCoinsToBorrow = (int) (tradeValueInUSDTToDo / entryPrice);
+                    String numCoinsToBorrow = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
                     String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
-                    logger.info("Borrowing %d coins of %s.", numCoinsToBorrow, baseAsset);
-                    binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow.toString());
+                    logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
+                    binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
                 } else {
                     String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
                     logger.warn(msg);

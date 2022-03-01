@@ -5,7 +5,6 @@ import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.MarginAccount;
 import com.binance.api.client.domain.account.MarginAssetBalance;
-import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Util;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
@@ -23,6 +22,7 @@ import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.binance.bot.common.Util.getTenCandleStickTimeIncrementMillis;
 
@@ -295,9 +295,36 @@ public class ChartPatternSignalDaoImpl {
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
-  public List<ChartPatternSignal> getChartPatternSignalsToPlaceTrade(TimeFrame timeFrame, TradeType tradeType) {
-    String sql = String.format("select * from ChartPatternSignal where IsSignalOn=1 and EntryOrderId is null and " +
-        "timeFrame='%s' and tradeType='%s'", timeFrame.name(), tradeType.name());
+  public List<ChartPatternSignal> getChartPatternSignalsToPlaceTrade(
+      TimeFrame timeFrame, TradeType tradeType, boolean useAltfinsInvalidations) {
+    if (useAltfinsInvalidations) {
+      return getChartPatternSignalsToPlaceTradeUsingAltfinsInvalidations(timeFrame, tradeType);
+    }
+    return getChartPatternSignalsToPlaceTradeNotUsingAltfinsInvalidations(timeFrame, tradeType);
+  }
+
+  private List<ChartPatternSignal> getChartPatternSignalsToPlaceTradeUsingAltfinsInvalidations(
+      TimeFrame timeFrame, TradeType tradeType) {
+    String sql = String.format("select * from ChartPatternSignal where EntryOrderId is null and " +
+        "timeFrame='%s' and tradeType='%s' and DATETIME(TimeOfSignal) >= DATETIME('now', '-120 minutes')", timeFrame.name(), tradeType.name());
+    List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(sql, new ChartPatternSignalMapper());
+    Map<ChartPatternSignal, Integer> highestAttemptMap = new HashMap<>();
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Integer attempt = highestAttemptMap.get(chartPatternSignal);
+      Integer updatedAttempt = chartPatternSignal.attempt();
+      if (attempt == null || attempt < updatedAttempt) {
+        highestAttemptMap.put(chartPatternSignal, updatedAttempt);
+      }
+    }
+    return chartPatternSignals.stream().filter(chartPatternSignal ->
+        chartPatternSignal.attempt() == highestAttemptMap.get(chartPatternSignal))
+        .collect(Collectors.toList());
+  }
+
+  private List<ChartPatternSignal> getChartPatternSignalsToPlaceTradeNotUsingAltfinsInvalidations(
+      TimeFrame timeFrame, TradeType tradeType) {
+    String sql = String.format("select * from ChartPatternSignal where EntryOrderId is null and " +
+        "timeFrame='%s' and tradeType='%s' and Attempt=1 and DATETIME(TimeOfSignal) >= DATETIME('now', '-120 minutes')", timeFrame.name(), tradeType.name());
     return jdbcTemplate.query(sql, new ChartPatternSignalMapper());
   }
 
@@ -388,7 +415,7 @@ public class ChartPatternSignalDaoImpl {
         "ExitStopLossOrderAvgPrice=?," +
         "ExitStopLossOrderStatus=?," +
         "Realized=?, RealizedPercent=?, Unrealized=?, UnRealizedPercent=?," +
-        "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS`' where " +
+        "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS' where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
     int ret = jdbcTemplate.update(sql, exitStopLimitOrderStatus.orderId(),

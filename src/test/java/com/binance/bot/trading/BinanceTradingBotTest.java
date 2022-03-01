@@ -97,6 +97,7 @@ public class BinanceTradingBotTest {
     binanceTradingBot.lateTimeFourHourlyTimeFrame = 30;
     binanceTradingBot.lateTimeDailyTimeFrame = 120;
     setUpDefaultNumOutstandingTradesLimit();
+    binanceTradingBot.useAltfinsInvalidations = true;
   }
 
   private void setUpDefaultNumOutstandingTradesLimit() {
@@ -216,7 +217,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -226,6 +227,16 @@ public class BinanceTradingBotTest {
     verify(mockDao, never()).setEntryOrder(any(), any());
   }
 
+   @Test
+  public void useAltfinsInvalidations_false() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.useAltfinsInvalidations = false;
+    binanceTradingBot.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
+
+    binanceTradingBot.perform();
+
+    verify(mockDao).getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, false);
+  }
+
   @Test
   public void perform_numOutstandingTrades_isAtLimit_fifteenMinutes_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(1);
@@ -233,7 +244,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -250,7 +261,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.HOUR)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -267,7 +278,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -284,7 +295,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.DAY)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -302,7 +313,7 @@ public class BinanceTradingBotTest {
         .setProfitPotentialPercent(0.5)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -16))
             .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -319,7 +330,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -337,7 +348,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -354,7 +365,7 @@ public class BinanceTradingBotTest {
         .setTradeType(TradeType.BUY)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -61))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -373,7 +384,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.HOUR)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -59))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -416,7 +427,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -457,7 +468,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.HOUR)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -498,7 +509,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -539,7 +550,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.DAY)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -577,7 +588,7 @@ public class BinanceTradingBotTest {
         .setTradeType(TradeType.BUY)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -121))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -597,7 +608,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -119))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -636,7 +647,7 @@ public class BinanceTradingBotTest {
         .setTradeType(TradeType.BUY)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -241))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -656,7 +667,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.DAY)
         .setTimeOfSignal(DateUtils.addMinutes(new Date(), -239))
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
     MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
     buyOrderResp.setOrderId(1L);
@@ -822,7 +833,7 @@ public class BinanceTradingBotTest {
     setUsdtBalance(19, 38);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();
@@ -1004,7 +1015,7 @@ public class BinanceTradingBotTest {
         .setTradeType(TradeType.SELL)
         .setPriceTarget(3000)
         .build();
-    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL))
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
 
     binanceTradingBot.perform();

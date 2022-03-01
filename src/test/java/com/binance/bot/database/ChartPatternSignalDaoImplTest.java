@@ -5,7 +5,6 @@ import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.account.MarginAccount;
 import com.binance.api.client.domain.account.MarginAssetBalance;
-import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
@@ -13,7 +12,6 @@ import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
 import com.binance.bot.util.SetupDatasource;
 import com.google.common.collect.Lists;
-import junit.framework.TestCase;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Rule;
@@ -22,17 +20,12 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoJUnitRule;
 import org.mockito.junit.MockitoRule;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.util.Pair;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
-import org.sqlite.SQLiteDataSource;
 
 import javax.sql.DataSource;
-import java.io.File;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -53,7 +46,7 @@ public class ChartPatternSignalDaoImplTest {
   @Rule
   public final MockitoRule mocks = MockitoJUnit.rule();
 
-  private final long currentTimeMillis = 1642258800000L; // 2022-01-15 15:00
+  private final long currentTimeMillis = System.currentTimeMillis();
   ChartPatternSignalDaoImpl dao;
   private VolumeProfile volProfile;
   public static final String createTableStmt = "Create Table ChartPatternSignal(\n" +
@@ -520,9 +513,10 @@ public class ChartPatternSignalDaoImplTest {
     assertEquals("Resistance", chartPatternSignal.pattern());
     assertEquals(TradeType.BUY, chartPatternSignal.tradeType());
     assertThat(chartPatternSignal.priceAtTimeOfSignal()).isEqualTo(4000.0);
-    assertEquals(new Date(currentTimeMillis), chartPatternSignal.timeOfSignal());
+    assertEquals(dateFormat.format(new Date(currentTimeMillis)), dateFormat.format(chartPatternSignal.timeOfSignal()));
     assertThat(chartPatternSignal.priceTarget()).isEqualTo(6000.0);
-    assertEquals(new Date(currentTimeMillis + 360000), chartPatternSignal.priceTargetTime());
+    assertEquals(dateFormat.format(new Date(currentTimeMillis + 360000)),
+        dateFormat.format(chartPatternSignal.priceTargetTime()));
     assertThat(chartPatternSignal.profitPotentialPercent()).isEqualTo(2.3);
 
     assertThat(chartPatternSignal.volumeAtSignalCandlestick()).isEqualTo(100);
@@ -546,6 +540,7 @@ public class ChartPatternSignalDaoImplTest {
         .setIsSignalOn(true);
   }
 
+  @Test
   public void testIncrementNumTimesMissingInInput() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -555,6 +550,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.getChartPattern(chartPatternSignalInDB).numTimesMissingInInput()).isEqualTo(1);
   }
 
+  @Test
   public void testResetNumTimesMissingInInput() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setNumTimesMissingInInput(1).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -564,6 +560,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.getChartPattern(chartPatternSignalInDB).numTimesMissingInInput()).isEqualTo(0);
   }
 
+  @Test
   public void testSetFailedToGetPriceAtTenCandlestickTime() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -574,6 +571,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.getChartPattern(chartPatternSignalInDB).failedToGetPriceAtTenCandlestickTime()).isTrue();
   }
 
+  @Test
   public void testGetChartPatternSignalsToInvalidate() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setCoinPair("ETHUSDT").setNumTimesMissingInInput(1).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -585,6 +583,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(patternsToInvalidate).hasSize(2);
   }
 
+  @Test
   public void testSetTenCandlestickTime_beforePriceTargetTime_doesntNullifyTenCandlestickPrice() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal()
         // After 150 minutes of 10 candlestick time.
@@ -596,10 +595,12 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.setTenCandleSticktime(chartPatternSignalInDB)).isTrue();
 
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    assertThat(chartPatternSignalInDB.tenCandlestickTime().getTime()).isEqualTo(currentTimeMillis + TimeUnit.MINUTES.toMillis(150));
+    assertThat(dateFormat.format(chartPatternSignalInDB.tenCandlestickTime().getTime())).isEqualTo(
+        dateFormat.format(currentTimeMillis + TimeUnit.MINUTES.toMillis(150)));
     assertThat(chartPatternSignalInDB.priceAtTenCandlestickTime()).isEqualTo(200.0);
   }
 
+  @Test
   public void testSetTenCandlestickTime_afterPriceTargetTime_nullifiesTenCandlestickPrice() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal()
         // Before the 150 minutes of 10 candlestick time.
@@ -611,10 +612,12 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.setTenCandleSticktime(chartPatternSignalInDB)).isTrue();
 
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    assertThat(chartPatternSignalInDB.tenCandlestickTime().getTime()).isEqualTo(currentTimeMillis + TimeUnit.MINUTES.toMillis(149));
+    assertThat(dateFormat.format(chartPatternSignalInDB.tenCandlestickTime().getTime())).isEqualTo(
+        dateFormat.format(currentTimeMillis + TimeUnit.MINUTES.toMillis(149)));
     assertThat(chartPatternSignalInDB.priceAtTenCandlestickTime()).isZero();
   }
 
+  @Test
   public void testUpdateEntryOrder() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -629,6 +632,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
   }
 
+  @Test
   public void testUpdateExitStopLossOrder_orderJustPlaced() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -650,6 +654,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
   }
 
+  @Test
   public void testUpdateExitStopLimitOrder_tradeTypeBUY_fullyExitsPosition() throws ParseException {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -676,6 +681,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
+  @Test
   public void testUpdateExitStopLimitOrder_tradeTypeBUY_partiallyExitsPosition() throws ParseException {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -703,6 +709,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
+  @Test
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_fullyExitsPosition() throws ParseException {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.SELL).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -729,6 +736,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
+  @Test
   public void testUpdateExitStopLimitOrder_tradeTypeSELL_partiallyExitsPosition() throws ParseException {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.SELL).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -753,9 +761,9 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.isPositionExited()).isFalse();
     assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
-    assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.STOP_LOSS);
   }
 
+  @Test
   public void testUpdateExitMarketOrder_tradeTypeBUY_noPreExistingPnL() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.BUY)
         // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
@@ -785,6 +793,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
   }
 
+  @Test
   public void testUpdateExitMarketOrder_tradeTypeBUY_partialExit_previousPartiallyExecutedStopLimitOrder() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.BUY)
         // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
@@ -814,6 +823,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
   }
 
+  @Test
   public void testUpdateExitMarketOrder_preExistingPnl_additive_tradeTypeSELL() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.SELL)
         // Fictious preexisting values for relaized and unrealized, not important how they got here for the test.
@@ -842,6 +852,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.tradeExitType()).isEqualTo(TradeExitType.TARGET_TIME_PASSED);
   }
 
+  @Test
   public void testGetActivePositions() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY).build();
@@ -860,6 +871,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(activePositions.get(0).entryOrder().executedQty()).isEqualTo(1.1);
   }
 
+  @Test
   public void testUpdateMaxLossAndTargetMetValues() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
@@ -879,11 +891,13 @@ public class ChartPatternSignalDaoImplTest {
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignal.maxLoss()).isEqualTo(10.0);
     assertThat(chartPatternSignal.maxLossPercent()).isEqualTo(1.0);
-    assertThat(chartPatternSignal.maxLossTime().getTime()).isEqualTo(currentTimeMillis);
+    assertThat(dateFormat.format(chartPatternSignal.maxLossTime().getTime())).isEqualTo(dateFormat.format(currentTimeMillis));
     assertThat(chartPatternSignal.isPriceTargetMet()).isTrue();
-    assertThat(chartPatternSignal.priceTargetMetTime().getTime()).isEqualTo(currentTimeMillis + 3600000);
+    assertThat(dateFormat.format(chartPatternSignal.priceTargetMetTime().getTime())).isEqualTo(
+        dateFormat.format(currentTimeMillis + 3600000));
   }
 
+  @Test
   public void testUpdateMaxLossAndTargetMetValues_emptyValues() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
@@ -899,6 +913,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignal.priceTargetMetTime()).isNull();
   }
 
+  @Test
   public void testGetAllChartPatternsNeedingMaxLossCalculated() {
     ChartPatternSignal yesterdayChartPattern = getChartPatternSignal()
         .setCoinPair("ETHUSDT")
@@ -920,47 +935,105 @@ public class ChartPatternSignalDaoImplTest {
   private final TimeFrame[] timeFrames = {TimeFrame.FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
   private final TradeType tradeTypes[] = {TradeType.BUY, TradeType.SELL};
 
-  public void testGetChartPatternSignalsToPlaceTrade() {
+  @Test
+  public void testGetChartPatternSignalsToPlaceTrade_usesAltfinsSignalInvalidations_findsHighestAttemptCountsOnly() {
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 2; j++) {
         Date currTime = new Date();
-        ChartPatternSignal chartPatternSignalWithSignalOff = getChartPatternSignal()
-            .setTimeFrame(timeFrames[i])
-            .setTradeType(tradeTypes[j])
-            .setTimeOfSignal(currTime)
-            .setIsSignalOn(false)
-            .build();
         ChartPatternSignal chartPatternSignalWithEntryOrder = getChartPatternSignal()
             .setTimeFrame(timeFrames[i])
             .setTradeType(tradeTypes[j])
             .setTimeOfSignal(DateUtils.addMinutes(currTime, -1))
-            .setIsSignalOn(true)
             .build();
-        ChartPatternSignal chartPatternSignalSignalOnWithoutEntryOrder = getChartPatternSignal()
+        dao.insertChartPatternSignal(chartPatternSignalWithEntryOrder, volProfile);
+        dao.setEntryOrder(chartPatternSignalWithEntryOrder, ChartPatternSignal.Order.create(1,1.0,2.0, OrderStatus.FILLED));
+        ChartPatternSignal chartPatternSignalWithoutEntryOrder1 = getChartPatternSignal()
             .setTimeFrame(timeFrames[i])
             .setTradeType(tradeTypes[j])
             .setTimeOfSignal(DateUtils.addMinutes(currTime, -2))
-            .setIsSignalOn(true)
+            .setAttempt(1)
             .build();
-        dao.insertChartPatternSignal(chartPatternSignalWithSignalOff, volProfile);
-        dao.insertChartPatternSignal(chartPatternSignalWithEntryOrder, volProfile);
-        dao.setEntryOrder(chartPatternSignalWithEntryOrder, ChartPatternSignal.Order.create(1,1.0,2.0, OrderStatus.FILLED));
-        dao.insertChartPatternSignal(chartPatternSignalSignalOnWithoutEntryOrder, volProfile);
+        dao.insertChartPatternSignal(chartPatternSignalWithoutEntryOrder1, volProfile);
+        ChartPatternSignal chartPatternSignalWithoutEntryOrder2 = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -2))
+            .setAttempt(2)
+            .build();
+        dao.insertChartPatternSignal(chartPatternSignalWithoutEntryOrder2, volProfile);
+        ChartPatternSignal hypothetical = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -121))
+            .setAttempt(3)
+            .build();
+        dao.insertChartPatternSignal(hypothetical, volProfile);
       }
     }
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 2; j++) {
-        List<ChartPatternSignal> chartPatternSignalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(timeFrames[i], tradeTypes[j]);
+        List<ChartPatternSignal> chartPatternSignalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(
+            timeFrames[i], tradeTypes[j], true);
         assertThat(chartPatternSignalsToPlaceTrade).hasSize(1);
         assertThat(chartPatternSignalsToPlaceTrade.get(0).timeFrame()).isEqualTo(timeFrames[i]);
         assertThat(chartPatternSignalsToPlaceTrade.get(0).tradeType()).isEqualTo(tradeTypes[j]);
-        assertThat(chartPatternSignalsToPlaceTrade.get(0).isSignalOn()).isTrue();
+        assertThat(chartPatternSignalsToPlaceTrade.get(0).attempt()).isEqualTo(2);
         assertThat(chartPatternSignalsToPlaceTrade.get(0).entryOrder()).isNull();
       }
     }
   }
 
+  @Test
+  public void testGetChartPatternSignalsToPlaceTrade_doesntUseAltfinsSignalInvalidations_findsFirstAttemptsOnly() {
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 2; j++) {
+        Date currTime = new Date();
+        ChartPatternSignal chartPatternSignalWithEntryOrder = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -1))
+            .build();
+        dao.insertChartPatternSignal(chartPatternSignalWithEntryOrder, volProfile);
+        dao.setEntryOrder(chartPatternSignalWithEntryOrder, ChartPatternSignal.Order.create(1,1.0,2.0, OrderStatus.FILLED));
+        ChartPatternSignal chartPatternSignalWithoutEntryOrder1 = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -2))
+            .setAttempt(1)
+            .build();
+        dao.insertChartPatternSignal(chartPatternSignalWithoutEntryOrder1, volProfile);
+        ChartPatternSignal chartPatternSignalWithoutEntryOrder2 = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -2))
+            .setAttempt(2)
+            .build();
+        dao.insertChartPatternSignal(chartPatternSignalWithoutEntryOrder2, volProfile);
+        ChartPatternSignal hypothetical = getChartPatternSignal()
+            .setTimeFrame(timeFrames[i])
+            .setTradeType(tradeTypes[j])
+            .setTimeOfSignal(DateUtils.addMinutes(currTime, -121))
+            .setAttempt(3)
+            .build();
+        dao.insertChartPatternSignal(hypothetical, volProfile);
+      }
+    }
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 2; j++) {
+        List<ChartPatternSignal> chartPatternSignalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(
+            timeFrames[i], tradeTypes[j], false);
+        assertThat(chartPatternSignalsToPlaceTrade).hasSize(1);
+        assertThat(chartPatternSignalsToPlaceTrade.get(0).timeFrame()).isEqualTo(timeFrames[i]);
+        assertThat(chartPatternSignalsToPlaceTrade.get(0).tradeType()).isEqualTo(tradeTypes[j]);
+        assertThat(chartPatternSignalsToPlaceTrade.get(0).attempt()).isEqualTo(1);
+        assertThat(chartPatternSignalsToPlaceTrade.get(0).entryOrder()).isNull();
+      }
+    }
+  }
+
+  @Test
   public void testCancelStopLimitOrder() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -975,6 +1048,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
   }
 
+  @Test
   public void testInsertBitconPriceMonitoringTradeTypeOverdone() {
     Date time = new Date();
     dao.insertOverdoneTradeType(time, TimeFrame.FIFTEEN_MINUTES, TradeType.BUY);
@@ -987,6 +1061,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(ret).isEqualTo("BUY");
   }
 
+  @Test
   public void testUpdateBitconPriceMonitoringTradeTypeOverdone_whenRowAlreadyExists() {
     Date time = new Date();
     dao.insertOverdoneTradeType(time, TimeFrame.FIFTEEN_MINUTES, TradeType.BUY);
@@ -1000,6 +1075,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(ret).isEqualTo("SELL");
   }
 
+  @Test
   public void testInsertIntoBitconPriceMonitoring_priceRow() {
     Date time = new Date();
 
@@ -1015,6 +1091,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(prices.getSecond()).isEqualTo(2.0);
   }
 
+  @Test
   public void testInsertIntoBitconPriceMonitoring_priceRowAlreadyExists_IsUpdated() {
     Date time = new Date();
 
@@ -1031,6 +1108,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(prices.getSecond()).isEqualTo(4.0);
   }
 
+  @Test
   public void testTradeTypeOverdone_query() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 11:15");
     dao.insertOverdoneTradeType(date, TimeFrame.FIFTEEN_MINUTES, TradeType.SELL);
@@ -1038,18 +1116,21 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(dao.getOverdoneTradeType(date, TimeFrame.FIFTEEN_MINUTES)).isEqualTo(TradeType.SELL);
   }
 
+  @Test
   public void testRoundFifteenMinute() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 21:47");
     Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FIFTEEN_MINUTES);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 21:45"));
   }
 
+  @Test
   public void testRoundHour() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 23:47");
     Date roundedDate = dao.getCandlestickStart(date, TimeFrame.HOUR);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 23:00"));
   }
 
+  @Test
   public void testRoundFourHour() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 23:17");
     Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FOUR_HOURS);

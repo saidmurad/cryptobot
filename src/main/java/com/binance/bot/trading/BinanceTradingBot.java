@@ -74,6 +74,8 @@ public class BinanceTradingBot {
     @Value("${late_time_daily_timeframe}")
     int lateTimeDailyTimeFrame;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
+    @Value("${use_altfins_invalidations}")
+    boolean useAltfinsInvalidations;
 
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
@@ -129,7 +131,8 @@ public class BinanceTradingBot {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 if (isTradingAllowed(timeFrames[i], tradeTypes[j])) {
-                    List<ChartPatternSignal> signalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(timeFrames[i], tradeTypes[j]);
+                    List<ChartPatternSignal> signalsToPlaceTrade = dao.getChartPatternSignalsToPlaceTrade(
+                        timeFrames[i], tradeTypes[j], useAltfinsInvalidations);
                     for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
                         try {
                             if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())

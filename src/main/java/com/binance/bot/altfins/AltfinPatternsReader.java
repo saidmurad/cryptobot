@@ -58,6 +58,8 @@ public class AltfinPatternsReader {
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
+  @Value("${use_altfins_invalidations}")
+  boolean useAltfinsInvalidations;
 
   @Autowired
   public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
@@ -167,7 +169,9 @@ public class AltfinPatternsReader {
         boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
         logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
-        exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
+        if (useAltfinsInvalidations) {
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
+        }
       }
     }
   }

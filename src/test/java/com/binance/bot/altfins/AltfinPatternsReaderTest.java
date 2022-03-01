@@ -342,7 +342,8 @@ public class AltfinPatternsReaderTest extends TestCase {
         .setPriceTargetTime(new Date(System.currentTimeMillis() + 500000))
         .build());
 
-    List<ChartPatternSignal> patternSignalsToInvalidate = altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDb);
+    List<ChartPatternSignal> patternSignalsToInvalidate =
+        altfinPatternsReader.getChartPatternSignalsToInvalidate(patternsFromAltfins, patternsInDb);
 
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
@@ -457,20 +458,6 @@ public class AltfinPatternsReaderTest extends TestCase {
     return new String(getClass().getResourceAsStream(TEST_PATTERNS_FILE).readAllBytes());
   }
 
-  public void testChartPatternSignalsToInvalidate() throws ParseException, MessagingException, BinanceApiException {
-    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
-    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
-    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
-    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
-    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
-
-    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
-
-    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
-    verify(mockDao).invalidateChartPatternSignal(
-        eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()), any());
-  }
-
   public void testChartPatternSignalsToInvalidate_removedFromAltfins__priceIsObtained()
       throws ParseException, MessagingException, BinanceApiException {
     Date currTime = new Date();
@@ -490,7 +477,25 @@ public class AltfinPatternsReaderTest extends TestCase {
         eq(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS));
   }
 
-  public void testChartPatternSignalsToInvalidate_exitsTradesIfHeld() throws ParseException, MessagingException, BinanceApiException {
+  public void testChartPatternSignalsToInvalidate_notUseAltfinsInvalidations()
+      throws ParseException, MessagingException, BinanceApiException {
+    altfinPatternsReader.useAltfinsInvalidations = false;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);
+    when(mockDao.incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal))).thenReturn(true);
+    when(mockDao.getChartPatternSignalsToInvalidate()).thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    altfinPatternsReader.processPaterns(new ArrayList<>(), TimeFrame.FIFTEEN_MINUTES);
+
+    verify(mockDao).incrementNumTimesMissingInInput(Lists.newArrayList(chartPatternSignal));
+    verify(mockDao).invalidateChartPatternSignal(
+        eq(chartPatternSignal), eq(numberFormat.parse(tickerPrice.getPrice()).doubleValue()), any());
+    verifyNoInteractions(mockExitPositionAtMarketPrice);
+  }
+
+  public void testChartPatternSignalsToInvalidate_useAltfinsInvalidations() throws ParseException, MessagingException, BinanceApiException {
+    altfinPatternsReader.useAltfinsInvalidations = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
     when(mockRestClient.getPrice(any())).thenReturn(tickerPrice);

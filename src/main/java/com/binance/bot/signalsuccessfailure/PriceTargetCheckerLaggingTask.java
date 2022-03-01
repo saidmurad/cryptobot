@@ -109,10 +109,10 @@ public abstract class PriceTargetCheckerLaggingTask {
     }
     else {
       attemptCount++;
-      logger.error(String.format("Could not get agg trades for '%s' for '%s' with end window at price target time %s, " +
+      /*logger.error(String.format("Could not get agg trades for '%s' for '%s' with end window at price target time %s, " +
               "after %d attempts. Api args used - window start time = %d and window end = %d",
           chartPatternSignal, targetTimeTypeName(), dateFormat.format(chartPatternSignal.priceTargetTime()),
-          attemptCount - 1, startTimeWindow, endTimeWindow));
+          attemptCount - 1, startTimeWindow, endTimeWindow));*/
       if (attemptCount > MAX_WINDOW_MINS) {
         logger.error(String.format("Could not get agg trades for '%s' for '%s' even with 60 minute interval, marking as failed in DB.", chartPatternSignal.toString(), targetTimeTypeName()));
         markFailedToGetTargetPrice(chartPatternSignal);

@@ -221,8 +221,8 @@ public class BinanceTradingBot {
         switch (chartPatternSignal.tradeType()) {
             case BUY:
                 if (tradeValueInUSDTToDo <= accountBalance.getFirst()) {
-                    logger.info(String.format("Using %d from available USDT balance for the chart pattern signal %s.",
-                        (int) tradeValueInUSDTToDo, chartPatternSignal));
+                    logger.info(String.format("Using %f from available USDT balance for the chart pattern signal %s.",
+                        tradeValueInUSDTToDo, chartPatternSignal));
                 } else if (tradeValueInUSDTToDo - accountBalance.getFirst() <= accountBalance.getSecond()) {
                     Integer usdtToBorrow = (int) Math.ceil(tradeValueInUSDTToDo - accountBalance.getFirst());
                     logger.info("Borrowing %d USDT.", usdtToBorrow);

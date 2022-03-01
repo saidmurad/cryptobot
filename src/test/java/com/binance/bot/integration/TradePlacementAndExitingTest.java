@@ -14,16 +14,9 @@ import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.VolumeProfile;
 import com.google.common.collect.Lists;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.sqlite.SQLiteException;
 
 import javax.mail.MessagingException;
@@ -92,7 +85,7 @@ public class TradePlacementAndExitingTest {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     binanceTradingBot.perTradeAmountConfigured = 10;
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
 
     assertThat(chartPatternSignal.isSignalOn()).isTrue();

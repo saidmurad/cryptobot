@@ -47,6 +47,17 @@ create table CrossMarginAccountBalanceHistory(
     ReturnRate REAL
 );
 
+create table NumOutstandingTrades(
+    TimeFrame TEXT NOT NULL,
+    NumOutstandingTrades INTEGER,
+    Constraint PK Primary Key(TimeFrame)
+);
+insert into NumOutstandingTrades values('FIFTEEN_MINUTES', 0);
+insert into NumOutstandingTrades values('HOUR', 0);
+insert into NumOutstandingTrades values('FOUR_HOURS', 0);
+insert into NumOutstandingTrades values('DAY', 0);
+
+
 alter statements pending:
 isInsertedLate no longer used.
 2. priceAtTimeOfSignalReal is no longe rused as the entery marekt order will give that price.

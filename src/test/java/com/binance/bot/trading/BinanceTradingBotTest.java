@@ -11,6 +11,7 @@ import com.binance.api.client.domain.account.*;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -55,6 +56,8 @@ public class BinanceTradingBotTest {
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
   @Mock private BookTickerPrices mockBookTickerPrices;
+  @Mock private OutstandingTrades mockOutstandingTrades;
+  
   @Captor
   ArgumentCaptor<MarginNewOrder> orderCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
@@ -70,7 +73,7 @@ public class BinanceTradingBotTest {
     tickerPrice.setPrice("4000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
     binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao,
-        mockBookTickerPrices);
+        mockBookTickerPrices, mockOutstandingTrades);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     BookTickerPrices.BookTicker btcBookTicker = BookTickerPrices.BookTicker.create(BTC_PRICE, BTC_PRICE); 
@@ -85,6 +88,18 @@ public class BinanceTradingBotTest {
     binanceTradingBot.minMarginLevel = 1.5;
     binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.stopLimitPercent = 5.5;
+    setUpDefaultNumOutstandingTradesLimit();
+  }
+
+  private void setUpDefaultNumOutstandingTradesLimit() {
+    // Allow one trade for each timeframe by default.
+    for (int i=0; i<4; i++) {
+      binanceTradingBot.numOutstandingTradesLimitByTimeFrame[i] = 1;
+    }
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(0);
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.HOUR)).thenReturn(0);
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FOUR_HOURS)).thenReturn(0);
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.DAY)).thenReturn(0);
   }
 
   private void setUsdtBalanceForStraightBuys(Integer usdtBal) throws MessagingException, BinanceApiException {
@@ -204,6 +219,74 @@ public class BinanceTradingBotTest {
   }
 
   @Test
+  public void perform_numOutstandingTrades_isAtLimit_fifteenMinutes_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(1);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void perform_numOutstandingTrades_isAtLimit_hourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.HOUR)).thenReturn(1);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void perform_numOutstandingTrades_isAtLimit_fourHourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FOUR_HOURS)).thenReturn(1);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void perform_numOutstandingTrades_isAtLimit_day_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.DAY)).thenReturn(1);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.DAY)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
   public void perform_insertedLate_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -308,11 +391,175 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
     verify(mockDao).writeAccountBalanceToDB();
+  }
+
+  @Test
+  public void perform_incrementsNumOutstandingTrades_fifteenMinuteTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setPrice("0.0");
+    buyOrderResp.setExecutedQty("0.005");
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockOutstandingTrades).incrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+  }
+
+  @Test
+  public void perform_incrementsNumOutstandingTrades_hourlyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setPrice("0.0");
+    buyOrderResp.setExecutedQty("0.005");
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockOutstandingTrades).incrementNumOutstandingTrades(TimeFrame.HOUR);
+  }
+
+  @Test
+  public void perform_incrementsNumOutstandingTrades_FourHourlyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FOUR_HOURS)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FOUR_HOURS, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setPrice("0.0");
+    buyOrderResp.setExecutedQty("0.005");
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockOutstandingTrades).incrementNumOutstandingTrades(TimeFrame.FOUR_HOURS);
+  }
+
+  @Test
+  public void perform_incrementsNumOutstandingTrades_DailyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -1))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.DAY, TradeType.BUY))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setPrice("0.0");
+    buyOrderResp.setExecutedQty("0.005");
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+
+    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3800");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockOutstandingTrades).incrementNumOutstandingTrades(TimeFrame.DAY);
   }
 
   @Test
@@ -368,7 +615,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
@@ -427,7 +674,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
@@ -464,7 +711,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
@@ -527,7 +774,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient).borrow("USDT", "1");
@@ -619,7 +866,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
@@ -661,7 +908,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
@@ -707,7 +954,7 @@ public class BinanceTradingBotTest {
       }
     });
 
-    binanceTradingBot.placeTrade(chartPatternSignal);
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());

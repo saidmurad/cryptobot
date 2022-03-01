@@ -11,6 +11,7 @@ import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -45,6 +46,7 @@ public class BinanceTradingBot {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
     private final Mailer mailer = new Mailer();
+    private final OutstandingTrades outstandingTrades;
     @Value("${per_trade_amount}")
     public
     double perTradeAmountConfigured;
@@ -55,16 +57,32 @@ public class BinanceTradingBot {
     @Value("${min_margin_level}")
     double minMarginLevel;
 
+    @Value("${num_outstanding_trades_limit_fifteen_minute_timeframe")
+    int numOutstandingTradesLimitFifteenMinuteTimeFrame;
+    @Value("${num_outstanding_trades_limit_hourly_timeframe")
+    int numOutstandingTradesLimitHourlyTimeFrame;
+    @Value("${num_outstanding_trades_limit_four_hourly_timeframe")
+    int numOutstandingTradesLimitFourHourlyTimeFrame;
+    @Value("${num_outstanding_trades_limit_daily_timeframe")
+    int numOutstandingTradesLimitDailyTimeFrame;
+    final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
+
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ChartPatternSignalDaoImpl dao,
-                             BookTickerPrices bookTickerPrices) {
+                             BookTickerPrices bookTickerPrices,
+                             OutstandingTrades outstandingTrades) {
         this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.binanceApiMarginRestClient = binanceApiRestClientFactory.newMarginRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
         this.bookTickerPrices = bookTickerPrices;
+        this.outstandingTrades = outstandingTrades;
+        numOutstandingTradesLimitByTimeFrame[0] = numOutstandingTradesLimitFifteenMinuteTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[1] = numOutstandingTradesLimitHourlyTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[2] = numOutstandingTradesLimitFourHourlyTimeFrame;
+        numOutstandingTradesLimitByTimeFrame[3] = numOutstandingTradesLimitDailyTimeFrame;
     }
 
     String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
@@ -106,7 +124,10 @@ public class BinanceTradingBot {
                                 || (chartPatternSignal.profitPotentialPercent() >= 0.5
                                 && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
                                 && supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-                                placeTrade(chartPatternSignal);
+                                int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
+                                if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]) {
+                                  placeTrade(chartPatternSignal, numOutstandingTrades);
+                                }
                             }
                         } catch (Exception ex) {
                             logger.error("Exception.", ex);
@@ -204,7 +225,7 @@ public class BinanceTradingBot {
         return Pair.of(usdtFree, (int) (moreBorrowableVal * btcPrice.bestAsk()));
     }
 
-    public void placeTrade(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException, MessagingException {
+    public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades) throws ParseException, BinanceApiException, MessagingException {
         Pair<Integer, Integer> accountBalance = getAccountBalance();
         Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
             chartPatternSignal.coinPair());
@@ -270,6 +291,7 @@ public class BinanceTradingBot {
         MarginNewOrderResponse marketOrderResp = binanceApiMarginRestClient.newOrder(marketOrder);
         logger.info(String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
             marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal));
+        outstandingTrades.incrementNumOutstandingTrades(chartPatternSignal.timeFrame());
         // TODO: delayed market order executions.
         dao.setEntryOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(

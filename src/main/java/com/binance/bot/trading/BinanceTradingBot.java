@@ -321,8 +321,9 @@ public class BinanceTradingBot {
                 entryPrice, // because the order response returns just 0 as the price for market order fill.
                 marketOrderResp.getStatus()));
 
-        String stopPrice = String.format("%.2f", entryPrice * (100 - sign * stopLossPercent) / 100);
-        String stopLimitPrice = String.format("%.2f", entryPrice * (100 - sign * stopLimitPercent) / 100);
+        int tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
+        String stopPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
+        String stopLimitPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
         MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
             stopLossOrderSide,
             OrderType.STOP_LOSS_LIMIT,

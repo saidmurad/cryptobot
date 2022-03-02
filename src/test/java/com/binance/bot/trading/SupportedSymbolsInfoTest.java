@@ -60,4 +60,25 @@ public class SupportedSymbolsInfoTest {
     assertThat(minNotionalAndLotSize.getFirst()).isEqualTo(10.0);
     assertThat(minNotionalAndLotSize.getSecond()).isEqualTo(3);
   }
+
+  @Test
+  public void getMinPriceAndTickSize() throws BinanceApiException {
+    ExchangeInfo exchangeInfo = new ExchangeInfo();
+    SymbolInfo symbolInfo = new SymbolInfo();
+    symbolInfo.setSymbol("COMPUSDT");
+    SymbolFilter minPriceFilter = new SymbolFilter();
+    minPriceFilter.setFilterType(FilterType.PRICE_FILTER);
+    minPriceFilter.setMinPrice("0.1");
+    minPriceFilter.setTickSize("0.1");
+    List<SymbolFilter> filters = Lists.newArrayList(minPriceFilter);
+    symbolInfo.setFilters(filters);
+    exchangeInfo.setSymbols(Lists.newArrayList(symbolInfo));
+
+    when(mockBinanceApiRestClient.getExchangeInfo()).thenReturn(exchangeInfo);
+
+    Pair<Double, Integer> minPriceAndLotSize = supportedSymbolsInfo.getMinPriceAndTickSize("COMPUSDT");
+    assertThat(minPriceAndLotSize.getFirst()).isEqualTo(0.1);
+    assertThat(minPriceAndLotSize.getSecond()).isEqualTo(1);
+  }
+
 }

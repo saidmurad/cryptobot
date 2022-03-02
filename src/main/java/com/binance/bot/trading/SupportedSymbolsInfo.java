@@ -20,6 +20,7 @@ public class SupportedSymbolsInfo {
   private BinanceApiRestClient binanceApiRestClient;
   private Set<String> supportedSymbols = new HashSet<>();
   private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new HashMap<>();
+  private Map<String, Pair<Double, Integer>> minPriceAndTickSizeMap = new HashMap<>();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Map<String, Boolean> tradingSymbolsMap = new HashMap<String, Boolean>();
   private long lastFetchTime = 0;
@@ -77,5 +78,16 @@ public class SupportedSymbolsInfo {
       });
     }
     return minNotionalAndLotSizeMap.get(symbol);
+  }
+
+  public Pair<Double, Integer> getMinPriceAndTickSize(String symbol) throws BinanceApiException {
+    if (minPriceAndTickSizeMap.isEmpty()) {
+      binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
+        Integer tickSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getTickSize());
+        Double minPrice = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getMinPrice());
+        minPriceAndTickSizeMap.put(symbolInfo.getSymbol(), Pair.of(minPrice, tickSize));
+      });
+    }
+    return minPriceAndTickSizeMap.get(symbol);
   }
 }

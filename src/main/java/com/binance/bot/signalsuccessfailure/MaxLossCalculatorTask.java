@@ -48,7 +48,6 @@ public class MaxLossCalculatorTask {
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
         continue;
       }
-      logger.info(String.format("Calculating max loss and profit target met for chart pattern signal:\n%s.", chartPatternSignal));
       Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
       long maxLossTime = 0;
       boolean isProfitTargetMet = false;
@@ -60,15 +59,12 @@ public class MaxLossCalculatorTask {
       Long fromId = null;
       long beginTime = System.currentTimeMillis();
       while (!isDone) {
-        logger.info(String.format("Calling getAggrTrades with fromId %s.",
-            fromId == null? "null" : Long.toString(fromId)));
         if ((System.currentTimeMillis() - beginTime) % 600000 == 0) {
           HeartBeatChecker.logHeartBeat(getClass());
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
             chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,
             firstIteration ? signalTime : null, firstIteration? getToTime(signalTime, chartPatternSignal) : null);
-        logger.info("Got aggTrades from binance.");
         firstIteration = false;
         if (aggTrades.isEmpty()) {
           isDone = true;
@@ -93,8 +89,8 @@ public class MaxLossCalculatorTask {
           fromId = aggTrades.get(aggTrades.size() - 1).getAggregatedTradeId() + 1;
         }
       }
-      logger.info(String.format("Getting all aggTrades took %d seconds.",
-          (System.currentTimeMillis() - beginTime) / 1000));
+      /*logger.info(String.format("Getting all aggTrades took %d seconds.",
+          (System.currentTimeMillis() - beginTime) / 1000));*/
       ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
           .copy(chartPatternSignal)
           .setMaxLoss(maxLossAndPercent.getFirst())

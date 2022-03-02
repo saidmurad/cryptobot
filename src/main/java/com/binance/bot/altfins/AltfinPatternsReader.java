@@ -165,7 +165,7 @@ public class AltfinPatternsReader {
         ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
         double priceAtTimeOfInvalidation = numberFormat.parse(
             restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-        logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
+        //logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
         boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
         logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);

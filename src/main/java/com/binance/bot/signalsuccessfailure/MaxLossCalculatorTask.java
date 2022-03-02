@@ -62,6 +62,9 @@ public class MaxLossCalculatorTask {
       while (!isDone) {
         logger.info(String.format("Calling getAggrTrades with fromId %s.",
             fromId == null? "null" : Long.toString(fromId)));
+        if ((System.currentTimeMillis() - beginTime) % 600000 == 0) {
+          HeartBeatChecker.logHeartBeat(getClass());
+        }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
             chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,
             firstIteration ? signalTime : null, firstIteration? getToTime(signalTime, chartPatternSignal) : null);

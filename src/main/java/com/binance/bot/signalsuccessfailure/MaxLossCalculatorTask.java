@@ -59,7 +59,8 @@ public class MaxLossCalculatorTask {
       Long fromId = null;
       long beginTime = System.currentTimeMillis();
       while (!isDone) {
-        if ((System.currentTimeMillis() - beginTime) % 600000 == 0) {
+        // Heart beat every 5 minutes.
+        if (((System.currentTimeMillis() - beginTime) / 1000) % 300 == 0) {
           HeartBeatChecker.logHeartBeat(getClass());
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(

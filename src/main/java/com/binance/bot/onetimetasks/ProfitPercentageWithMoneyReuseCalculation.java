@@ -2,8 +2,6 @@ package com.binance.bot.onetimetasks;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.OrderType;
-import com.binance.api.client.domain.general.SymbolInfo;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.ChartPatternSignalMapper;
@@ -20,7 +18,6 @@ import org.springframework.stereotype.Component;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
@@ -47,24 +44,25 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private static final double STOP_LOSS_PERCENT = 20;
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
+  private static final boolean USE_SIGNAL_INVALIDATIONS = false;
+
   @Autowired
   private JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final BinanceApiRestClient binanceApiRestClient;
   private final static double AMOUNT_PER_TRADE = 10;
-  /*private static final String QUERY = "select * from ChartPatternSignal " +
+  private static final String QUERY_USING_INVALIDATIONS = "select * from ChartPatternSignal " +
   "where ProfitPotentialPercent > 0 and " +
       "DateTime(TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
-      "order by TimeOfSignal";*/
-  private static final String QUERY = "select * from ChartPatternSignal " +
+      //"and TimeFrame='FIFTEEN_MINUTES' " +
+      "order by TimeOfSignal";
+  private static final String QUERY_USING_STOPLOSSES = "select * from ChartPatternSignal " +
       // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
       // stop loss alone but not for whether profit met, better filter it out.
       "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
-      //TODO: Investigate this
-      " ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtTimeOfSignalInvalidation <30 and " +
-      "TimeFrame != 'DAY'" +
-      //"and DateTime(TimeOfSignal)>=DateTime('2022-02-20 00:00') " +
+      " ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and " +
+      "TimeFrame = 'FIFTEEN_MINUTES'" +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
   private final boolean avoidOverdoneTradeTypes = false;
@@ -123,7 +121,12 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   }
 
   public void calculate() {
-    List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(QUERY, new ChartPatternSignalMapper());
+    List<ChartPatternSignal> chartPatternSignals;
+    if (USE_SIGNAL_INVALIDATIONS) {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_INVALIDATIONS, new ChartPatternSignalMapper());
+    } else {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_STOPLOSSES, new ChartPatternSignalMapper());
+    }
     if (avoidOverdoneTradeTypes) {
       chartPatternSignals = filterOutOverdoneTradeTypesUseDynamic(chartPatternSignals);
     }
@@ -143,7 +146,12 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       chartPatternSignals = chartPatternSignalsFiltered;
     }
 
-    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate;
+    if (USE_SIGNAL_INVALIDATIONS) {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendar(chartPatternSignals);
+    } else {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
+    }
 
     eventDateIterator = amountsReleasedByDate.entrySet().iterator();
     nextEvent = eventDateIterator.next();
@@ -266,15 +274,24 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       }
       patternsWithReleaseByDateProcessed.add(chartPatternSignal);
       if (chartPatternSignal.isPriceTargetMet() &&
-          (chartPatternSignal.timeOfSignalInvalidation().after(chartPatternSignal.priceTargetMetTime())
-          || chartPatternSignal.timeOfSignalInvalidation().equals(chartPatternSignal.priceTargetMetTime()))) {
+          (chartPatternSignal.timeOfSignalInvalidation() == null || (
+              chartPatternSignal.timeOfSignalInvalidation().after(chartPatternSignal.priceTargetMetTime())
+          || chartPatternSignal.timeOfSignalInvalidation().equals(chartPatternSignal.priceTargetMetTime())))) {
         tradeExitTime = chartPatternSignal.priceTargetMetTime();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
             chartPatternSignal.profitPotentialPercent() / 100;
-      } else {
+      } else if (chartPatternSignal.timeOfSignalInvalidation() != null) {
         tradeExitTime = chartPatternSignal.timeOfSignalInvalidation();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
             chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
+      } // Fallback for when live altfins signal invalidations was not caught.
+      else if (chartPatternSignal.profitPercentAtSignalTargetTime() != null) {
+        tradeExitTime = chartPatternSignal.priceTargetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
+      } else {
+        // Only one signal had profitPercentAtSignalTargetTime null with IsPriceTargetMet not null.
+        continue;
       }
       Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
       int tradeCount = 1;
@@ -302,7 +319,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.maxLossPercent() < STOP_LOSS_PERCENT) {
         tradeExitTime = chartPatternSignal.priceTargetTime();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
-            chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
+            chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
       } else if (chartPatternSignal.maxLossPercent() >= STOP_LOSS_PERCENT) {
         tradeExitTime = chartPatternSignal.maxLossTime();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *

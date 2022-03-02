@@ -1,0 +1,10 @@
+With 20% stop loss and not considering time of signal invalidation:
+(As on 02/03/2022)Over entire history:
+FIFTEEN Minutes: 49%
+Hour: 1.5%
+Four Hours: 27.278
+DAY: -36%
+
+Uisng altfin invalidations for signals after 08/02/2022 08:55:
+overall: mere 2%.
+Fifteen minutes; 20%.

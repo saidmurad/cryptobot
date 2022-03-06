@@ -62,14 +62,17 @@ public abstract class PriceTargetCheckerLaggingTask {
   // Caution: Not unit tested nor found worth the trouble.
   @Scheduled(fixedDelay = 600000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
-    HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
     //logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
     for (ChartPatternSignal pattern: patterns) {
       attemptedPatterns.add(Pair.of(pattern, 1));
     }
+    long beginTime = System.currentTimeMillis();
     while (!attemptedPatterns.isEmpty()) {
+      if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
+        HeartBeatChecker.logHeartBeat(getClass());
+      }
       performIteration(attemptedPatterns);
     }
     //logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");

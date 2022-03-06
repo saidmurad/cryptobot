@@ -19,7 +19,7 @@ import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client"})
 @Configuration
-//@EnableScheduling
+@EnableScheduling
 public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
@@ -32,7 +32,7 @@ public class BinancebotApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException, InterruptedException {
-		calculation.calculate();
+		//calculation.calculate();
 		//executeExitPositions.perform();
 	}
 }

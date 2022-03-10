@@ -49,6 +49,7 @@ public class PriceTenCandlestickRealtimeCheckerTask {
   public void performPriceTargetChecks() throws ParseException, IOException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTenCandleStick = dao.getChatPatternSignalsThatJustReachedTenCandleStickTime();
+    logger.info(String.format("%d signals reached ten candle stick time.", signalsTenCandleStick.size()));
     for (int i = 0; i < signalsTenCandleStick.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTenCandleStick.get(i);
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {

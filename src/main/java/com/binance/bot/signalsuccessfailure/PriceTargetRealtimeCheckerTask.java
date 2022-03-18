@@ -52,6 +52,7 @@ public class PriceTargetRealtimeCheckerTask {
   public void performPriceTargetChecks() throws ParseException, IOException, MessagingException, BinanceApiException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();
+    logger.info(String.format("%d chart pattern signals reached their target time:", signalsTargetTime.size()));
     for (int i = 0; i < signalsTargetTime.size(); i++) {
       ChartPatternSignal chartPatternSignal = signalsTargetTime.get(i);
       if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {

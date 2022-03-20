@@ -147,6 +147,12 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter</artifactId>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/io.gate/gate-api -->
+    <dependency>
+      <groupId>io.gate</groupId>
+      <artifactId>gate-api</artifactId>
+      <version>6.23.2</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -220,6 +226,14 @@
       <id>spring-releases</id>
       <name>Spring Releases</name>
       <url>https://repo.spring.io/release</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>io.gate</id>
+      <name>Gate io</name>
+      <url>https://mvnrepository.com/artifact/io.gate/gate-api</url>
       <snapshots>
         <enabled>false</enabled>
       </snapshots>

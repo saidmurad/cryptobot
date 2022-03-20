@@ -106,6 +106,7 @@ public class ChartPatternSignalDaoImplTest {
       "    IsPriceTargetMet INTEGER,\n" +
       "    PriceTargetMetTime REAL," +
       "    TradeExitType TEXT,\n" +
+      "    EntryEligibleBasedOnMACDSignalCrossOver INTEGER,\n" +
       "    CONSTRAINT chartpatternsignal_pk PRIMARY KEY (CoinPair, TimeFrame, TradeType, TimeOfSignal, Attempt)\n" +
       ");";
   public static final String CREATE_TABLE_STMT_BITCOIN_MONITORING = "create table BitcoinPriceMonitoring(" +

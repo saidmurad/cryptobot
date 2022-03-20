@@ -592,6 +592,20 @@ public class ChartPatternSignalDaoImpl {
     return TradeType.valueOf(tradeTypeOverdoneStr);
   }
 
+  synchronized public void setEntryEligibleBasedOnMACDSignalCrossOver(
+      ChartPatternSignal chartPatternSignal, boolean isEligible) {
+    String updateSql = "update ChartPatternSignal set EntryEligibleBasedOnMACDSignalCrossOver=? " +
+        "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
+    boolean ret = jdbcTemplate.update(updateSql, isEligible? 1:0,
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt()) == 1;
+    if (!ret) {
+      logger.error("Failed updating EntryEligible for chart pattern signal " + chartPatternSignal);
+    }
+  }
+
   public static Date getCandlestickStart(Date time, TimeFrame timeFrame) throws ParseException {
     int year = getDateComponent(yearFormat, time);
     int month = getDateComponent(monthFormat, time);

@@ -57,6 +57,13 @@ insert into NumOutstandingTrades values('HOUR', 0);
 insert into NumOutstandingTrades values('FOUR_HOURS', 0);
 insert into NumOutstandingTrades values('DAY', 0);
 
+alter table ChartPatternSignal add column FivePercentLossTime TEXT;
+alter table ChartPatternSignal add column TenPercentLossTime TEXT;
+alter table ChartPatternSignal add column FifteenPercentLossTime TEXT;
+alter table ChartPatternSignal add column TwentyPercentLossTime TEXT;
+alter table ChartPatternSignal add column TwentyFivePercentLossTime TEXT;
+alter table ChartPatternSignal add column ThirtyPercentLossTime TEXT;
+alter table ChartPatternSignal add column ThirtyFivePercentLossTime TEXT;
 
 alter statements pending:
 isInsertedLate no longer used.

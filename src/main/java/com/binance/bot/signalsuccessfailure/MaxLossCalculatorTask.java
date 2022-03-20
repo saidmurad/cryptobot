@@ -18,9 +18,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 @Component
 public class MaxLossCalculatorTask {
@@ -50,6 +48,7 @@ public class MaxLossCalculatorTask {
       }
       Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
       long maxLossTime = 0;
+      Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
       boolean isProfitTargetMet = false;
       long targetMetTime = 0;
       long signalTime = chartPatternSignal.timeOfSignal().getTime();
@@ -60,7 +59,7 @@ public class MaxLossCalculatorTask {
       long beginTime = System.currentTimeMillis();
       while (!isDone) {
         // Heart beat every 5 minutes.
-        if (((System.currentTimeMillis() - beginTime) / 1000) % 300 == 0) {
+        if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
           HeartBeatChecker.logHeartBeat(getClass());
         }
         List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
@@ -75,7 +74,8 @@ public class MaxLossCalculatorTask {
             isDone = true;
             break;
           }
-          Pair<Double, Double> newMaxLossAndPercent = getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade);
+          Pair<Double, Double> newMaxLossAndPercent =
+              getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade, lossPercentageAndTimeMap);
           if (newMaxLossAndPercent.getFirst() > maxLossAndPercent.getFirst()) {
             maxLossTime = aggTrade.getTradeTime();
           }
@@ -117,8 +117,10 @@ public class MaxLossCalculatorTask {
     }
   }
 
+  private final Integer[] LOSS_PERCENTAGES = {5,10,15,20,25,35};
   private Pair<Double, Double> getMaxLossAndPercent(Pair<Double, Double> maxPnLAndPercent,
-                                                    ChartPatternSignal chartPatternSignal, AggTrade aggTrade) throws ParseException {
+                                                    ChartPatternSignal chartPatternSignal, AggTrade aggTrade,
+                                                    Map<Integer, Long> lossPercentageAndTimeMap) throws ParseException {
     double pnl, pnlPercent;
     double aggTradePrice = numberFormat.parse(aggTrade.getPrice()).doubleValue();
     switch (chartPatternSignal.tradeType()) {
@@ -130,6 +132,11 @@ public class MaxLossCalculatorTask {
         pnl = aggTradePrice - chartPatternSignal.priceAtTimeOfSignal();
     }
     pnlPercent = pnl / chartPatternSignal.priceAtTimeOfSignal() * 100;
+    for (int lossPercentage: LOSS_PERCENTAGES) {
+      if (pnlPercent >= lossPercentage && lossPercentageAndTimeMap.get(lossPercentage) == null) {
+        lossPercentageAndTimeMap.put(lossPercentage, aggTrade.getTradeTime());
+      }
+    }
     if (maxPnLAndPercent.getFirst() < pnl) {
       return Pair.of(pnl, pnlPercent);
     }

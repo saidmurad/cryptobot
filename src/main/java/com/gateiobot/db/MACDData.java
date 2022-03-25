@@ -30,6 +30,12 @@ public class MACDData {
 
   public double histogram;
 
+  public double ppoMacd;
+
+  public double ppoMacdSignalLine;
+
+  public double ppoHistogram;
+
   public MomentumStatus momentumStatus;
 
   @Override

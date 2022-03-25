@@ -30,6 +30,13 @@ public class MACDDataDao {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
+  synchronized public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
+    String sql = String.format(
+        "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time",
+        coinPair, timeFrame.name());
+    return jdbcTemplate.query(sql, new MACDDataRowMapper());
+  }
+
   synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time desc limit %d",
@@ -100,12 +107,24 @@ public class MACDDataDao {
   }
 
   synchronized public boolean insert(MACDData macd) {
-    String updateSql = String.format("insert i`nto MACDData(" +
-            "CoinPair, TimeFram``e, Time, CandleClosingPrice, SMA, SMASlope," +
+    String updateSql = String.format("insert into MACDData(" +
+            "CoinPair, TimeFrame, Time, CandleClosingPrice, SMA, SMASlope," +
             "Trend, EMA12, EMA26, MACD, MACDSignal, Histogram) values " +
             "('%s', '%s', '%s', %f, %f, %f, '%s', %f, %f, %f, %f, %f)",
         macd.coinPair, macd.timeFrame.name(), dateFormat.format(macd.time), macd.candleClosingPrice, macd.sma,
         macd.smaSlope, macd.trendType, macd.ema12, macd.ema26, macd.macd, macd.macdSignal, macd.histogram);
     return jdbcTemplate.update(updateSql) == 1;
+  }
+
+  synchronized public void updatePPOMacd(MACDData macdData) {
+    String updateSql = String.format("update MACDData set PPOMacd=%f, PPOMacdSignalLine=%f, PPOHistogram=%f " +
+        "where CoinPair='%s' and TimeFrame='%s' and Time='%s'", macdData.ppoMacd, macdData.ppoMacdSignalLine,
+        macdData.ppoHistogram, macdData.coinPair, macdData.timeFrame.name(), dateFormat.format(macdData.time));
+    int ret = jdbcTemplate.update(updateSql);
+    if (ret != 1) {
+      logger.error(String.format("Failed to udpate PPOMACd for MACDData %s. Expected ret = 1 but got %d.",
+          macdData, ret));
+    }
+    return;
   }
 }

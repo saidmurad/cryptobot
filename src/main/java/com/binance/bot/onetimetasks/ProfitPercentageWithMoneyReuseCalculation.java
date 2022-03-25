@@ -42,12 +42,25 @@ import static java.util.stream.Collectors.toList;
  * net val: 6.67
  * % drop in total val = 26.67%
  */
+
+/**
+ * Next things to do:
+ * 1. priceattimeofsignalreal
+ * 2. consider only prices at great distance from zero line
+ * 3. RSI above 50 for bullish and vice-versa.
+ */
 @Component
 public class ProfitPercentageWithMoneyReuseCalculation {
   private static final double STOP_LOSS_PERCENT = 35;
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   private static final boolean USE_SIGNAL_INVALIDATIONS = false;
+  private final boolean useTrendFollowing = true;
+  // Uses MACD line above or below signal line to determine entry to long or short respectively.
+  private final boolean useMACDForEntry = false;
+  // Uses MACD signal line crossover to exit trade. No other conditions are used other than this.
+  private final boolean useMACDForExit = false;
+  private final boolean avoidOverdoneTradeTypes = false;
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
@@ -55,30 +68,43 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final BinanceApiRestClient binanceApiRestClient;
   private final static double AMOUNT_PER_TRADE = 100;
-  private static final String QUERY_USING_INVALIDATIONS = "select * from ChartPatternSignal " +
-  "where ProfitPotentialPercent > 0 and " +
-      "DateTime(TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
-      "and TimeFrame='FIFTEEN_MINUTES' " +
-      "order by TimeOfSignal";
+  private static final String QUERY_USING_INVALIDATIONS = "select * from ChartPatternSignal cps" +
+  "where cps.ProfitPotentialPercent > 0 and cps.Attempt = 1 and " +
+      "DateTime(cps.TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
+      " and cps.TimeFrame='FIFTEEN_MINUTES' and " +
+      "((cps.TradeType='BUY' and macd.Trend ='BULLISH' and cps.PriceAtTimeOfSignal > macd.SMA) or (cps.Tradetype='SELL' and macd.Trend='BEARISH' and cps.PriceAtTimeOfSignal < macd.SMA)) " +
+      //"and IsVolumeSurge=1 " +
+      "order by cps.TimeOfSignal";
   private static final String QUERY_USING_STOPLOSSES = "select * from ChartPatternSignal " +
       // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
       // stop loss alone but not for whether profit met, better filter it out.
       "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
       //"DateTime(TimeOfSignal)>DateTime('2022-02-28 00:00') and " +
      // "DateTime(TimeOfSignal)<=DateTime('2022-03-08 00:00') and " +
-      "ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and " +
+      "ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and " +
       //"TradeType='SELL' and " +
-      //"(((TimeFrame = 'HOUR' or TimeFrame='FOUR_HOURS'))  ) " +
-      "TimeFrame != 'DAY' " +
+      //"(((TimeFrame = 'HOUR' or TimeFrame='FOUR_HOURS') and IsVolumeSurge=1) or TimeFrame == 'FIFTEEN_MINUTES' ) " +
+      "TimeFrame == 'FIFTEEN_MINUTES' " +
+      "order by TimeOfSignal";
+  // TODO:    remove pice already jumped cases from query.
+  private static final String QUERY_USING_TREND_FOLLOWING = "select * from ChartPatternSignal cps," +
+      "MACDData macd " +
+      // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
+      // stop loss alone but not for whether profit met, better filter it out.
+      "where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and " +
+      "ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
+      //"DateTime(TimeOfSignal)>DateTime('2022-03-01 00:00') and " +
+      // "DateTime(TimeOfSignal)<=DateTime('2022-03-08 00:00') and " +
+      "ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and " +
+      "((cps.TradeType='BUY' and macd.Trend='BULLISH' and macd.ema12 > macd.ema26 and cps.PriceAtTimeOfSignal > macd.ema12) or " +
+      "(cps.Tradetype='SELL' and macd.Trend='BEARISH' and macd.ema12 < macd.ema26 and cps.PriceAtTimeOfSignal < macd.ema12)) and " +
+      "(((cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS' or cps.TimeFrame='FIFTEEN_MINUTES'))) " +
+      //"TimeFrame == 'FIFTEEN_MINUTES' " +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
-  private final boolean avoidOverdoneTradeTypes = false;
   private final ChartPatternSignalDaoImpl dao;
   private final MACDDataDao macdDao;
-  // Uses MACD line above or below signal line to determine entry to long or short respectively.
-  private final boolean useMACDForEntry = false;
-  // Uses MACD signal line crossover to exit trade. No other conditions are used other than this.
-  private final boolean useMACDForExit = false;
+
 
   @Autowired
   public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory,
@@ -144,6 +170,8 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     List<ChartPatternSignal> chartPatternSignals;
     if (USE_SIGNAL_INVALIDATIONS) {
       chartPatternSignals = jdbcTemplate.query(QUERY_USING_INVALIDATIONS, new ChartPatternSignalMapper());
+    } else if (useTrendFollowing) {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_TREND_FOLLOWING, new ChartPatternSignalMapper());
     } else {
       chartPatternSignals = jdbcTemplate.query(QUERY_USING_STOPLOSSES, new ChartPatternSignalMapper());
     }
@@ -218,8 +246,9 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       if (macdData.isEmpty()) {
         continue;
       }
-      if (chartPatternSignal.tradeType() == TradeType.BUY && macdData.get(0).histogram > 0 ||
-      chartPatternSignal.tradeType() == TradeType.SELL && macdData.get(0).histogram < 0) {
+      if ((chartPatternSignal.tradeType() == TradeType.BUY && macdData.get(0).histogram > 0 ||
+      chartPatternSignal.tradeType() == TradeType.SELL && macdData.get(0).histogram < 0)
+          && Math.abs(macdData.get(0).histogram / macdData.get(0).macdSignal) > 0.25) {
         logger.info(String.format("'%s' eligible for entry based on MACD.", chartPatternSignal));
         filteredChartPatternSignals.add(chartPatternSignal);
         dao.setEntryEligibleBasedOnMACDSignalCrossOver(chartPatternSignal, true);

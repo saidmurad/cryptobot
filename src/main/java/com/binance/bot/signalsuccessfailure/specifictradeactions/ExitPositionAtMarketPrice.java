@@ -80,7 +80,7 @@ public class ExitPositionAtMarketPrice {
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
       // If partial order has been executed it could only be the stop limit order.
       // exitStopLimitOrder can never be null.
-      if (chartPatternSignal.exitStopLimitOrder().status() == OrderStatus.PARTIALLY_FILLED) {
+      if (chartPatternSignal.exitStopLimitOrder().status() == ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED) {
         qtyToExit -= chartPatternSignal.exitStopLimitOrder().executedQty();
         logger.info(String.format("Need to exit the remaining %f qty.", qtyToExit));
       } else {
@@ -125,7 +125,7 @@ public class ExitPositionAtMarketPrice {
           marketExitOrderResponse));
       double executedQty = numberFormat.parse(marketExitOrderResponse.getExecutedQty()).doubleValue();
       double avgTradePrice = getAvgTradePrice(marketExitOrderResponse);
-      dao.setExitMarketOrder(chartPatternSignal,
+      dao.setExitOrder(chartPatternSignal,
           ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
               executedQty,
               avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);

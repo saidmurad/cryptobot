@@ -3,6 +3,7 @@ package com.binance.bot;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.bitcoinmonitoring.BitcoinMonitoringTask;
 import com.binance.bot.onetimetasks.ExecuteExitPositions;
+import com.binance.bot.onetimetasks.MACDTrendBackfill;
 import com.binance.bot.onetimetasks.PPOBackfill;
 import com.binance.bot.onetimetasks.ProfitPercentageWithMoneyReuseCalculation;
 import com.binance.bot.signalsuccessfailure.MarketPriceStream;
@@ -21,22 +22,22 @@ import java.text.ParseException;
 
 @SpringBootApplication(scanBasePackages = {"com.binance.bot", "com.binance.api.client", "com.gateiobot"})
 @Configuration
-//@EnableScheduling
+@EnableScheduling
 public class BinancebotApplication implements CommandLineRunner {
 
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
 	@Autowired private MarketPriceStream marketPriceStream;
 	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
-	@Autowired private PPOBackfill ppoBackfill;
+	@Autowired private MACDTrendBackfill macdTrendBackfill;
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);
 	}
 
 	@Override
 	public void run(String... args) throws ParseException, MessagingException, IOException, BinanceApiException, InterruptedException, ApiException {
-		//ppoBackfill.backFill();
-		calculation.calculate();
+		//backFill();
+		//calculation.calculate();
 		//executeExitPositions.perform();
 	}
 }

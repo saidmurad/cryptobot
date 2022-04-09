@@ -10,6 +10,7 @@ import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
+import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,7 +46,6 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * Next things to do:
- * calculate stop losses at 1%, 5% etc.
  * 1. priceattimeofsignalreal
  * 2. consider only prices at great distance from zero line
  * 3. RSI above 50 for bullish and vice-versa.
@@ -56,22 +56,22 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   private static final boolean USE_SIGNAL_INVALIDATIONS = false;
-  private final boolean useTrendFollowing = true;
+  private final boolean useHistogramTrend = true;
   // Uses MACD line above or below signal line to determine entry to long or short respectively.
   private final boolean useMACDForEntry = false;
   // Uses MACD signal line crossover to exit trade. No other conditions are used other than this.
   private final boolean useMACDForExit = false;
+  private final boolean useHistogramTrendReversalForExit = false;
   private final boolean avoidOverdoneTradeTypes = false;
-  private final boolean monitorLossesToPauseTrading = true;
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
   final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final BinanceApiRestClient binanceApiRestClient;
-  private final static double AMOUNT_PER_TRADE = 100;
+  private final static double AMOUNT_PER_TRADE = 10;
   private static final String QUERY_USING_INVALIDATIONS = "select * from ChartPatternSignal cps" +
-  "where cps.ProfitPotentialPercent > 0 and cps.Attempt = 1 and " +
+      "where cps.ProfitPotentialPercent > 0 and cps.Attempt = 1 and " +
       "DateTime(cps.TimeOfSignal)>=DateTime('2022-02-08 08:55') " +
       " and cps.TimeFrame='FIFTEEN_MINUTES' and " +
       "((cps.TradeType='BUY' and macd.Trend ='BULLISH' and cps.PriceAtTimeOfSignal > macd.SMA) or (cps.Tradetype='SELL' and macd.Trend='BEARISH' and cps.PriceAtTimeOfSignal < macd.SMA)) " +
@@ -82,35 +82,27 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       // stop loss alone but not for whether profit met, better filter it out.
       "where ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
       //"DateTime(TimeOfSignal)>DateTime('2022-02-28 00:00') and " +
-     // "DateTime(TimeOfSignal)<=DateTime('2022-03-08 00:00') and " +
+      // "DateTime(TimeOfSignal)<=DateTime('2022-03-08 00:00') and " +
       "ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and " +
       //"TradeType='SELL' and " +
       //"(((TimeFrame = 'HOUR' or TimeFrame='FOUR_HOURS') and IsVolumeSurge=1) or TimeFrame == 'FIFTEEN_MINUTES' ) " +
       "TimeFrame == 'FIFTEEN_MINUTES' " +
       "order by TimeOfSignal";
   // TODO:    remove pice already jumped cases from query.
-  private static final String QUERY_USING_TREND_FOLLOWING = "select * from ChartPatternSignal cps," +
-      "MACDData macd " +
-      // Filtering for IsPriceTargetMet because the calculation might just not have caught it so why consider it for
-      // stop loss alone but not for whether profit met, better filter it out.
-      "where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and " +
-      "ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and " +
-      //"DateTime(TimeOfSignal)>DateTime('2022-03-01 00:00') and " +
-      // "DateTime(TimeOfSignal)<=DateTime('2022-03-08 00:00') and " +
-      "ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and " +
-      /*"((cps.TradeType='BUY' and macd.Trend='BULLISH' and macd.ema12 > macd.ema26 and cps.PriceAtTimeOfSignal > macd.ema12) or " +
-      "(cps.Tradetype='SELL' and macd.Trend='BEARISH' and macd.ema12 < macd.ema26 and cps.PriceAtTimeOfSignal < macd.ema12)) and " +*/
-      "((cps.TradeType='BUY' and macd.Trend='BULLISH') or " +
-      "(cps.Tradetype='SELL' and macd.Trend='BEARISH')) and " +
-      "(((cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS' or cps.TimeFrame='FIFTEEN_MINUTES'))) " +
-      //"TimeFrame == 'FIFTEEN_MINUTES' " +
+  private static final String QUERY_USING_HISTOGRAM_TREND = "Select cps.* from ChartPatternSignal cps, MACDData macd \n" +
+      "  where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and cps.CoinPair = replace(macd.CoinPair, '_', '') and \n" +
+      "      ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and \n" +
+      //" DateTime(cps.TimeOfSignal)>=DateTime('2022-03-01 00:00') and " +
+      " DateTime(cps.TimeOfSignal)<=DateTime('2022-03-21 00:00') and " +
+      "      ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and \n" +
+      "      ((cps.TradeType='BUY' and macd.macd >=0) or \n" +
+      "      (cps.TradeType='SELL' and macd.macd <=0)) and " +
+      " (cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS' or cps.TimeFrame='FIFTEEN_MINUTES') " +
       "order by TimeOfSignal";
   private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
   private final ChartPatternSignalDaoImpl dao;
   private final MACDDataDao macdDao;
 
-  private double avg5RR = 0.0, avg10RR = 0.0;
-  private boolean pauseTrades;
 
   @Autowired
   public ProfitPercentageWithMoneyReuseCalculation(BinanceApiClientFactory binanceApiClientFactory,
@@ -130,21 +122,24 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  double invested = 0, invested_real = 0;
-  double coffer = 0.0, coffer_real = 0.0;
-  double lockedInTrades = 0.0, lockedInTrades_real = 0.0;
-  double borrowed = 0.0, borrowed_real = 0.0;
+  double invested = 0;
+  double coffer = 0.0;
+  int numTrades = 0;
+  double releasedFromCompletedTrades = 0.0;
+  double lockedInTrades = 0.0;
+  double borrowed = 0.0;
   int numTradesLive = 0;
-  Iterator<Map.Entry<Date, List<Pair<ChartPatternSignal, Double>>>> eventDateIterator;
-  Map.Entry<Date, List<Pair<ChartPatternSignal, Double>>> nextEvent;
+  Iterator<Map.Entry<Date, Pair<Integer, Double>>> eventDateIterator;
+  Map.Entry<Date, Pair<Integer, Double>> nextEvent;
+  Set<ChartPatternSignal> tradesEnteredSoFar = new HashSet<>();
 
   private Map<Date, List<ChartPatternSignal>> patternsNotInTargetTimeProcessedSet =
       new TreeMap<>(new Comparator<Date>() {
-    @Override
-    public int compare(Date t1, Date t2) {
-      return t1.compareTo(t2);
-    }
-  });
+        @Override
+        public int compare(Date t1, Date t2) {
+          return t1.compareTo(t2);
+        }
+      });
 
   private TradeType getOverdoneTradeType(Date time, TimeFrame timeFrame) {
     double threshold = 4;
@@ -172,9 +167,15 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return TradeType.NONE;
   }
 
-  private Set<ChartPatternSignal> tradesEntered = new HashSet<>();
   public void calculate() {
-    List<ChartPatternSignal> chartPatternSignals = jdbcTemplate.query(QUERY_USING_TREND_FOLLOWING, new ChartPatternSignalMapper());
+    List<ChartPatternSignal> chartPatternSignals;
+    if (USE_SIGNAL_INVALIDATIONS) {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_INVALIDATIONS, new ChartPatternSignalMapper());
+    } else if (useHistogramTrend) {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_HISTOGRAM_TREND, new ChartPatternSignalMapper());
+    } else {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_STOPLOSSES, new ChartPatternSignalMapper());
+    }
     if (avoidOverdoneTradeTypes) {
       chartPatternSignals = filterOutOverdoneTradeTypesUseDynamic(chartPatternSignals);
     }
@@ -196,42 +197,40 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       logger.info(String.format("Before filtering for entry using MACD, length was %d, and after, %d.", chartPatternSignals.size(), entryFilteredUsingMACD.size()));
       chartPatternSignals = entryFilteredUsingMACD;
     }
-    TreeMap<Date, List<Pair<ChartPatternSignal, Double>>> amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate;
+    if (USE_SIGNAL_INVALIDATIONS) {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendar(chartPatternSignals);
+    } else if (useMACDForExit) {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingMACDSignalCrossOverForTradeExits(chartPatternSignals);
+    } else if (useHistogramTrendReversalForExit) {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingHistogramTrendReversalForTradeExits(chartPatternSignals);
+    } else {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
+    }
 
     eventDateIterator = amountsReleasedByDate.entrySet().iterator();
     nextEvent = eventDateIterator.next();
 
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      if (chartPatternSignal.coinPair().equals("RSRUSDT")) {
+        logger.info("here");
+      }
       processTradeExitEventsUntilGivenDate(chartPatternSignal.timeOfSignal());
       if (coffer >= AMOUNT_PER_TRADE) {
         coffer -= AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
+        printWallet("Entering trade reusing from coffer", chartPatternSignal.timeOfSignal());
       } else if (USE_MARGIN && (coffer + lockedInTrades + AMOUNT_PER_TRADE) / (borrowed + AMOUNT_PER_TRADE) > MARGIN_LEVEL_TO_USE) {
         borrowed += AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
+        printWallet("Entering trade with borrowed money", chartPatternSignal.timeOfSignal());
       } else {
         invested += AMOUNT_PER_TRADE;
         lockedInTrades += AMOUNT_PER_TRADE;
+        printWallet("Entering trade with additonal investment", chartPatternSignal.timeOfSignal());
       }
-
-      if (!pauseTrades) {
-        if (coffer_real >= AMOUNT_PER_TRADE) {
-          coffer_real -= AMOUNT_PER_TRADE;
-          lockedInTrades_real += AMOUNT_PER_TRADE;
-          //printWallet("Entering trade reusing from coffer", chartPatternSignal.timeOfSignal());
-        } else if (USE_MARGIN && (coffer_real + lockedInTrades_real + AMOUNT_PER_TRADE) / (borrowed_real + AMOUNT_PER_TRADE) > MARGIN_LEVEL_TO_USE) {
-          borrowed_real += AMOUNT_PER_TRADE;
-          lockedInTrades_real += AMOUNT_PER_TRADE;
-          //printWallet("Entering trade with borrowed money", chartPatternSignal.timeOfSignal());
-        } else {
-          invested_real += AMOUNT_PER_TRADE;
-          lockedInTrades_real += AMOUNT_PER_TRADE;
-          //printWallet("Entering trade with additonal investment", chartPatternSignal.timeOfSignal());
-        }
-        tradesEntered.add(chartPatternSignal);
-      }
-
       numTradesLive++;
+      tradesEnteredSoFar.add(chartPatternSignal);
       if (!patternsWithReleaseByDateProcessed.contains(chartPatternSignal)) {
         List<ChartPatternSignal> chartPatternList = patternsNotInTargetTimeProcessedSet.get(chartPatternSignal.timeOfSignal());
         if (chartPatternList == null) {
@@ -244,9 +243,12 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     // null is passed to process event dates calendar to finish.`
     processTradeExitEventsUntilGivenDate(null);
     printWallet("The end", new Date());
-    //dumpStateOfLockedChartPatterns();
+    System.out.println(String.format("Lowest pnlPercent=%f, hightest pnlPercent=%f.", lowestPnlPercent, highestPnlPercent));
+    dumpStateOfLockedChartPatterns();
   }
 
+  // TODO: Have to retest this since there was a bug in getMACDDataUntilTime using DAte in the query
+  // instead of Datetime.
   private List<ChartPatternSignal> getEntryFilteredUsingMACD(List<ChartPatternSignal> chartPatternSignals) {
     List<ChartPatternSignal> filteredChartPatternSignals = new ArrayList<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
@@ -255,7 +257,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         continue;
       }
       if ((chartPatternSignal.tradeType() == TradeType.BUY && macdData.get(0).histogram > 0 ||
-      chartPatternSignal.tradeType() == TradeType.SELL && macdData.get(0).histogram < 0)
+          chartPatternSignal.tradeType() == TradeType.SELL && macdData.get(0).histogram < 0)
           && Math.abs(macdData.get(0).histogram / macdData.get(0).macdSignal) > 0.25) {
         logger.info(String.format("'%s' eligible for entry based on MACD.", chartPatternSignal));
         filteredChartPatternSignals.add(chartPatternSignal);
@@ -312,58 +314,24 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     logger.info("Missing for count=" + missingForCount);
   }
 
-  double sum5RRs = 0, sum10RRs = 0;
-  List<Double> last5RRs = new ArrayList<>();
-  List<Double> last10RRs = new ArrayList<>();
   private void processTradeExitEventsUntilGivenDate(Date timeOfSignal) {
     boolean looped = false;
     while (nextEvent != null && (timeOfSignal == null || nextEvent.getKey().before(timeOfSignal)
         || nextEvent.getKey().equals(timeOfSignal))) {
-      List<Pair<ChartPatternSignal, Double>> tradesReleased = nextEvent.getValue();
-      for (Pair<ChartPatternSignal, Double> tradeReleased: tradesReleased) {
-        coffer += tradeReleased.getSecond();
-        lockedInTrades -= AMOUNT_PER_TRADE;
-        numTradesLive --;
-        /*logger.info(String.format("Releasing %f from chartPatternSingal %s for event date %s.",
-            tradeReleased.getSecond(), tradeReleased.getFirst(), nextEvent.getKey()));*/
-        double rr = getRR();
-        last5RRs.add(rr);
-        sum5RRs += rr;
-        if (last5RRs.size() <= 5) {
-          avg5RR = sum5RRs / last5RRs.size();
-        } else {
-          sum5RRs -= last5RRs.get(0);
-          last5RRs.remove(0);
-          avg5RR = rr * 2/6 + avg5RR * (1 - 2.0/6);
-          //logger.info(String.format("rr=%f and avg5RR=%f", rr, avg5RR));
-        }
-        last10RRs.add(rr);
-        sum10RRs += rr;
-        if (last10RRs.size() <= 10) {
-          avg10RR = sum10RRs / last10RRs.size();
-        } else {
-          sum10RRs -= last10RRs.get(0);
-          last10RRs.remove(0);
-          avg10RR = rr * 2/11 + avg10RR * (1 - 2.0/11);
-        }
-        if (rr < avg5RR) {
-          //logger.info(String.format("RR %f below avg RR. Pausing trading.", rr, avgRR));
-          pauseTrades = true;
-        }
-        if (rr >= avg10RR){
-          pauseTrades = false;
+      looped = true;
+      coffer += nextEvent.getValue().getSecond();
+      lockedInTrades -= nextEvent.getValue().getFirst() * AMOUNT_PER_TRADE;
+      numTradesLive -= nextEvent.getValue().getFirst();
+      logger.info(String.format("Releasing %f from %d trades for event date %s.",
+          nextEvent.getValue().getSecond(), nextEvent.getValue().getFirst(), nextEvent.getKey()));
+      Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(nextEvent.getKey());
+      for (ChartPatternSignal chartPatternSignal : cpsExitsOnDate) {
+        if (!tradesEnteredSoFar.contains(chartPatternSignal)) {
+          logger.error("Trade never entered but getting existed: " + chartPatternSignal);
         }
       }
-      logger.info(String.format("%s trades at %s.", pauseTrades? "Pausing":"Resuming", nextEvent.getKey()));
-      for (Pair<ChartPatternSignal, Double> tradeReleased: tradesReleased) {
-        if (!tradesEntered.contains(tradeReleased.getFirst())) {
-          continue;
-        }
-        looped = true;
-        coffer_real += tradeReleased.getSecond();
-        lockedInTrades_real -= AMOUNT_PER_TRADE;
-      }
-
+      numTrades += nextEvent.getValue().getFirst();
+      releasedFromCompletedTrades += nextEvent.getValue().getSecond();
       if (eventDateIterator.hasNext()) {
         nextEvent = eventDateIterator.next();
       } else {
@@ -375,29 +343,74 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     }
   }
 
-  private double getRR() {
+  double highestPnlPercent = 0.0, lowestPnlPercent = 0.0;
+  private void printWallet(String context, Date time) {
     double totalAssetValue = coffer + lockedInTrades;
     double netAssetValue = totalAssetValue - borrowed;
+    Double marginLevel = borrowed > 0? totalAssetValue / borrowed : null;
     double rr = (netAssetValue - invested) /invested * 100;
-    return rr;
-  }
-
-  private void printWallet(String context, Date time) {
-    double totalAssetValue = coffer_real + lockedInTrades_real;
-    double netAssetValue = totalAssetValue - borrowed_real;
-    double rr = (netAssetValue - invested_real) /invested_real * 100;
-    Double marginLevel = borrowed_real > 0? totalAssetValue / borrowed : null;
-    /*logger.info(String.format("%s: On %s, invested=%f, coffer=%f, borrowed=%f, locked=%f, \ntotalAssetValue=%f, netAssetValue=%f, RR=%f, marginLevel=%s.",
+    if (invested == 0) {
+      logger.error("Invested is somehow 0.");
+    }
+    logger.info(String.format("%s: On %s, invested=%f, coffer=%f, borrowed=%f, locked=%f, \ntotalAssetValue=%f, netAssetValue=%f, RR=%f, marginLevel=%s.",
         context, time, invested, coffer, borrowed, lockedInTrades, totalAssetValue, netAssetValue, rr,
-        marginLevel != null ? marginLevel.toString() : "N/A"));*/
-    logger.info(String.format("%s: On %s, rr=%f", context, time, rr));
+        marginLevel != null ? marginLevel.toString() : "N/A"));
+
+    if (rr > highestPnlPercent) {
+      highestPnlPercent = rr;
+    }
+    if (rr < lowestPnlPercent) {
+      lowestPnlPercent = rr;
+    }
+    //logger.info(String.format("%s: Num trades=%d, releasedFromCompletedTrades=%f, RR=%f .", time, numTrades,releasedFromCompletedTrades,  pnlPercent));
   }
 
   private Set<ChartPatternSignal> patternsWithReleaseByDateProcessed = new HashSet<>();
 
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendar(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Date tradeExitTime;
+      double amountReleasedFromTheTrade;
+      if (chartPatternSignal.isPriceTargetMet() == null) {
+        continue;
+      }
+      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+      if (chartPatternSignal.isPriceTargetMet() &&
+          (chartPatternSignal.timeOfSignalInvalidation() == null || (
+              chartPatternSignal.timeOfSignalInvalidation().after(chartPatternSignal.priceTargetMetTime())
+                  || chartPatternSignal.timeOfSignalInvalidation().equals(chartPatternSignal.priceTargetMetTime())))) {
+        tradeExitTime = chartPatternSignal.priceTargetMetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPotentialPercent() / 100;
+      } else if (chartPatternSignal.timeOfSignalInvalidation() != null) {
+        tradeExitTime = chartPatternSignal.timeOfSignalInvalidation();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
+      } // Fallback for when live altfins signal invalidations was not caught.
+      else if (chartPatternSignal.profitPercentAtSignalTargetTime() != null) {
+        tradeExitTime = chartPatternSignal.priceTargetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
+      } else {
+        // Only one signal had profitPercentAtSignalTargetTime null with IsPriceTargetMet not null.
+        continue;
+      }
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
+      }
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+    }
+    return amountsReleasedByDate;
+  }
+
   private int missingForCount = 0;
-  private TreeMap<Date, List<Pair<ChartPatternSignal, Double>>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
-    TreeMap<Date, List<Pair<ChartPatternSignal, Double>>> amountsReleasedByDate = new TreeMap<>();
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
       Date tradeExitTime;
       double amountReleasedFromTheTrade;
@@ -418,19 +431,115 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         // chartPatternSignal.isPriceTargetMet() == null
         continue;
       }
-      List<Pair<ChartPatternSignal, Double>> prevVal = amountsReleasedByDate.get(tradeExitTime);
-      if (prevVal == null) {
-        prevVal = new ArrayList<>();
-        amountsReleasedByDate.put(tradeExitTime, prevVal);
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
       }
-      prevVal.add(Pair.of(chartPatternSignal, amountReleasedFromTheTrade));
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
     }
+    return amountsReleasedByDate;
+  }
+
+  // Doesn't depend on query conditon for IsPriceTargetMet. Very recent signals may not be considered for exit trade.
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingMACDSignalCrossOverForTradeExits(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Date tradeExitTime;
+      double amountReleasedFromTheTrade;
+      MACDData exitMacdData = macdDao.getTradeExitSignalBySignalCrossOver(chartPatternSignal);
+      if (exitMacdData == null) {
+        continue;
+      }
+      tradeExitTime = exitMacdData.time;
+      /*logger.info(String.format("Determined Exit with pnl %f percent for %s. IsPriceTargetMet=%s, Original Pnl percent=%f\n",
+          getPnlPercent(chartPatternSignal, exitMacdData),
+          chartPatternSignal, chartPatternSignal.isPriceTargetMet() ? "true":"false",
+          chartPatternSignal.profitPotentialPercent()));*/
+      amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE * getPnlPercent(chartPatternSignal, exitMacdData) / 100;
+      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
+      }
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+    }
+    return amountsReleasedByDate;
+  }
+
+  private Date getNthCandlestickTime(Date beginCandlestick, TimeFrame timeFrame, int n) {
+    switch (timeFrame) {
+      case FIFTEEN_MINUTES:
+        return DateUtils.addMinutes(beginCandlestick, 15 * (n-1));
+      case HOUR:
+        return DateUtils.addHours(beginCandlestick, (n-1));
+      case FOUR_HOURS:
+        return DateUtils.addHours(beginCandlestick, 4 * (n-1));
+      case DAY:
+      default:
+        return DateUtils.addDays(beginCandlestick, (n-1));
+    }
+  }
+
+  private Map<Date, Set<ChartPatternSignal>> cpsByExitDate = new HashMap<>();
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingHistogramTrendReversalForTradeExits(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    double biggeestLossPercent = 0;
+    ChartPatternSignal biggestLossCPS = null;
+    MACDData biggestLossMACDData = null;
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Date tradeExitTime;
+      double amountReleasedFromTheTrade;
+      MACDData exitMacdData = macdDao.getTradeExitSignalByHistogramTrendReversal(chartPatternSignal);
+      if (exitMacdData == null) {
+        continue;
+      }
+      tradeExitTime = getNthCandlestickTime(exitMacdData.time, chartPatternSignal.timeFrame(), 2);
+      /*logger.info(String.format("Determined Exit with pnl %f percent for %s. IsPriceTargetMet=%s, Original Pnl percent=%f." +
+              "Exit candlestick MACD=%s.\n",
+          getPnlPercent(chartPatternSignal, exitMacdData),
+          chartPatternSignal, chartPatternSignal.isPriceTargetMet() ? "true":"false",
+          chartPatternSignal.profitPotentialPercent(), exitMacdData));*/
+      double pnlPercent = getPnlPercent(chartPatternSignal, exitMacdData);
+      if (pnlPercent < biggeestLossPercent) {
+        biggeestLossPercent = pnlPercent;
+        biggestLossCPS = chartPatternSignal;
+        biggestLossMACDData = exitMacdData;
+      }
+      amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE * pnlPercent / 100;
+      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
+      }
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+      Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(tradeExitTime);
+      if (cpsExitsOnDate == null) {
+        cpsExitsOnDate = new HashSet<>();
+        cpsByExitDate.put(tradeExitTime, cpsExitsOnDate);
+      }
+      cpsExitsOnDate.add(chartPatternSignal);
+    }
+    logger.info("Biggest loss percent for a trade=" + biggeestLossPercent + " for CPS " + biggestLossCPS
+    + " Exit MACD=" + biggestLossMACDData);
     return amountsReleasedByDate;
   }
 
   private double getPnlPercent(ChartPatternSignal chartPatternSignal, MACDData exitMacdData) {
     int sign = chartPatternSignal.tradeType() == TradeType.BUY? 1: -1;
-    return sign * (exitMacdData.candleClosingPrice - chartPatternSignal.priceAtTimeOfSignal())
+    double entryPrice = chartPatternSignal.priceAtTimeOfSignalReal();
+    if (entryPrice == 0.0) {
+      entryPrice = chartPatternSignal.priceAtTimeOfSignal();
+    }
+    return sign * (exitMacdData.candleClosingPrice - entryPrice)
         / chartPatternSignal.priceAtTimeOfSignal() * 100;
   }
 }

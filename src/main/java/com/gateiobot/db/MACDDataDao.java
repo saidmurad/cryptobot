@@ -66,13 +66,20 @@ public class MACDDataDao {
     return ascendingList;
   }
 
+  synchronized public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
+    String sql = String.format(
+        "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATETime(Time) = DATETime('%s')",
+        coinPair, timeFrame.name(), dateFormat.format(time));
+    return jdbcTemplate.queryForObject(sql, new MACDDataRowMapper());
+  }
+
   synchronized private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
     if (!coinPair.contains("_")) {
       String baseAsset = coinPair.substring(0, coinPair.length() - 4);
       coinPair = baseAsset + "_" + "USDT";
     }
     String sql = String.format(
-        "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATE(Time) >= DATE('%s') order by Time limit %d",
+        "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DateTime(Time) >= DateTime('%s') order by Time limit %d",
         coinPair, timeFrame.name(), dateFormat.format(time), numRows);
     return jdbcTemplate.query(sql, new MACDDataRowMapper());
   }
@@ -106,6 +113,35 @@ public class MACDDataDao {
     return null;
   }
 
+  public MACDData getTradeExitSignalByHistogramTrendReversal(ChartPatternSignal chartPatternSignal) {
+    Date candlestickTime = chartPatternSignal.timeOfSignal();
+    String coinPair = chartPatternSignal.coinPair();
+    if (!coinPair.contains("_")) {
+      String baseAsset = coinPair.substring(0, coinPair.length() - 4);
+      coinPair = baseAsset + "_" + "USDT";
+    }
+    do {
+      List<MACDData> macdDataList = getMACDDataAfterTime(coinPair, chartPatternSignal.timeFrame(), candlestickTime, 10);
+      for (MACDData macdData : macdDataList) {
+        if (macdData.histogram == 0.0) {
+          // TODO: incomplete data. sends to infinite loop. occurred for UNI_USDT in 4 hour.
+          return null;
+        }
+        if (chartPatternSignal.tradeType() == TradeType.BUY && macdData.histogramTrendType == HistogramTrendType.DECELERATING
+            || chartPatternSignal.tradeType() == TradeType.SELL && macdData.histogramTrendType == HistogramTrendType.ACCELERATING) {
+          return macdData;
+        }
+      }
+      if (!macdDataList.isEmpty()) {
+        candlestickTime = DateUtils.addMinutes(macdDataList.get(macdDataList.size() -1).time, 1);
+      } else {
+        candlestickTime = null;
+      }
+      //logger.info("Moving to next iteration with candlesticktime " + dateFormat.format(candlestickTime));
+    } while (candlestickTime != null);
+    return null;
+  }
+
   synchronized public boolean insert(MACDData macd) {
     String updateSql = String.format("insert into MACDData(" +
             "CoinPair, TimeFrame, Time, CandleClosingPrice, SMA, SMASlope," +
@@ -123,6 +159,18 @@ public class MACDDataDao {
     int ret = jdbcTemplate.update(updateSql);
     if (ret != 1) {
       logger.error(String.format("Failed to udpate PPOMACd for MACDData %s. Expected ret = 1 but got %d.",
+          macdData, ret));
+    }
+    return;
+  }
+
+  public void updateHistogramEMA(MACDData macdData) {
+    String updateSql = String.format("update MACDData set HistogramEMA=%f, HistogramTrendType='%s' " +
+            "where CoinPair='%s' and TimeFrame='%s' and Time='%s'", macdData.histogramEMA, macdData.histogramTrendType.name(),
+        macdData.coinPair, macdData.timeFrame.name(), dateFormat.format(macdData.time));
+    int ret = jdbcTemplate.update(updateSql);
+    if (ret != 1) {
+      logger.error(String.format("Failed to udpate HistogramEMA for MACDData %s. Expected ret = 1 but got %d.",
           macdData, ret));
     }
     return;

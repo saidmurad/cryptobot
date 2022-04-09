@@ -90,6 +90,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
       if (rs.getString("TradeExitType") != null) {
         chartPatternSignalBuilder.setTradeExitType(TradeExitType.valueOf(rs.getString("TradeExitType")));
       }
+      chartPatternSignalBuilder.setStopLossPrice(rs.getDouble("StopLossPrice"));
       return chartPatternSignalBuilder.build();
     } catch (ParseException e) {
       throw new RuntimeException(e);

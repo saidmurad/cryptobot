@@ -10,6 +10,7 @@ import com.binance.bot.common.Util;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
+import io.gate.gateapi.models.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -346,33 +347,34 @@ public class ChartPatternSignalDaoImpl {
   }
 
   // Called when signal is invalidated or target time has elapsed.
-  public synchronized boolean setExitMarketOrder(ChartPatternSignal chartPatternSignal, ChartPatternSignal.Order exitMarketOrder,
-                                    TradeExitType tradeExitType) {
+  public synchronized boolean setExitOrder(ChartPatternSignal chartPatternSignal,
+                                           ChartPatternSignal.Order exitOrder,
+                                           TradeExitType tradeExitType) {
     Pair<Double, Double> realizedUnRealized = getRealizedUnRealized(
-        chartPatternSignal, exitMarketOrder.executedQty(), exitMarketOrder.avgPrice(), tradeExitType, exitMarketOrder.status());
+        chartPatternSignal, exitOrder.executedQty(), exitOrder.avgPrice(), tradeExitType, exitOrder.status());
     double realizedPercent = realizedUnRealized.getFirst() /
         (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
     double unRealizedPercent = realizedUnRealized.getSecond() /
         (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
-    String sql = "update ChartPatternSignal set ExitMarketOrderId=?, ExitMarketOrderExecutedQty=?, ExitMarketOrderAvgPrice=?, " +
-        "ExitMarketOrderStatus=?, " +
+    String sql = "update ChartPatternSignal set ExitOrderId=?, ExitOrderExecutedQty=?, ExitOrderAvgPrice=?, " +
+        "ExitOrderStatus=?, " +
         "Realized=?, RealizedPercent=?, UnRealized=?, UnRealizedPercent=?, IsPositionExited=?, IsSignalOn=?," +
         "TradeExitType=? where " +
         "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
         "and Attempt=?";
-    int ret = jdbcTemplate.update(sql, exitMarketOrder.orderId(), exitMarketOrder.executedQty(), exitMarketOrder.avgPrice(),
-        exitMarketOrder.status().name(),
+    int ret = jdbcTemplate.update(sql, exitOrder.orderId(), exitOrder.executedQty(), exitOrder.avgPrice(),
+        exitOrder.status().name(),
         realizedUnRealized.getFirst(), realizedPercent,
         realizedUnRealized.getSecond(), unRealizedPercent,
-        exitMarketOrder.status() == OrderStatus.FILLED ? 1 : 0,
-        exitMarketOrder.status() == OrderStatus.FILLED ? 0 : 1,
+        exitOrder.status() == ChartPatternSignal.Order.OrderStatusInt.FILLED ? 1 : 0,
+        exitOrder.status() == ChartPatternSignal.Order.OrderStatusInt.FILLED ? 0 : 1,
         tradeExitType.name(), chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
-      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit limit market id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit order id %d.", chartPatternSignal.toString(), exitOrder.orderId()));
     } else {
-      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith exit limit market id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+      logger.error(String.format("Failed to update chart pattern sgnal \n%s\nwith exit order id %d.", chartPatternSignal.toString(), exitOrder.orderId()));
     }
     return ret == 1;
   }
@@ -423,8 +425,8 @@ public class ChartPatternSignalDaoImpl {
         executedPrice,
         exitStopLimitOrderStatus.status().name(),
         realizedUnRealized.getFirst(), realizedPercent, realizedUnRealized.getSecond(), unRealizedPercent,
-        exitStopLimitOrderStatus.status() == OrderStatus.FILLED,
-        exitStopLimitOrderStatus.status() == OrderStatus.FILLED ? 0 : 1,
+        exitStopLimitOrderStatus.status() == ChartPatternSignal.Order.OrderStatusInt.FILLED,
+        exitStopLimitOrderStatus.status() == ChartPatternSignal.Order.OrderStatusInt.FILLED ? 0 : 1,
         chartPatternSignal.coinPair(),
         chartPatternSignal.timeFrame().name(),
         chartPatternSignal.tradeType().name(),
@@ -440,7 +442,8 @@ public class ChartPatternSignalDaoImpl {
   }
 
   private Pair<Double, Double> getRealizedUnRealized(ChartPatternSignal chartPatternSignal, double exitQty,
-                                                     double exitPrice, TradeExitType tradeExitType, OrderStatus orderStatus) {
+                                                     double exitPrice, TradeExitType tradeExitType,
+                                                     ChartPatternSignal.Order.OrderStatusInt orderStatus) {
     double realized = exitQty *
         (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
         (exitPrice - chartPatternSignal.entryOrder().avgPrice());
@@ -453,7 +456,7 @@ public class ChartPatternSignalDaoImpl {
     }
     double unRealized = 0.0;
     // For market orders I don't really expect or handle partial fills.
-    if (tradeExitType == TradeExitType.STOP_LOSS && orderStatus == OrderStatus.PARTIALLY_FILLED) {
+    if (tradeExitType == TradeExitType.STOP_LOSS && orderStatus == ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED) {
       unRealized = (chartPatternSignal.entryOrder().executedQty() - chartPatternSignal.exitStopLimitOrder().executedQty() - exitQty) *
           (chartPatternSignal.tradeType() == TradeType.BUY ? 1 : -1) *
           (exitPrice - chartPatternSignal.entryOrder().avgPrice());
@@ -519,6 +522,19 @@ public class ChartPatternSignalDaoImpl {
       logger.info("Updated Stop Limit Order status to Canceled for chart pattern signal: %s.", chartPatternSignal);
     } else {
       logger.error("Failed to update Stop Limit Order status to Canceled for chart pattern signal: %s", chartPatternSignal);
+    }
+  }
+
+  public synchronized void updateStopLossPrice(ChartPatternSignal chartPatternSignal, double stopLossPrice) {
+    String updateSql = "update ChartPatternSignal set StopLossPice=%f " +
+            "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)";
+    boolean ret = jdbcTemplate.update(updateSql,
+        stopLossPrice,
+        chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal())) == 1;
+    if (!ret) {
+      logger.error("Failed to update Stop loss price chart pattern signal: %s", chartPatternSignal);
     }
   }
 
@@ -678,5 +694,23 @@ public class ChartPatternSignalDaoImpl {
     int roundedHour = hour / 4 * 4;
     String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, roundedHour, 0);
     return df.parse(candlestickStartTimeStr);
+  }
+
+  public void updateEntryOrderStatus(ChartPatternSignal chartPatternSignal, Order.StatusEnum status) {
+    String sql = "update ChartPatternSignal set EntryOrderStatus=? " +
+        "where " +
+        "CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) " +
+        "and Attempt=?";
+    ChartPatternSignal.Order.OrderStatusInt newOrderStatus = ChartPatternSignal.Order.convertGateIoOrderStatus(status);
+    int ret = jdbcTemplate.update(sql,
+        newOrderStatus
+        , chartPatternSignal.coinPair(),
+        chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+        df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
+    if (ret == 1) {
+      logger.info(String.format("Updated entry order status to '%s' for cps %s.", newOrderStatus.name(), chartPatternSignal));
+    } else {
+      logger.error(String.format("Failed to update (got ret count %d) entry order status to '%s' for cps %s.", ret, newOrderStatus.name(), chartPatternSignal));
+    }
   }
 }

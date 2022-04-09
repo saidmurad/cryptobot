@@ -103,6 +103,7 @@ public class ChartPatternSignalDaoImplTest {
       "    MaxLoss REAL,\n" +
       "    MaxLossPercent REAL,\n" +
       "    MaxLossTime TEXT,\n" +
+      "    StopLossPrice REAL,\n" +
       "    IsPriceTargetMet INTEGER,\n" +
       "    PriceTargetMetTime REAL," +
       "    TradeExitType TEXT,\n" +
@@ -776,7 +777,7 @@ public class ChartPatternSignalDaoImplTest {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+    assertThat(dao.setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.PARTIALLY_FILLED),
         TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
@@ -806,7 +807,7 @@ public class ChartPatternSignalDaoImplTest {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+    assertThat(dao.setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2, 50, 205, OrderStatus.PARTIALLY_FILLED),
         TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
@@ -836,7 +837,7 @@ public class ChartPatternSignalDaoImplTest {
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
 
-    assertThat(dao.setExitMarketOrder(chartPatternSignal,
+    assertThat(dao.setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);

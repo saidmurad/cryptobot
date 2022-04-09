@@ -30,6 +30,11 @@ public class MACDData {
 
   public double histogram;
 
+  // 5 period EMA.
+  public double histogramEMA;
+
+  public HistogramTrendType histogramTrendType;
+
   public double ppoMacd;
 
   public double ppoMacdSignalLine;

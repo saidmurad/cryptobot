@@ -2,7 +2,6 @@ package com.binance.bot.signalsuccessfailure.specifictradeactions;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiMarginRestClient;
-import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.OrderType;
@@ -114,7 +113,7 @@ public class ExitPositionAtMarketPriceTest {
 
     verify(mockBinanceApiRestClient, never()).cancelOrder(any());
     verify(mockBinanceApiRestClient, never()).newOrder(any());
-    verify(mockDao, never()).setExitMarketOrder(any(), any(), any());
+    verify(mockDao, never()).setExitOrder(any(), any(), any());
     verifyNoInteractions(mockRepayBorrowedOnMargin);
     verifyNoInteractions(mockOutstandingTrades);
   }
@@ -176,7 +175,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
     assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10.0");
-    verify(mockDao).setExitMarketOrder(chartPatternSignal,
+    verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockRepayBorrowedOnMargin).repay("USDT", 10.0);
@@ -285,7 +284,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
     assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10.0");
-    verify(mockDao).setExitMarketOrder(chartPatternSignal,
+    verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockRepayBorrowedOnMargin).repay("ETH", 10);
@@ -331,7 +330,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(cancelOrderRequestCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
     verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient, never()).newOrder(any());
-    verify(mockDao, never()).setExitMarketOrder(any(), any(), any());
+    verify(mockDao, never()).setExitOrder(any(), any(), any());
     verify(mockMailer).sendEmail(any(), any());
   }
 
@@ -395,7 +394,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
     assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("5.0");
-    verify(mockDao).setExitMarketOrder(chartPatternSignal,
+    verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             5.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
   }

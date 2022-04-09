@@ -2,6 +2,7 @@ package com.binance.bot.tradesignals;
 
 import com.binance.api.client.domain.OrderStatus;
 import com.google.auto.value.AutoValue;
+import io.gate.gateapi.models.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,9 @@ public abstract class ChartPatternSignal {
   public abstract Date timeOfInsertion();
 
   public abstract boolean isInsertedLate();
+
+  @Nullable
+  public abstract Double stopLossPrice();
 
   @Override
   public String toString() {
@@ -146,15 +150,57 @@ public abstract class ChartPatternSignal {
 
   @AutoValue
   public abstract static class Order {
+    public static enum OrderStatusInt {
+     OPEN,
+     PARTIALLY_FILLED,
+     FILLED,
+      CANCELED
+    }
+
     public abstract long orderId();
     public abstract double executedQty();
 
     public abstract double avgPrice();
 
-    public abstract OrderStatus status();
+    public abstract OrderStatusInt status();
 
-    public static AutoValue_ChartPatternSignal_Order create(long orderId, double executedQty, double avgPrice, OrderStatus status) {
-      return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice, status);
+    public static AutoValue_ChartPatternSignal_Order create(
+        long orderId, double executedQty, double avgPrice, OrderStatus status) {
+      return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice,
+          convertBinancOrderStatus(status));
+    }
+
+    public static AutoValue_ChartPatternSignal_Order create(
+        long orderId, double executedQty, double avgPrice, io.gate.gateapi.models.Order.StatusEnum status) {
+      return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice,
+          convertGateIoOrderStatus(status));
+    }
+
+    public static OrderStatusInt convertGateIoOrderStatus(io.gate.gateapi.models.Order.StatusEnum status) {
+      switch (status) {
+        case OPEN:
+          return OrderStatusInt.OPEN;
+        case CANCELLED:
+          return OrderStatusInt.CANCELED;
+        case CLOSED:
+        default:
+          return OrderStatusInt.FILLED;
+      }
+    }
+
+    private static OrderStatusInt convertBinancOrderStatus(OrderStatus status) {
+      switch (status) {
+        case NEW:
+          return OrderStatusInt.OPEN;
+        case CANCELED:
+          return OrderStatusInt.CANCELED;
+        case PARTIALLY_FILLED:
+          return OrderStatusInt.PARTIALLY_FILLED;
+        case FILLED:
+          // TODO: Untested for binance, error prone.
+        default:
+          return OrderStatusInt.FILLED;
+      }
     }
 
     @Override
@@ -307,6 +353,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setTradeExitType(TradeExitType tradeExitType);
 
+    public abstract Builder setStopLossPrice(Double stopLossPrice);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -355,7 +403,8 @@ public abstract class ChartPatternSignal {
           .setRealizedPercent(that.realizedPercent())
           .setUnRealized(that.unRealized())
           .setUnRealizedPercent(that.unRealizedPercent())
-          .setTradeExitType(that.tradeExitType());
+          .setTradeExitType(that.tradeExitType())
+          .setStopLossPrice(that.stopLossPrice());
     }
   }
 }

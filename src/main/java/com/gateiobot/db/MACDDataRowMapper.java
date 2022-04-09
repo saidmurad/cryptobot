@@ -37,11 +37,9 @@ public class MACDDataRowMapper implements RowMapper<MACDData> {
       macdData.macd = rs.getDouble("MACD");
       macdData.macdSignal = rs.getDouble("MACDSignal");
       macdData.histogram = rs.getDouble("histogram");
-      if (!Strings.isNullOrEmpty(rs.getString("MomentumStatus"))) {
-        macdData.momentumStatus = MomentumStatus.valueOf(rs.getString("MomentumStatus"));
-      } else {
-        macdData.momentumStatus = MomentumStatus.NA;
-      }
+      macdData.histogramEMA = rs.getDouble("histogramEMA");
+      macdData.histogramTrendType = rs.getString("histogramTrendType") == null
+      ? HistogramTrendType.NA : HistogramTrendType.valueOf(rs.getString("histogramTrendType"));
       return macdData;
     } catch (ParseException e) {
       throw new RuntimeException(e);

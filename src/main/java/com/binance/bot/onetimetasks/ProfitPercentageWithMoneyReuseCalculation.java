@@ -451,6 +451,12 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         amountReleased += prevVal.getSecond();
       }
       amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+      Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(tradeExitTime);
+      if (cpsExitsOnDate == null) {
+        cpsExitsOnDate = new HashSet<>();
+        cpsByExitDate.put(tradeExitTime, cpsExitsOnDate);
+      }
+      cpsExitsOnDate.add(chartPatternSignal);
     }
     return amountsReleasedByDate;
   }

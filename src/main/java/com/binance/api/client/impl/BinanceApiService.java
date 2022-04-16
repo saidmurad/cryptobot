@@ -1,5 +1,6 @@
 package com.binance.api.client.impl;
 
+import com.binance.api.client.domain.account.CrossMarginPair;
 import com.binance.api.client.constant.BinanceApiConstants;
 import com.binance.api.client.domain.OrderSide;
 import com.binance.api.client.domain.OrderType;
@@ -331,5 +332,7 @@ public interface BinanceApiService {
             @Query("recvWindow") Long recvWindow,
             @Query("timestamp") Long timestamp);
 
-
+    @Headers({BinanceApiConstants.ENDPOINT_SECURITY_TYPE_APIKEY_HEADER, BinanceApiConstants.ENDPOINT_SECURITY_TYPE_SIGNED_HEADER})
+    @GET("/sapi/v1/margin/allPairs")
+    Call<List<CrossMarginPair>> getCrossMarginCurrencyPairs();
 }

@@ -125,5 +125,5 @@ public interface BinanceApiMarginRestClient {
      */
     LoanQueryResult queryLoan(String asset, String txId) throws BinanceApiException;
 
-
+    List<CrossMarginPair> getCrossMarginCurrencyPairs() throws BinanceApiException;
 }

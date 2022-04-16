@@ -1,6 +1,7 @@
 package com.binance.api.client.impl;
 
 import com.binance.api.client.BinanceApiMarginRestClient;
+import com.binance.api.client.domain.account.CrossMarginPair;
 import com.binance.api.client.constant.BinanceApiConstants;
 import com.binance.api.client.domain.TransferType;
 import com.binance.api.client.domain.account.*;
@@ -116,5 +117,11 @@ public class BinanceApiMarginRestClientImpl implements BinanceApiMarginRestClien
     public MarginTransaction repay(String asset, String amount) throws BinanceApiException {
         long timestamp = System.currentTimeMillis();
         return executeSync(binanceApiService.repay(asset, amount, BinanceApiConstants.DEFAULT_RECEIVING_WINDOW, timestamp));
+    }
+
+    @Override
+    public List<CrossMarginPair> getCrossMarginCurrencyPairs() throws BinanceApiException {
+        long timestamp = System.currentTimeMillis();
+        return executeSync(binanceApiService.getCrossMarginCurrencyPairs());
     }
 }

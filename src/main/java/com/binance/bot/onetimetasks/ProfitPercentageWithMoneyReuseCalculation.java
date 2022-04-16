@@ -195,7 +195,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     if (USE_MARGIN) {
       List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal -> {
         CrossMarginPair crossMarginPair = symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair());
-        return crossMarginPair.getIsMarginTrade()
+        return crossMarginPair != null && crossMarginPair.getIsMarginTrade()
             && (chartPatternSignal.tradeType() == TradeType.BUY && crossMarginPair.getIsBuyAllowed()
         || chartPatternSignal.tradeType() == TradeType.SELL && crossMarginPair.getIsSellAllowed());
       }).collect(toList());

@@ -2,7 +2,9 @@ package com.binance.bot.onetimetasks;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
+import com.binance.api.client.domain.account.CrossMarginPair;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.ChartPatternSignalMapper;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -97,9 +99,9 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       "      ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and \n" +
       "      ((cps.TradeType='BUY' and macd.macd >=0) or \n" +
       "      (cps.TradeType='SELL' and macd.macd <=0)) and " +
-      " (cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS' or cps.TimeFrame='FIFTEEN_MINUTES') " +
+      " (cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS') " +
       "order by TimeOfSignal";
-  private final Map<String, Boolean> symbolAndIsMarginTradingAllowed = new HashMap<>();
+  private final Map<String, CrossMarginPair> symbolAndIsMarginTradingAllowed = new HashMap<>();
   private final ChartPatternSignalDaoImpl dao;
   private final MACDDataDao macdDao;
 
@@ -111,14 +113,25 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     this.dao = dao;
     this.macdDao = macdDao;
-    AtomicInteger count = new AtomicInteger();
-    binanceApiRestClient.getExchangeInfo().getSymbols().forEach(symbolInfo -> {
-      symbolAndIsMarginTradingAllowed.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());
-      if (symbolInfo.isMarginTradingAllowed()) {
-        count.getAndIncrement();
+    AtomicInteger numCrossMarginPairs = new AtomicInteger();
+    AtomicInteger numCrossMarginPairsBuyAllowed = new AtomicInteger();
+    AtomicInteger numCrossMarginPairsSellAllowed = new AtomicInteger();
+    binanceApiClientFactory.newMarginRestClient().getCrossMarginCurrencyPairs().forEach(crossMarginPair ->{
+      if (crossMarginPair.getSymbol().endsWith("USDT")) {
+        symbolAndIsMarginTradingAllowed.put(crossMarginPair.getSymbol(), crossMarginPair);
+        if (crossMarginPair.getIsMarginTrade()) {
+          numCrossMarginPairs.incrementAndGet();
+          if (crossMarginPair.getIsBuyAllowed()) {
+            numCrossMarginPairsBuyAllowed.incrementAndGet();
+          }
+          if (crossMarginPair.getIsSellAllowed()) {
+            numCrossMarginPairsSellAllowed.incrementAndGet();
+          }
+        }
       }
     });
-    System.out.println("Number of margin pairs allowed for margin = " + count.get());
+    logger.info(String.format("Number of cross margin pairs=%d, buy allowed=%d, sell allowed =%d.",
+        numCrossMarginPairs.get(), numCrossMarginPairsBuyAllowed.get(), numCrossMarginPairsSellAllowed.get()));
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -180,15 +193,14 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       chartPatternSignals = filterOutOverdoneTradeTypesUseDynamic(chartPatternSignals);
     }
     if (USE_MARGIN) {
-      List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal ->
-          symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(toList());
-      List<ChartPatternSignal> chartPatternSignalsFilteredOut = chartPatternSignals.stream().filter(chartPatternSignal ->
-          !symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair())).collect(toList());
-      Set<String> filteredSymbols = new HashSet<>();
-      chartPatternSignalsFilteredOut.forEach(chartPatternSignal -> {
-        filteredSymbols.add(chartPatternSignal.coinPair());
-      });
-      logger.info("Filtered out " + filteredSymbols.size() + " symbols not supported for margin trading.");
+      List<ChartPatternSignal> chartPatternSignalsFiltered = chartPatternSignals.stream().filter(chartPatternSignal -> {
+        CrossMarginPair crossMarginPair = symbolAndIsMarginTradingAllowed.get(chartPatternSignal.coinPair());
+        return crossMarginPair.getIsMarginTrade()
+            && (chartPatternSignal.tradeType() == TradeType.BUY && crossMarginPair.getIsBuyAllowed()
+        || chartPatternSignal.tradeType() == TradeType.SELL && crossMarginPair.getIsSellAllowed());
+      }).collect(toList());
+      logger.info(String.format("Number of chart patterns originally=%d and after filtered for cross margin=%d",
+          chartPatternSignals.size(), chartPatternSignalsFiltered.size()));
       chartPatternSignals = chartPatternSignalsFiltered;
     }
 
@@ -288,7 +300,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     List<ChartPatternSignal> filtered = chartPatternSignals.stream().filter(chartPatternSignal -> {
       try {
         TradeType overdoneTradeType = getOverdoneTradeType(
-            ChartPatternSignalDaoImpl.getCandlestickStart(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame()),
+            CandlestickUtil.getCandlestickStart(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame()),
             chartPatternSignal.timeFrame());
         return chartPatternSignal.tradeType() != overdoneTradeType;
       } catch (ParseException e) {

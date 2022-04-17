@@ -1,6 +1,5 @@
 package com.binance.bot.database;
 
-import com.binance.api.client.domain.OrderStatus;
 import com.binance.bot.tradesignals.*;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -66,21 +65,21 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
         chartPatternSignalBuilder.setEntryOrder(
           ChartPatternSignal.Order.create(
               rs.getInt("entryOrderId"), rs.getDouble("entryExecutedQty"), rs.getDouble("entryAvgPrice"),
-              OrderStatus.valueOf(rs.getString("entryOrderStatus"))));
+              ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("entryOrderStatus"))));
       }
       if (rs.getString("exitStopLossOrderId") != null) {
         chartPatternSignalBuilder.setExitStopLimitOrder(
             ChartPatternSignal.Order.create(
                 rs.getInt("exitStopLossOrderId"), rs.getDouble("exitStopLossOrderExecutedQty"),
                 rs.getDouble("exitStopLossOrderAvgPrice"),
-                OrderStatus.valueOf(rs.getString("exitStopLossOrderStatus"))));
+                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("exitStopLossOrderStatus"))));
       }
-      if (rs.getString("exitMarketOrderId") != null) {
-        chartPatternSignalBuilder.setExitMarketOrder(
+      if (rs.getString("exitOrderId") != null) {
+        chartPatternSignalBuilder.setExitOrder(
             ChartPatternSignal.Order.create(
-                rs.getInt("exitMarketOrderId"), rs.getDouble("exitMarketOrderExecutedQty"),
-                rs.getDouble("exitMarketOrderAvgPrice"),
-                OrderStatus.valueOf(rs.getString("exitMarketOrderStatus"))));
+                rs.getInt("exitOrderId"), rs.getDouble("exitOrderExecutedQty"),
+                rs.getDouble("exitOrderAvgPrice"),
+                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("exitOrderStatus"))));
       }
       chartPatternSignalBuilder.setRealized(rs.getDouble("Realized"));
       chartPatternSignalBuilder.setRealizedPercent(rs.getDouble("RealizedPercent"));

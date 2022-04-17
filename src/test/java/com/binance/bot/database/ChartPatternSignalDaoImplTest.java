@@ -7,6 +7,7 @@ import com.binance.api.client.domain.account.MarginAccount;
 import com.binance.api.client.domain.account.MarginAssetBalance;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
@@ -91,10 +92,10 @@ public class ChartPatternSignalDaoImplTest {
       "    ExitStopLossOrderExecutedQty REAL, \n" +
       "    ExitStopLossOrderAvgPrice REAL, \n" +
       "    ExitStopLossOrderStatus TEXT, \n" +
-      "    ExitMarketOrderId INTEGER, \n" +
-      "    ExitMarketOrderExecutedQty REAL, \n" +
-      "    ExitMarketOrderAvgPrice REAL, \n" +
-      "    ExitMarketOrderStatus TEXT, \n" +
+      "    ExitOrderId INTEGER, \n" +
+      "    ExitOrderExecutedQty REAL, \n" +
+      "    ExitOrderAvgPrice REAL, \n" +
+      "    ExitOrderStatus TEXT, \n" +
       "    Realized REAL, \n" +
       "    RealizedPercent REAL, \n" +
       "    UnRealized REAL, \n" +
@@ -631,7 +632,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.entryOrder().orderId()).isEqualTo(1);
     assertThat(chartPatternSignalInDB.entryOrder().executedQty()).isEqualTo(1.1);
     assertThat(chartPatternSignalInDB.entryOrder().avgPrice()).isEqualTo(2.2);
-    assertThat(chartPatternSignalInDB.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.entryOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
   }
 
   @Test
@@ -648,7 +649,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().executedQty()).isEqualTo(0.0);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().avgPrice()).isEqualTo(0.0);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.NEW);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.OPEN);
     assertThat(chartPatternSignalInDB.realized()).isZero();
     assertThat(chartPatternSignalInDB.realizedPercent()).isZero();
     assertThat(chartPatternSignalInDB.unRealized()).isZero();
@@ -673,7 +674,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().executedQty()).isEqualTo(100.0);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(500.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(2.5);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
@@ -701,7 +702,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().executedQty()).isEqualTo(50.0);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(250.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.25);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(250.0);
@@ -728,7 +729,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().executedQty()).isEqualTo(100.0);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(-500.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(-2.5);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(0.0);
@@ -755,7 +756,7 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().orderId()).isEqualTo(2);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().executedQty()).isEqualTo(50.0);
     assertThat(chartPatternSignalInDB.exitStopLimitOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED);
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(-250.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(-1.25);
     assertThat(chartPatternSignalInDB.unRealized()).isEqualTo(-250.0);
@@ -782,10 +783,10 @@ public class ChartPatternSignalDaoImplTest {
         TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
+    assertThat(chartPatternSignalInDB.exitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED);
     assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(250.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.25);
@@ -812,10 +813,10 @@ public class ChartPatternSignalDaoImplTest {
         TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(205.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.PARTIALLY_FILLED);
+    assertThat(chartPatternSignalInDB.exitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitOrder().avgPrice()).isEqualTo(205.0);
+    assertThat(chartPatternSignalInDB.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED);
     assertThat(chartPatternSignalInDB.isSignalOn()).isTrue();
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.3);
@@ -841,10 +842,10 @@ public class ChartPatternSignalDaoImplTest {
         ChartPatternSignal.Order.create(2, 50, 195, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED)).isTrue();
 
     ChartPatternSignal chartPatternSignalInDB = dao.getChartPattern(chartPatternSignal);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().orderId()).isEqualTo(2);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().executedQty()).isEqualTo(50.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().avgPrice()).isEqualTo(195.0);
-    assertThat(chartPatternSignalInDB.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignalInDB.exitOrder().orderId()).isEqualTo(2);
+    assertThat(chartPatternSignalInDB.exitOrder().executedQty()).isEqualTo(50.0);
+    assertThat(chartPatternSignalInDB.exitOrder().avgPrice()).isEqualTo(195.0);
+    assertThat(chartPatternSignalInDB.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     assertThat(chartPatternSignalInDB.isSignalOn()).isFalse();
     assertThat(chartPatternSignalInDB.realized()).isEqualTo(260.0);
     assertThat(chartPatternSignalInDB.realizedPercent()).isEqualTo(1.3);
@@ -1047,7 +1048,7 @@ public class ChartPatternSignalDaoImplTest {
     dao.cancelStopLimitOrder(chartPatternSignalInDB);
 
     chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
-    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
+    assertThat(chartPatternSignalInDB.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.CANCELED);
   }
 
   @Test
@@ -1121,21 +1122,21 @@ public class ChartPatternSignalDaoImplTest {
   @Test
   public void testRoundFifteenMinute() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 21:47");
-    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FIFTEEN_MINUTES);
+    Date roundedDate = CandlestickUtil.getCandlestickStart(date, TimeFrame.FIFTEEN_MINUTES);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 21:45"));
   }
 
   @Test
   public void testRoundHour() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 23:47");
-    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.HOUR);
+    Date roundedDate = CandlestickUtil.getCandlestickStart(date, TimeFrame.HOUR);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 23:00"));
   }
 
   @Test
   public void testRoundFourHour() throws ParseException {
     Date date = dateFormat.parse("2022-01-02 23:17");
-    Date roundedDate = dao.getCandlestickStart(date, TimeFrame.FOUR_HOURS);
+    Date roundedDate = CandlestickUtil.getCandlestickStart(date, TimeFrame.FOUR_HOURS);
     assertThat(roundedDate).isEqualTo(dateFormat.parse("2022-01-02 20:00"));
   }
 

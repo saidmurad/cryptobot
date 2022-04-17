@@ -2,7 +2,6 @@ package com.binance.bot.tradesignals;
 
 import com.binance.api.client.domain.OrderStatus;
 import com.google.auto.value.AutoValue;
-import io.gate.gateapi.models.Order;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +53,7 @@ public abstract class ChartPatternSignal {
   public String toStringOrderValues() {
     return toString() + String.format("\nEntry Order: %s\nExit Stop Limit Order: %s\nExit Market Order: %s.",
         entryOrder() != null ? entryOrder() : "", exitStopLimitOrder() != null ? exitStopLimitOrder() : "",
-        exitMarketOrder() != null ? exitMarketOrder() : "");
+        exitOrder() != null ? exitOrder() : "");
   }
   @Override
   public boolean equals(Object that) {
@@ -164,6 +163,11 @@ public abstract class ChartPatternSignal {
 
     public abstract OrderStatusInt status();
 
+    // For use by the Dao mapper.
+    public static AutoValue_ChartPatternSignal_Order create(
+        long orderId, double executedQty, double avgPrice, OrderStatusInt status) {
+      return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice, status);
+    }
     public static AutoValue_ChartPatternSignal_Order create(
         long orderId, double executedQty, double avgPrice, OrderStatus status) {
       return new AutoValue_ChartPatternSignal_Order(orderId, executedQty, avgPrice,
@@ -217,7 +221,7 @@ public abstract class ChartPatternSignal {
   public abstract Order exitStopLimitOrder();
 
   @Nullable
-  public abstract Order exitMarketOrder();
+  public abstract Order exitOrder();
 
   @Nullable
   public abstract Boolean isPositionExited();
@@ -327,7 +331,7 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setExitStopLimitOrder(Order exitStopLimitOrder);
 
-    public abstract Builder setExitMarketOrder(Order exitMarketOrder);
+    public abstract Builder setExitOrder(Order exitOrder);
 
     public abstract Builder setIsPositionExited(Boolean isPositionExited);
 
@@ -391,7 +395,7 @@ public abstract class ChartPatternSignal {
           .setIsInsertedLate(that.isInsertedLate())
           .setEntryOrder(that.entryOrder())
           .setExitStopLimitOrder(that.exitStopLimitOrder())
-          .setExitMarketOrder(that.exitMarketOrder())
+          .setExitOrder(that.exitOrder())
           .setIsPositionExited(that.isPositionExited())
           .setTenCandlestickTime(that.tenCandlestickTime())
           .setMaxLoss(that.maxLoss())

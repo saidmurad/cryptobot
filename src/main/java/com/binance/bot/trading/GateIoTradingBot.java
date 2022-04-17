@@ -1,19 +1,11 @@
 package com.binance.bot.trading;
 
-import com.binance.api.client.BinanceApiClientFactory;
-import com.binance.api.client.BinanceApiMarginRestClient;
-import com.binance.api.client.BinanceApiRestClient;
-import com.binance.api.client.domain.OrderSide;
-import com.binance.api.client.domain.OrderType;
-import com.binance.api.client.domain.TimeInForce;
-import com.binance.api.client.domain.account.*;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.OutstandingTrades;
-import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
@@ -40,7 +32,6 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.binance.bot.tradesignals.TimeFrame.FIFTEEN_MINUTES;
 
@@ -51,11 +42,13 @@ public class GateIoTradingBot {
   private final ChartPatternSignalDaoImpl dao;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final Logger logger = LoggerFactory.getLogger(getClass());
-  private final Set<String> marginCurrencyPairs;
+  private final List<CurrencyPair> spotCurrencyPairs;
   private Mailer mailer = new Mailer();
   private final OutstandingTrades outstandingTrades;
   private final CandlestickUtil candlestickUtil = new CandlestickUtil();
   private final MACDDataDao macdDataDao;
+
+  private final List<MarginCurrencyPair> marginCurrencyPairs;
 
   @Value("${per_trade_amount}")
   public
@@ -99,8 +92,8 @@ public class GateIoTradingBot {
     this.dao = dao;
     this.macdDataDao = macdDataDao;
     this.outstandingTrades = outstandingTrades;
-    marginCurrencyPairs = marginClient.listMarginCurrencyPairs().stream()
-        .map(pair->pair.getId()).collect(Collectors.toSet());
+    marginCurrencyPairs = marginClient.listMarginCurrencyPairs();
+    this.spotCurrencyPairs = spotClient.listCurrencyPairs();
   }
 
   void setMockMailer(Mailer mailer) {
@@ -147,14 +140,22 @@ public class GateIoTradingBot {
               timeFrames[i], tradeTypes[j], useAltfinsInvalidations);
           for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
             try {
+              String coinPair = Util.getGateFormattedCurrencyPair(chartPatternSignal);
               if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                   || (chartPatternSignal.profitPotentialPercent() >= 0.5
-                  && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
-                  && marginCurrencyPairs.contains(Util.getGateFormattedCurrencyPair(chartPatternSignal))) {
-                int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
-                if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]) {
-                  if (!entryDeniedBasedOnMACD(chartPatternSignal)) {
-                    placeTrade(chartPatternSignal, numOutstandingTrades);
+                  && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))) {
+                Optional<MarginCurrencyPair> marginCurrencyPair =
+                    marginCurrencyPairs.stream().filter(pair -> pair.getId().equals(coinPair)).findFirst();
+                if (marginCurrencyPair.isPresent()) {
+                  CurrencyPair currencyPair = spotCurrencyPairs.stream().filter(pair -> pair.getId().equals(coinPair)).findFirst().get();
+                  if (chartPatternSignal.tradeType() == TradeType.BUY && currencyPair.getTradeStatus() == CurrencyPair.TradeStatusEnum.BUYABLE
+                      || chartPatternSignal.tradeType() == TradeType.SELL && currencyPair.getTradeStatus() == CurrencyPair.TradeStatusEnum.SELLABLE) {
+                    int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
+                    if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]) {
+                      if (!entryDeniedBasedOnMACD(chartPatternSignal)) {
+                        placeTrade(chartPatternSignal, numOutstandingTrades, currencyPair);
+                      }
+                    }
                   }
                 }
               }
@@ -267,15 +268,17 @@ public class GateIoTradingBot {
     return Pair.of(usdtFree, (int) (moreBorrowableVal));
   }
 
-  private static final double MIN_NOTIONAL_USDT = 5.0;
-  public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades) throws ParseException, BinanceApiException, MessagingException, ApiException {
+  public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades, CurrencyPair spotCurrencyPair) throws ParseException, BinanceApiException, MessagingException, ApiException {
     Pair<Integer, Integer> accountBalance = getAccountBalance();
-    double minNotionalAdjustedForStopLoss =
-        getMinNotionalAdjustedForStopLoss(MIN_NOTIONAL_USDT, stopLimitPercent);
-    double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
     String currencyPair = Util.getGateFormattedCurrencyPair(chartPatternSignal);
     Ticker ticker = spotClient.listTickers().currencyPair(currencyPair).execute().get(0);
     double entryPrice = getEntryPrice(chartPatternSignal.tradeType(), ticker);
+    double minNotionalValueInUSDT = numberFormat.parse(spotCurrencyPair.getMinQuoteAmount()).doubleValue();
+    double minBaseAssetValueInUSDT = numberFormat.parse(spotCurrencyPair.getMinBaseAmount()).doubleValue() * entryPrice;
+    double minOrderValueInUSDT = Math.max(minNotionalValueInUSDT, minBaseAssetValueInUSDT);
+    double minNotionalAdjustedForStopLoss =
+        getMinNotionalAdjustedForStopLoss(minOrderValueInUSDT, stopLimitPercent);
+    double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
     // Determine trade feasibility and borrow required quantity.
     switch (chartPatternSignal.tradeType()) {
       case BUY:
@@ -298,12 +301,13 @@ public class GateIoTradingBot {
         break;
       case SELL:
         if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
-          double numCoinsToBorrow = tradeValueInUSDTToDo / entryPrice;
+          String numCoinsToBorrow = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice,
+              spotCurrencyPair.getAmountPrecision());
           String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
           logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
           CrossMarginLoan loan = new CrossMarginLoan();
           loan.setCurrency(baseAsset);
-          loan.setAmount(Double.toString(numCoinsToBorrow));
+          loan.setAmount(numCoinsToBorrow);
           marginClient.createCrossMarginLoan(loan);
         } else {
           String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
@@ -313,7 +317,8 @@ public class GateIoTradingBot {
         }
       default:
     }
-    String roundedQuantity = Double.toString(tradeValueInUSDTToDo / entryPrice);
+    String roundedQuantity = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice,
+        spotCurrencyPair.getAmountPrecision());
 
     Order.SideEnum orderSide;
     int sign;

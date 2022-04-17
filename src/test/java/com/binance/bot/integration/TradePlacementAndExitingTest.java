@@ -104,11 +104,11 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.isSignalOn()).isFalse();
     assertThat(chartPatternSignal.isPositionExited()).isTrue();
     assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
-    assertThat(chartPatternSignal.exitMarketOrder()).isNotNull();
-    assertThat(chartPatternSignal.exitMarketOrder().status()).isEqualTo(OrderStatus.FILLED);
-    assertThat(chartPatternSignal.exitMarketOrder().executedQty()).isEqualTo(chartPatternSignal.exitMarketOrder().executedQty());
-    assertThat(Math.abs(chartPatternSignal.exitMarketOrder().avgPrice() - currPrice)).isLessThan(5.0);
-    double realizedPercent = (chartPatternSignal.exitMarketOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
+    assertThat(chartPatternSignal.exitOrder()).isNotNull();
+    assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignal.exitOrder().executedQty()).isEqualTo(chartPatternSignal.exitOrder().executedQty());
+    assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
+    double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
     assertThat(isCloseEnough(chartPatternSignal.realized(), realized)).isTrue();
     assertThat(isCloseEnough(chartPatternSignal.realizedPercent(), realizedPercent)).isTrue();

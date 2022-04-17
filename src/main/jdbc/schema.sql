@@ -20,7 +20,11 @@ Create Table ChartPatternSignal(
     ProfitPercentAtTenCandlestickTime REAL,
     PriceBestReached REAL,
     PriceCurrent REAL,
-    CurrentTime TEXT
+    CurrentTime TEXT,
+    ExitOrderId INTEGER,
+    ExitOrderExecutedQty REAL,
+    ExitOrderAvgPrice REAL,
+    ExitOrderStatus TEXT
 );
 PRIMARY KEY (CoinPair, TimeFrame, TradeType, Pattern, TimeOfSignal)
 
@@ -69,3 +73,5 @@ alter statements pending:
 isInsertedLate no longer used.
 2. priceAtTimeOfSignalReal is no longe rused as the entery marekt order will give that price.
 2. exit columns for stop loss replace previous limit order column ExitLimitOrderId, not used now. need to drop unused cols for limit exit.
+3. Fro exit market order single set ofcolumsn ExitOrderId etc, not separate market order tracking for Profit taking and
+ for time elapsed exit, not using the term ExitMarketorder because in the case of GateIo it is always a limit order.

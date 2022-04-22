@@ -40,7 +40,7 @@ public class OrderMonitoringGateIo {
   public void run() throws ApiException, ParseException {
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {
-      String currencyPair = Util.getGateFormattedCurrencyPair(activePosition);
+      String currencyPair = Util.getGateFormattedCurrencyPair(activePosition.coinPair());
       if (activePosition.entryOrder().status() == ChartPatternSignal.Order.OrderStatusInt.OPEN) {
         Order entryOrderStatus = spotApi.getOrder(Long.toString(activePosition.entryOrder().orderId()),
             currencyPair,
@@ -91,7 +91,7 @@ public class OrderMonitoringGateIo {
   private void setExitOrder(ChartPatternSignal activePosition, TradeExitType tradeExitType) throws ApiException, ParseException {
     Order order = new Order();
     order.setAccount(Order.AccountEnum.CROSS_MARGIN);
-    String currencyPair = Util.getGateFormattedCurrencyPair(activePosition);
+    String currencyPair = Util.getGateFormattedCurrencyPair(activePosition.coinPair());
     order.setCurrencyPair(currencyPair);
     order.setType(Order.TypeEnum.LIMIT);
     order.setSide(activePosition.tradeType() == TradeType.BUY? Order.SideEnum.SELL: Order.SideEnum.BUY);

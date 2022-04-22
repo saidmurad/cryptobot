@@ -178,7 +178,6 @@ public class ExitPositionAtMarketPriceTest {
     verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
-    verify(mockRepayBorrowedOnMargin).repay("USDT", 10.0);
     verify(mockDao).writeAccountBalanceToDB();
     verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
   }

@@ -140,7 +140,7 @@ public class GateIoTradingBot {
               timeFrames[i], tradeTypes[j], useAltfinsInvalidations);
           for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
             try {
-              String coinPair = Util.getGateFormattedCurrencyPair(chartPatternSignal);
+              String coinPair = Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair());
               if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                   || (chartPatternSignal.profitPotentialPercent() >= 0.5
                   && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))) {
@@ -172,7 +172,7 @@ public class GateIoTradingBot {
   private boolean entryDeniedBasedOnMACD(ChartPatternSignal chartPatternSignal) {
     if (!useMACDForEntry) return false;
     MACDData lastCandlestickMACD = macdDataDao.getMACDDataForCandlestick(
-        Util.getGateFormattedCurrencyPair(chartPatternSignal),
+        Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()),
         chartPatternSignal.timeFrame(),
         candlestickUtil.getIthCandlestickTime(
             chartPatternSignal.timeOfSignal(),
@@ -270,7 +270,7 @@ public class GateIoTradingBot {
 
   public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades, CurrencyPair spotCurrencyPair) throws ParseException, BinanceApiException, MessagingException, ApiException {
     Pair<Integer, Integer> accountBalance = getAccountBalance();
-    String currencyPair = Util.getGateFormattedCurrencyPair(chartPatternSignal);
+    String currencyPair = Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair());
     Ticker ticker = spotClient.listTickers().currencyPair(currencyPair).execute().get(0);
     double entryPrice = getEntryPrice(chartPatternSignal.tradeType(), ticker);
     double minNotionalValueInUSDT = numberFormat.parse(spotCurrencyPair.getMinQuoteAmount()).doubleValue();

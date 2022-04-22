@@ -64,8 +64,7 @@ public class Util {
     return numberFormat.parse(price).doubleValue();
   }
 
-  public static String getGateFormattedCurrencyPair(ChartPatternSignal chartPatternSignal) {
-    String currencyPair = chartPatternSignal.coinPair();
+  public static String getGateFormattedCurrencyPair(String currencyPair) {
     return currencyPair.substring(0, currencyPair.length() - 4) + "_USDT";
   }
 }

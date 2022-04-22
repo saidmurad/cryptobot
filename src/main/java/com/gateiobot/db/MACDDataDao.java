@@ -1,16 +1,20 @@
 package com.gateiobot.db;
 
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
 import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import com.binance.bot.tradesignals.TimeFrame;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -19,15 +23,21 @@ import java.util.TimeZone;
 @Repository
 public class MACDDataDao {
   @Autowired
-  public JdbcTemplate jdbcTemplate;
+  JdbcTemplate jdbcTemplate;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  Clock clock = Clock.systemDefaultZone();
+
   @Autowired
   public MACDDataDao() {
     if (jdbcTemplate != null) {
       jdbcTemplate.execute("pragma journal_mode=WAL");
     }
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
+
+  public void setMockClock(Clock clock) {
+    this.clock = clock;
   }
 
   synchronized public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
@@ -70,7 +80,11 @@ public class MACDDataDao {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATETime(Time) = DATETime('%s')",
         coinPair, timeFrame.name(), dateFormat.format(time));
-    return jdbcTemplate.queryForObject(sql, new MACDDataRowMapper());
+    try {
+      return jdbcTemplate.queryForObject(sql, new MACDDataRowMapper());
+    } catch (EmptyResultDataAccessException ex) {
+      return null;
+    }
   }
 
   synchronized private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
@@ -174,5 +188,11 @@ public class MACDDataDao {
           macdData, ret));
     }
     return;
+  }
+
+  public MACDData getLastMACDData(String coinPair, TimeFrame timeFrame) throws ParseException {
+    Date currentCandlestickStart = CandlestickUtil.getCandlestickStart(new Date(clock.millis()), timeFrame);
+    Date lastCandlestickStart = CandlestickUtil.getIthCandlestickTime(currentCandlestickStart, timeFrame, -1);
+    return getMACDDataForCandlestick(coinPair, timeFrame, lastCandlestickStart);
   }
 }

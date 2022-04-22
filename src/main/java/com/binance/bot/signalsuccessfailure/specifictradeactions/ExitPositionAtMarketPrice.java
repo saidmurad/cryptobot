@@ -129,9 +129,7 @@ public class ExitPositionAtMarketPrice {
           ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
               executedQty,
               avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);
-      if (chartPatternSignal.tradeType() == TradeType.BUY) {
-        repayBorrowedOnMargin.repay("USDT", executedQty * avgTradePrice);
-      } else {
+      if (chartPatternSignal.tradeType() == TradeType.SELL){
         repayBorrowedOnMargin.repay(baseAsset, executedQty);
       }
       if (!doNotDecrementNumOutstandingTrades) {

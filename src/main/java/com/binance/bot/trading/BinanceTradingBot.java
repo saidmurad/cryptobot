@@ -16,6 +16,8 @@ import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.gateiobot.db.MACDData;
+import com.gateiobot.db.MACDDataDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,8 +47,11 @@ public class BinanceTradingBot {
     private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
+    private final RepayBorrowedOnMargin repayBorrowedOnMargin;
     private Mailer mailer = new Mailer();
     private final OutstandingTrades outstandingTrades;
+    private final MACDDataDao macdDataDao;
+
     @Value("${per_trade_amount}")
     public
     double perTradeAmountConfigured;
@@ -73,22 +78,32 @@ public class BinanceTradingBot {
     int lateTimeFourHourlyTimeFrame;
     @Value("${late_time_daily_timeframe}")
     int lateTimeDailyTimeFrame;
+    // Enter trade if MACD value has the same sign (+/-) as the trade type, so far this was the only entry strategy
+    // seemingly profitable.
+    @Value("${entry_using_macd}")
+    boolean entry_using_macd;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
     @Value("${use_altfins_invalidations}")
     boolean useAltfinsInvalidations;
+    private MarginAccount account;
+    private BookTickerPrices.BookTicker btcPrice;
 
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ChartPatternSignalDaoImpl dao,
                              BookTickerPrices bookTickerPrices,
-                             OutstandingTrades outstandingTrades) {
+                             OutstandingTrades outstandingTrades,
+                             RepayBorrowedOnMargin repayBorrowedOnMargin,
+                             MACDDataDao macdDataDao) {
         this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.binanceApiMarginRestClient = binanceApiRestClientFactory.newMarginRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
         this.bookTickerPrices = bookTickerPrices;
         this.outstandingTrades = outstandingTrades;
+        this.repayBorrowedOnMargin = repayBorrowedOnMargin;
+        this.macdDataDao = macdDataDao;
     }
 
     void setMockMailer(Mailer mailer) {
@@ -140,7 +155,8 @@ public class BinanceTradingBot {
                                 && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
                                 && isActiveSymbolAndMarginAllowed(chartPatternSignal.coinPair())) {
                                 int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
-                                if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]) {
+                                if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]
+                                && (!entry_using_macd || canEnterBasedOnMACD(chartPatternSignal))) {
                                   placeTrade(chartPatternSignal, numOutstandingTrades);
                                 }
                             }
@@ -152,6 +168,12 @@ public class BinanceTradingBot {
                 }
             }
         }
+    }
+
+    private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException {
+        MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
+        return chartPatternSignal.tradeType() == TradeType.BUY && lastMACD.macd > 0
+            || chartPatternSignal.tradeType() == TradeType.SELL && lastMACD.macd < 0;
     }
 
     private boolean isActiveSymbolAndMarginAllowed(String coinPair) throws BinanceApiException {
@@ -219,14 +241,14 @@ public class BinanceTradingBot {
 
     /** Return Pair of usdt free and value in usdt available to borrow. **/
     Pair<Integer, Integer> getAccountBalance() throws ParseException, BinanceApiException {
-        MarginAccount account = binanceApiMarginRestClient.getAccount();
+        this.account = binanceApiMarginRestClient.getAccount();
         int usdtFree = numberFormat.parse(account.getAssetBalance("USDT").getFree()).intValue();
         double marginLevel = numberFormat.parse(account.getMarginLevel()).doubleValue();
         double netBtcVal = numberFormat.parse(account.getTotalNetAssetOfBtc()).doubleValue();
         double totalBtcVal = numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue();
         double liabBtcVal = numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue();
         double moreBorrowableVal;
-        BookTickerPrices.BookTicker btcPrice = bookTickerPrices.getBookTicker("BTCUSDT");
+        btcPrice = bookTickerPrices.getBookTicker("BTCUSDT");
         if (marginLevel > minMarginLevel) {
             /**
              * totalBtcVal + moreBorrow / (liabVal + morebOrrow) = minMarginLevel
@@ -276,16 +298,25 @@ public class BinanceTradingBot {
                 }
                 break;
             case SELL:
+                String numCoinsToBorrow = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
+                String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
                 if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
-                    String numCoinsToBorrow = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
-                    String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
                     logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
                     binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
                 } else {
-                    String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
-                    logger.warn(msg);
-                    mailer.sendEmail("Insufficient funds.", msg);
-                    return;
+                    int usdtToBeRepaidToAllowBorrowToSell = usdtToBeRepaidToAllowBorrowToSell(tradeValueInUSDTToDo);
+                    if (usdtToBeRepaidToAllowBorrowToSell > 0) {
+                        logger.info(String.format("Repaying %d USDT to make room for borrowing %s coins of '%s'.",
+                            usdtToBeRepaidToAllowBorrowToSell, numCoinsToBorrow, Util.getBaseAsset(chartPatternSignal.coinPair())));
+                        repayBorrowedOnMargin.repay("USDT", usdtToBeRepaidToAllowBorrowToSell);
+                        logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
+                        binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
+                    } else {
+                        String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
+                        logger.warn(msg);
+                        mailer.sendEmail("Insufficient funds.", msg);
+                        return;
+                    }
                 }
             default:
         }
@@ -341,6 +372,26 @@ public class BinanceTradingBot {
                 0,0,
                 stopLossOrderResp.getStatus()));
         dao.writeAccountBalanceToDB();
+    }
+
+    private int usdtToBeRepaidToAllowBorrowToSell(double tradeValueInUSDTToDo) throws ParseException {
+        MarginAssetBalance usdtBalance = account.getAssetBalance("USDT");
+      int usdtFree = numberFormat.parse(usdtBalance.getFree()).intValue();
+      int usdtBorrowed = numberFormat.parse(usdtBalance.getBorrowed()).intValue();
+      int usdtToRepay;
+      if (usdtFree < usdtBorrowed) {
+          usdtToRepay = usdtFree;
+      } else {
+          usdtToRepay = usdtBorrowed;
+      }
+      double moreToBorrowForTrade = tradeValueInUSDTToDo  - usdtToRepay;
+        double newLiabBtc = moreToBorrowForTrade / btcPrice.bestAsk();
+        double totalBtcVal = numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue() + newLiabBtc;
+      double liabBtcVal = numberFormat.parse(account.getTotalLiabilityOfBtc()).doubleValue() + newLiabBtc;
+      if (totalBtcVal / liabBtcVal >= 1.5) {
+          return usdtToRepay;
+      }
+      return -1;
     }
 
     private double getMinNotionalAdjustedForStopLoss(Double minNotional, double stopLossPercent) {

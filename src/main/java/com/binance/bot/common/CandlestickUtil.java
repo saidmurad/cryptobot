@@ -54,7 +54,7 @@ public class CandlestickUtil {
     return df.parse(candlestickStartTimeStr);
   }
 
-  public Date getIthCandlestickTime(Date beginCandlestick, TimeFrame timeFrame, int i) {
+  public static Date getIthCandlestickTime(Date beginCandlestick, TimeFrame timeFrame, int i) {
     switch (timeFrame) {
       case FIFTEEN_MINUTES:
         return DateUtils.addMinutes(beginCandlestick, 15 * i);

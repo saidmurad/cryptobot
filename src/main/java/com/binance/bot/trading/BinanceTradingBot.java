@@ -162,7 +162,7 @@ public class BinanceTradingBot {
                             }
                         } catch (Exception ex) {
                             logger.error("Exception.", ex);
-                            mailer.sendEmail("Exception in BinanceTradingBot", ex.getMessage());
+                            mailer.sendEmail("Exception in BinanceTradingBot", ex.getMessage() != null? ex.getMessage() : ex.getClass().getName());
                         }
                     }
                 }
@@ -170,8 +170,13 @@ public class BinanceTradingBot {
         }
     }
 
-    private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException {
+    private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
         MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
+        if (lastMACD == null) {
+            logger.error("Got null last MACD data for cps " + chartPatternSignal);
+            mailer.sendEmail("Missing MACD data", "Got null last MACD data for cps " + chartPatternSignal);
+            return false;
+        }
         return chartPatternSignal.tradeType() == TradeType.BUY && lastMACD.macd > 0
             || chartPatternSignal.tradeType() == TradeType.SELL && lastMACD.macd < 0;
     }

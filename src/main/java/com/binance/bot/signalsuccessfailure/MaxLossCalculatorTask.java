@@ -4,6 +4,7 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -15,6 +16,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -27,6 +29,7 @@ public class MaxLossCalculatorTask {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final Logger logger = LoggerFactory.getLogger(getClass());
+  private Mailer mailer = new Mailer();
 
   @Autowired
   MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, BinanceApiClientFactory binanceApiClientFactory,
@@ -37,70 +40,75 @@ public class MaxLossCalculatorTask {
   }
 
   @Scheduled(fixedDelay = 600000, initialDelayString = "${timing.initialDelay}")
-  public void perform() throws ParseException, InterruptedException, IOException, BinanceApiException {
-    List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
-    logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
-        chartPatternSignals.size()));
-    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
-      HeartBeatChecker.logHeartBeat(getClass());
-      if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-        continue;
-      }
-      Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
-      long maxLossTime = 0;
-      Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
-      boolean isProfitTargetMet = false;
-      long targetMetTime = 0;
-      long signalTime = chartPatternSignal.timeOfSignal().getTime();
-      long signalTargetTime = chartPatternSignal.priceTargetTime().getTime();
-      boolean firstIteration = true;
-      boolean isDone = false;
-      Long fromId = null;
-      long beginTime = System.currentTimeMillis();
-      while (!isDone) {
-        // Heart beat every 5 minutes.
-        if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
-          HeartBeatChecker.logHeartBeat(getClass());
+  public void perform() throws MessagingException {
+    try {
+      List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
+      logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
+          chartPatternSignals.size()));
+      for (ChartPatternSignal chartPatternSignal : chartPatternSignals) {
+        HeartBeatChecker.logHeartBeat(getClass());
+        if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+          continue;
         }
-        List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
-            chartPatternSignal.coinPair(), fromId == null? null : Long.toString(fromId), 1000,
-            firstIteration ? signalTime : null, firstIteration? getToTime(signalTime, chartPatternSignal) : null);
-        firstIteration = false;
-        if (aggTrades.isEmpty()) {
-          isDone = true;
-        }
-        for (AggTrade aggTrade: aggTrades) {
-          if (aggTrade.getTradeTime() > signalTargetTime) {
+        Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
+        long maxLossTime = 0;
+        Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
+        boolean isProfitTargetMet = false;
+        long targetMetTime = 0;
+        long signalTime = chartPatternSignal.timeOfSignal().getTime();
+        long signalTargetTime = chartPatternSignal.priceTargetTime().getTime();
+        boolean firstIteration = true;
+        boolean isDone = false;
+        Long fromId = null;
+        long beginTime = System.currentTimeMillis();
+        while (!isDone) {
+          // Heart beat every 5 minutes.
+          if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
+            HeartBeatChecker.logHeartBeat(getClass());
+          }
+          List<AggTrade> aggTrades = binanceApiRestClient.getAggTrades(
+              chartPatternSignal.coinPair(), fromId == null ? null : Long.toString(fromId), 1000,
+              firstIteration ? signalTime : null, firstIteration ? getToTime(signalTime, chartPatternSignal) : null);
+          firstIteration = false;
+          if (aggTrades.isEmpty()) {
             isDone = true;
-            break;
           }
-          Pair<Double, Double> newMaxLossAndPercent =
-              getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade, lossPercentageAndTimeMap);
-          if (newMaxLossAndPercent.getFirst() > maxLossAndPercent.getFirst()) {
-            maxLossTime = aggTrade.getTradeTime();
+          for (AggTrade aggTrade : aggTrades) {
+            if (aggTrade.getTradeTime() > signalTargetTime) {
+              isDone = true;
+              break;
+            }
+            Pair<Double, Double> newMaxLossAndPercent =
+                getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade, lossPercentageAndTimeMap);
+            if (newMaxLossAndPercent.getFirst() > maxLossAndPercent.getFirst()) {
+              maxLossTime = aggTrade.getTradeTime();
+            }
+            maxLossAndPercent = newMaxLossAndPercent;
+            if (!isProfitTargetMet && isTargetMet(chartPatternSignal, aggTrade)) {
+              isProfitTargetMet = true;
+              targetMetTime = aggTrade.getTradeTime();
+            }
           }
-          maxLossAndPercent = newMaxLossAndPercent;
-          if (!isProfitTargetMet && isTargetMet(chartPatternSignal, aggTrade)) {
-            isProfitTargetMet = true;
-            targetMetTime = aggTrade.getTradeTime();
+          if (!isDone) {
+            // For the next batch's fromId.
+            fromId = aggTrades.get(aggTrades.size() - 1).getAggregatedTradeId() + 1;
           }
         }
-        if (!isDone) {
-          // For the next batch's fromId.
-          fromId = aggTrades.get(aggTrades.size() - 1).getAggregatedTradeId() + 1;
-        }
-      }
       /*logger.info(String.format("Getting all aggTrades took %d seconds.",
           (System.currentTimeMillis() - beginTime) / 1000));*/
-      ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
-          .copy(chartPatternSignal)
-          .setMaxLoss(maxLossAndPercent.getFirst())
-          .setMaxLossPercent(maxLossAndPercent.getSecond())
-          .setMaxLossTime(maxLossTime > 0 ? new Date(maxLossTime) : null)
-          .setIsPriceTargetMet(isProfitTargetMet)
-          .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)
-          .build();
-      dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
+        ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
+            .copy(chartPatternSignal)
+            .setMaxLoss(maxLossAndPercent.getFirst())
+            .setMaxLossPercent(maxLossAndPercent.getSecond())
+            .setMaxLossTime(maxLossTime > 0 ? new Date(maxLossTime) : null)
+            .setIsPriceTargetMet(isProfitTargetMet)
+            .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)
+            .build();
+        dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
+      }
+    } catch (Exception ex) {
+      logger.error("Exception.", ex);
+      mailer.sendEmail("Exception in MaxLossCalculatorTask.", ex.getMessage() != null? ex.getMessage() : ex.getClass().getName());
     }
   }
 

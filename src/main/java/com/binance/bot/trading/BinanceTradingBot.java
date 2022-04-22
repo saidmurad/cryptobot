@@ -80,7 +80,7 @@ public class BinanceTradingBot {
     int lateTimeDailyTimeFrame;
     // Enter trade if MACD value has the same sign (+/-) as the trade type, so far this was the only entry strategy
     // seemingly profitable.
-    @Value("${entry_using_macd}")
+    @Value("${use_macd_for_entry}")
     boolean entry_using_macd;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
     @Value("${use_altfins_invalidations}")

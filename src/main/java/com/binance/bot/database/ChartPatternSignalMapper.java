@@ -61,25 +61,25 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setMaxLossTime(rs.getString("MaxLossTime") != null? dateFormat.parse(rs.getString("MaxLossTime")): null)
           .setIsPriceTargetMet(rs.getString("IsPriceTargetMet") != null? rs.getInt("IsPriceTargetMet") == 1 : null)
           .setPriceTargetMetTime(rs.getString("PriceTargetMetTime") != null? dateFormat.parse(rs.getString("PriceTargetMetTime")): null);
-      if (rs.getString("entryOrderId") != null) {
+      if (rs.getString("EntryOrderId") != null) {
         chartPatternSignalBuilder.setEntryOrder(
           ChartPatternSignal.Order.create(
-              rs.getInt("entryOrderId"), rs.getDouble("entryExecutedQty"), rs.getDouble("entryAvgPrice"),
-              ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("entryOrderStatus"))));
+              rs.getInt("EntryOrderId"), rs.getDouble("EntryExecutedQty"), rs.getDouble("EntryAvgPrice"),
+              ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("EntryOrderStatus"))));
       }
-      if (rs.getString("exitStopLossOrderId") != null) {
+      if (rs.getString("ExitStopLossOrderId") != null) {
         chartPatternSignalBuilder.setExitStopLimitOrder(
             ChartPatternSignal.Order.create(
-                rs.getInt("exitStopLossOrderId"), rs.getDouble("exitStopLossOrderExecutedQty"),
-                rs.getDouble("exitStopLossAvgPrice"),
-                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("exitStopLossOrderStatus"))));
+                rs.getInt("ExitStopLossOrderId"), rs.getDouble("ExitStopLossOrderExecutedQty"),
+                rs.getDouble("ExitStopLossAvgPrice"),
+                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("ExitStopLossOrderStatus"))));
       }
-      if (rs.getString("exitOrderId") != null) {
+      if (rs.getString("ExitOrderId") != null) {
         chartPatternSignalBuilder.setExitOrder(
             ChartPatternSignal.Order.create(
-                rs.getInt("exitOrderId"), rs.getDouble("exitOrderExecutedQty"),
-                rs.getDouble("exitOrderAvgPrice"),
-                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("exitOrderStatus"))));
+                rs.getInt("ExitOrderId"), rs.getDouble("ExitOrderExecutedQty"),
+                rs.getDouble("ExitOrderAvgPrice"),
+                ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("ExitOrderStatus"))));
       }
       chartPatternSignalBuilder.setRealized(rs.getDouble("Realized"));
       chartPatternSignalBuilder.setRealizedPercent(rs.getDouble("RealizedPercent"));

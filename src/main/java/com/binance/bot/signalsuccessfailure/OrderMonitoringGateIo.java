@@ -36,7 +36,7 @@ public class OrderMonitoringGateIo {
   }
   private final Logger logger = LoggerFactory.getLogger(getClass());
 
-  @Scheduled(fixedDelay = 60000)
+  //@Scheduled(fixedDelay = 60000)
   public void run() throws ApiException, ParseException {
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {

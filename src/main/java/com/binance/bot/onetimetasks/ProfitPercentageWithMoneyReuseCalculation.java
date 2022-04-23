@@ -54,13 +54,13 @@ import static java.util.stream.Collectors.toList;
  */
 @Component
 public class ProfitPercentageWithMoneyReuseCalculation {
-  private static final double STOP_LOSS_PERCENT = 35;
+  private static final double STOP_LOSS_PERCENT = 10;
   private static final boolean USE_MARGIN = true;
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   private static final boolean USE_SIGNAL_INVALIDATIONS = false;
-  private final boolean useHistogramTrend = true;
+  private final boolean useMACDForEntrySameSignAsTradeType = true;
   // Uses MACD line above or below signal line to determine entry to long or short respectively.
-  private final boolean useMACDForEntry = false;
+  private final boolean useHistogramForEntry = false;
   // Uses MACD signal line crossover to exit trade. No other conditions are used other than this.
   private final boolean useMACDForExit = false;
   private final boolean useHistogramTrendReversalForExit = false;
@@ -91,15 +91,15 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       "TimeFrame == 'FIFTEEN_MINUTES' " +
       "order by TimeOfSignal";
   // TODO:    remove pice already jumped cases from query.
-  private static final String QUERY_USING_HISTOGRAM_TREND = "Select cps.* from ChartPatternSignal cps, MACDData macd \n" +
+  private static final String QUERY_USING_MACD_SAME_SIGN_AS_TRADE_TYPE = "Select cps.* from ChartPatternSignal cps, MACDData macd \n" +
       "  where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and cps.CoinPair = replace(macd.CoinPair, '_', '') and \n" +
       "      ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and \n" +
       //" DateTime(cps.TimeOfSignal)>=DateTime('2022-03-01 00:00') and " +
-      " DateTime(cps.TimeOfSignal)<=DateTime('2022-03-21 00:00') and " +
+      " DateTime(cps.TimeOfSignal)<=DateTime('2022-04-23 00:00') and " +
       "      ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and \n" +
       "      ((cps.TradeType='BUY' and macd.macd >=0) or \n" +
       "      (cps.TradeType='SELL' and macd.macd <=0)) and " +
-      " (cps.TimeFrame = 'HOUR' or cps.TimeFrame='FOUR_HOURS') " +
+      " (cps.TimeFrame = 'FIFTEEN_MINUTES') " +
       "order by TimeOfSignal";
   private final Map<String, CrossMarginPair> symbolAndIsMarginTradingAllowed = new HashMap<>();
   private final ChartPatternSignalDaoImpl dao;
@@ -184,8 +184,8 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     List<ChartPatternSignal> chartPatternSignals;
     if (USE_SIGNAL_INVALIDATIONS) {
       chartPatternSignals = jdbcTemplate.query(QUERY_USING_INVALIDATIONS, new ChartPatternSignalMapper());
-    } else if (useHistogramTrend) {
-      chartPatternSignals = jdbcTemplate.query(QUERY_USING_HISTOGRAM_TREND, new ChartPatternSignalMapper());
+    } else if (useMACDForEntrySameSignAsTradeType) {
+      chartPatternSignals = jdbcTemplate.query(QUERY_USING_MACD_SAME_SIGN_AS_TRADE_TYPE, new ChartPatternSignalMapper());
     } else {
       chartPatternSignals = jdbcTemplate.query(QUERY_USING_STOPLOSSES, new ChartPatternSignalMapper());
     }
@@ -204,8 +204,8 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       chartPatternSignals = chartPatternSignalsFiltered;
     }
 
-    if (useMACDForEntry) {
-      List<ChartPatternSignal> entryFilteredUsingMACD = getEntryFilteredUsingMACD(chartPatternSignals);
+    if (useHistogramForEntry) {
+      List<ChartPatternSignal> entryFilteredUsingMACD = getEntryFilteredUsingHistogramSameSignAsTradeType(chartPatternSignals);
       logger.info(String.format("Before filtering for entry using MACD, length was %d, and after, %d.", chartPatternSignals.size(), entryFilteredUsingMACD.size()));
       chartPatternSignals = entryFilteredUsingMACD;
     }
@@ -261,7 +261,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
 
   // TODO: Have to retest this since there was a bug in getMACDDataUntilTime using DAte in the query
   // instead of Datetime.
-  private List<ChartPatternSignal> getEntryFilteredUsingMACD(List<ChartPatternSignal> chartPatternSignals) {
+  private List<ChartPatternSignal> getEntryFilteredUsingHistogramSameSignAsTradeType(List<ChartPatternSignal> chartPatternSignals) {
     List<ChartPatternSignal> filteredChartPatternSignals = new ArrayList<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
       List<MACDData> macdData = macdDao.getMACDDataUntilTime(chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), 1);

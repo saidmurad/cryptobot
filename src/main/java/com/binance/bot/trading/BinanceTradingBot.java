@@ -8,6 +8,7 @@ import com.binance.api.client.domain.OrderType;
 import com.binance.api.client.domain.TimeInForce;
 import com.binance.api.client.domain.account.*;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
@@ -55,6 +56,8 @@ public class BinanceTradingBot {
     @Value("${per_trade_amount}")
     public
     double perTradeAmountConfigured;
+    @Value("${use_breakout_candlestick_for_stop_loss}")
+    public boolean useBreakoutCandlestickForStopLoss;
     @Value("${stop_loss_percent}")
     double stopLossPercent;
     @Value("${stop_limit_percent}")
@@ -104,6 +107,13 @@ public class BinanceTradingBot {
         this.outstandingTrades = outstandingTrades;
         this.repayBorrowedOnMargin = repayBorrowedOnMargin;
         this.macdDataDao = macdDataDao;
+    }
+
+    private Pair<Double, Double> getStopLossPercents(ChartPatternSignal chartPatternSignal) {
+        if (useBreakoutCandlestickForStopLoss) {
+
+        }
+        return Pair.of(stopLossPercent, stopLimitPercent);
     }
 
     void setMockMailer(Mailer mailer) {
@@ -168,6 +178,12 @@ public class BinanceTradingBot {
                 }
             }
         }
+    }
+
+    private double getBreakoutPointBasedStopLossPrice(ChartPatternSignal chartPatternSignal) {
+        Date beforeBreakoutCandlestickTime = CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -2);
+        MACDData beforeBreakoutCandlestickMACDData = macdDataDao.getMACDDataForCandlestick(chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(), beforeBreakoutCandlestickTime);
+        return beforeBreakoutCandlestickMACDData.candleClosingPrice;
     }
 
     private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
@@ -345,8 +361,10 @@ public class BinanceTradingBot {
             OrderType.MARKET, /* timeInForce= */ null,
             roundedQuantity);
         MarginNewOrderResponse marketOrderResp = binanceApiMarginRestClient.newOrder(marketOrder);
-        logger.info(String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
-            marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal));
+        String logmsg = String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
+            marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal);
+        logger.info(logmsg);
+        mailer.sendEmail("Placed trade", logmsg);
         outstandingTrades.incrementNumOutstandingTrades(chartPatternSignal.timeFrame());
         // TODO: delayed market order executions.
         dao.setEntryOrder(chartPatternSignal,
@@ -358,6 +376,7 @@ public class BinanceTradingBot {
                 marketOrderResp.getStatus()));
 
         int tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
+        //stopLossPercents =
         String stopPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
         String stopLimitPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
         MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),

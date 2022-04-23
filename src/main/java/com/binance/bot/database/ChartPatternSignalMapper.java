@@ -64,20 +64,20 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
       if (rs.getString("EntryOrderId") != null) {
         chartPatternSignalBuilder.setEntryOrder(
           ChartPatternSignal.Order.create(
-              rs.getInt("EntryOrderId"), rs.getDouble("EntryExecutedQty"), rs.getDouble("EntryAvgPrice"),
+              Long.parseLong(rs.getString("EntryOrderId")), rs.getDouble("EntryExecutedQty"), rs.getDouble("EntryAvgPrice"),
               ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("EntryOrderStatus"))));
       }
       if (rs.getString("ExitStopLossOrderId") != null) {
         chartPatternSignalBuilder.setExitStopLimitOrder(
             ChartPatternSignal.Order.create(
-                rs.getInt("ExitStopLossOrderId"), rs.getDouble("ExitStopLossOrderExecutedQty"),
+                Long.parseLong(rs.getString("ExitStopLossOrderId")), rs.getDouble("ExitStopLossOrderExecutedQty"),
                 rs.getDouble("ExitStopLossAvgPrice"),
                 ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("ExitStopLossOrderStatus"))));
       }
       if (rs.getString("ExitOrderId") != null) {
         chartPatternSignalBuilder.setExitOrder(
             ChartPatternSignal.Order.create(
-                rs.getInt("ExitOrderId"), rs.getDouble("ExitOrderExecutedQty"),
+                Long.parseLong(rs.getString("ExitOrderId")), rs.getDouble("ExitOrderExecutedQty"),
                 rs.getDouble("ExitOrderAvgPrice"),
                 ChartPatternSignal.Order.OrderStatusInt.valueOf(rs.getString("ExitOrderStatus"))));
       }

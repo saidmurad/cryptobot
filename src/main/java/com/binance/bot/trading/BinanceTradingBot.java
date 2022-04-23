@@ -33,15 +33,14 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 import static com.binance.bot.tradesignals.TimeFrame.FIFTEEN_MINUTES;
 
 @Component
 public class BinanceTradingBot {
-    private final BinanceApiRestClient binanceApiRestClient;
+  private static final String MISSING_MACD_DATA = "Missing MACD Data";
+  private final BinanceApiRestClient binanceApiRestClient;
     private final BinanceApiMarginRestClient binanceApiMarginRestClient;
     private final ChartPatternSignalDaoImpl dao;
     private final SupportedSymbolsInfo supportedSymbolsInfo;
@@ -186,11 +185,16 @@ public class BinanceTradingBot {
         return beforeBreakoutCandlestickMACDData.candleClosingPrice;
     }
 
+    private final Set<Pair<ChartPatternSignal, String>> emailsAlreadySent = new HashSet<>();
+
     private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
         MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
         if (lastMACD == null) {
             logger.error("Got null last MACD data for cps " + chartPatternSignal);
-            mailer.sendEmail("Missing MACD data", "Got null last MACD data for cps " + chartPatternSignal);
+            if (!emailsAlreadySent.contains(Pair.of(chartPatternSignal, MISSING_MACD_DATA))) {
+              mailer.sendEmail("Missing MACD data", "Got null last MACD data for cps " + chartPatternSignal);
+              emailsAlreadySent.add(Pair.of(chartPatternSignal, MISSING_MACD_DATA));
+            }
             return false;
         }
         return chartPatternSignal.tradeType() == TradeType.BUY && lastMACD.macd > 0

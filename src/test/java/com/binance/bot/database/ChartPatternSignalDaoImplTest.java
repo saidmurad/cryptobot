@@ -90,7 +90,7 @@ public class ChartPatternSignalDaoImplTest {
       "    EntryOrderStatus TEXT, \n" +
       "    ExitStopLossOrderId INTEGER, \n" +
       "    ExitStopLossOrderExecutedQty REAL, \n" +
-      "    ExitStopLossOrderAvgPrice REAL, \n" +
+      "    ExitStopLossAvgPrice REAL, \n" +
       "    ExitStopLossOrderStatus TEXT, \n" +
       "    ExitOrderId INTEGER, \n" +
       "    ExitOrderExecutedQty REAL, \n" +

@@ -408,7 +408,7 @@ public class ChartPatternSignalDaoImpl {
     double unRealizedPercent = realizedUnRealized.getSecond() /
         (chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()) * 100;
     String sql = "update ChartPatternSignal set ExitStopLossOrderId=?, ExitStopLossOrderExecutedQty=?," +
-        "ExitStopLossOrderAvgPrice=?," +
+        "ExitStopLossAvgPrice=?," +
         "ExitStopLossOrderStatus=?," +
         "Realized=?, RealizedPercent=?, Unrealized=?, UnRealizedPercent=?," +
         "IsPositionExited=?, IsSignalOn=?, TradeExitType='STOP_LOSS' where " +

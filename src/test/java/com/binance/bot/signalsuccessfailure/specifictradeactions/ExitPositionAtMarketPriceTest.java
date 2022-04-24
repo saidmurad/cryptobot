@@ -183,6 +183,64 @@ public class ExitPositionAtMarketPriceTest {
   }
 
   @Test
+  public void alreadyCanceledStopLossBySomeOccurence_exitsTradeForProfitTaking()
+      throws MessagingException, ParseException, BinanceApiException {
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
+        .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
+        .build();
+    Order exitStopLossOrderStatus = new Order();
+    exitStopLossOrderStatus.setOrderId(1L);
+    exitStopLossOrderStatus.setStatus(OrderStatus.CANCELED);
+    when(mockBinanceApiRestClient.getOrderStatus(any())).thenReturn(exitStopLossOrderStatus);
+    // Return the same unchanged exit stop loss order status as NEW.
+    when(mockDao.getChartPattern(chartPatternSignal)).thenReturn(chartPatternSignal);
+    MarginAssetBalance ethBalance = new MarginAssetBalance();
+    ethBalance.setAsset("ETH");
+    ethBalance.setFree("10.0");
+    ethBalance.setLocked("0.0");
+    MarginAccount account = new MarginAccount();
+    account.setUserAssets(Lists.newArrayList(ethBalance));
+    when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("10.0");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+
+    verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), eq(
+        ChartPatternSignal.Order.create(exitStopLossOrderStatus.getOrderId(),
+            0,
+            0, exitStopLossOrderStatus.getStatus())
+    ));
+    assertThat(stopLossOrderStatusRequestCapture.getValue().getOrderId()).isEqualTo(2L);
+    verify(mockBinanceApiRestClient, never()).cancelOrder(any(CancelOrderRequest.class));
+    verify(mockDao, never()).cancelStopLimitOrder(any(ChartPatternSignal.class));
+    verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
+    assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
+    assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
+    assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10.0");
+    verify(mockDao).setExitOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(3L,
+            10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
+    verify(mockDao).writeAccountBalanceToDB();
+    verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+  }
+
+  @Test
   public void decrementNumOutstandingTrades()
       throws MessagingException, ParseException, BinanceApiException {
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = true;

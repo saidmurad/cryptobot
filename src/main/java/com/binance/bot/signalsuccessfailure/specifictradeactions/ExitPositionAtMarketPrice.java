@@ -86,11 +86,13 @@ public class ExitPositionAtMarketPrice {
       } else {
         logger.info(String.format("Need to exit the %f qty.", qtyToExit));
       }
-      CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
-          chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-      CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
-      logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
-      dao.cancelStopLimitOrder(chartPatternSignal);
+      if (stopLimitOrderStatus.getStatus() != OrderStatus.CANCELED) {
+        CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
+            chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
+        CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
+        logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
+        dao.cancelStopLimitOrder(chartPatternSignal);
+      }
       exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
       dao.writeAccountBalanceToDB();
     } catch (Exception ex) {

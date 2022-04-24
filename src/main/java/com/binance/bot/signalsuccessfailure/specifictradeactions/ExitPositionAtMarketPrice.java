@@ -107,21 +107,24 @@ public class ExitPositionAtMarketPrice {
     MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
     double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
     double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
-    logger.info(String.format("Asset %s quantity free: %f and quantity locked: %f", baseAsset, freeBalance, lockedBalance));
-    if (freeBalance < qtyToExit) {
+    double borrowed = numberFormat.parse(assetBalance.getBorrowed()).doubleValue();
+    logger.info(String.format("Asset %s quantity free: %f, quantity locked: %f, borrowed: %f",
+        baseAsset, freeBalance, lockedBalance, borrowed));
+    double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY? freeBalance : borrowed;
+    if (qtyToExitAvail < qtyToExit) {
       String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
-          qtyToExit, baseAsset, freeBalance);
+          qtyToExit, baseAsset, qtyToExitAvail);
       logger.error(errorMsg);
       mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
       return;
     }
     if (qtyToExit > 0) {
-      MarginNewOrder sellOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
+      MarginNewOrder marketExitOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
           chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
           OrderType.MARKET, /* timeInForce= */ null,
           // TODO: In corner cases, will have to round up this quantity.
           "" + qtyToExit);
-      MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(sellOrder);
+      MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(marketExitOrder);
       logger.info(String.format("Executed %s order and got the response: %s.",
           chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
           marketExitOrderResponse));

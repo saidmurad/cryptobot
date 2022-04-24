@@ -399,7 +399,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
         tradeExitTime = chartPatternSignal.timeOfSignalInvalidation();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
             chartPatternSignal.profitPercentAtTimeOfSignalInvalidation() / 100;
-      } // Fallback for when live altfins signal invalidations was not caught.
+      } // Fallback for when live sourcesignals signal invalidations was not caught.
       else if (chartPatternSignal.profitPercentAtSignalTargetTime() != null) {
         tradeExitTime = chartPatternSignal.priceTargetTime();
         amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *

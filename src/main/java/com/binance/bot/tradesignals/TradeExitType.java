@@ -3,7 +3,7 @@ package com.binance.bot.tradesignals;
 public enum TradeExitType {
   TARGET_TIME_PASSED,
 
-  REMOVED_FROM_ALTFINS,
+  REMOVED_FROM_SOURCESIGNALS,
 
   PROFIT_TARGET_MET,
 

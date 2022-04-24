@@ -399,7 +399,7 @@ FOUR_HOURS|731.20422927187
 HOUR|224.000895765045
 
 
-Average profit percents by timeframe while using invalidation signals from altfins:
+Average profit percents by timeframe while using invalidation signals from sourcesignals:
 select TimeFrame, Count(0) as NumTrades, Avg(s) from
 (select TimeFrame, ProfitPotentialPercent as s from ChartPatternSignal where ProfitPotentialPercent>0
 and Datetime(TimeOfSignal)>=DateTime('2022-02-08 08:55')

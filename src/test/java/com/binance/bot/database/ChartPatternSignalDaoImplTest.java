@@ -203,14 +203,14 @@ public class ChartPatternSignalDaoImplTest {
     dao.insertChartPatternSignal(unrelatedChartPatternSignal, volProfile);
 
     final double priceAtTimeOfInvalidation = 5000;
-    assertThat(dao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS))
+    assertThat(dao.invalidateChartPatternSignal(chartPatternSignal, priceAtTimeOfInvalidation, ReasonForSignalInvalidation.REMOVED_FROM_SOURCESIGNALS))
         .isTrue();
 
     long currentTime = System.currentTimeMillis();
     ChartPatternSignal updatedChartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(updatedChartPatternSignal).isNotNull();
     assertThat(updatedChartPatternSignal.isSignalOn()).isFalse();
-    assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS);
+    assertThat(updatedChartPatternSignal.reasonForSignalInvalidation()).isEqualTo(ReasonForSignalInvalidation.REMOVED_FROM_SOURCESIGNALS);
     assertThat(updatedChartPatternSignal.timeOfSignalInvalidation().getTime() - currentTime).isLessThan(5000L);
     assertThat(updatedChartPatternSignal.priceAtTimeOfSignalInvalidation()).isEqualTo(priceAtTimeOfInvalidation);
     assertThat(updatedChartPatternSignal.profitPercentAtTimeOfSignalInvalidation()).isEqualTo(25.0);

@@ -1,4 +1,4 @@
-package com.binance.bot.altfins;
+package com.binance.bot.sourcesignals;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -39,39 +38,39 @@ import java.util.stream.Collectors;
  * Reads the patterns output by the Python code.
  */
 @Component
-public class AltfinPatternsReader {
+public class SourceSignalsReader {
 
   static final String[] patternsFiles = {"data_patterns1.txt",
       "data_patterns2.txt",
       "data_patterns3.txt",
       "data_patterns4.txt"};
-  private static final String PROD_MACHINE_DIR = "/usr/local/google/home/kannanj/altfins/send_alerts";
+  private static final String PROD_MACHINE_DIR = "/usr/local/google/home/kannanj/sourcesignals/send_alerts";
   private static final String DEV_MACHINE_DIR = "/home/kannanj";
   private final TimeFrame[] timeFrames = {TimeFrame.FIFTEEN_MINUTES, TimeFrame.HOUR, TimeFrame.FOUR_HOURS, TimeFrame.DAY};
   private long[] lastProcessedTimes = new long[4];
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
-  private final String ALTFINS_PATTERNS_DIR;
+  private final String SOURCESIGNALS_PATTERNS_DIR;
   private final BinanceApiRestClient restClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
-  @Value("${use_altfins_invalidations}")
+  @Value("${use_sourcesignals_invalidations}")
   boolean useAltfinsInvalidations;
 
   @Autowired
-  public AltfinPatternsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
-                              ChartPatternSignalDaoImpl chartPatternSignalDao,
-                              SupportedSymbolsInfo supportedSymbolsInfo,
-                              ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
+  public SourceSignalsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
+                             ChartPatternSignalDaoImpl chartPatternSignalDao,
+                             SupportedSymbolsInfo supportedSymbolsInfo,
+                             ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     if (new File(PROD_MACHINE_DIR).exists()) {
-      ALTFINS_PATTERNS_DIR = PROD_MACHINE_DIR;
+      SOURCESIGNALS_PATTERNS_DIR = PROD_MACHINE_DIR;
     } else {
-      ALTFINS_PATTERNS_DIR = DEV_MACHINE_DIR;
+      SOURCESIGNALS_PATTERNS_DIR = DEV_MACHINE_DIR;
     }
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
@@ -84,17 +83,17 @@ public class AltfinPatternsReader {
   public void run() throws IOException {
     try {
       for (int i =0; i < 4; i++) {
-        File file = new File(ALTFINS_PATTERNS_DIR + "/" + patternsFiles[i]);
+        File file = new File(SOURCESIGNALS_PATTERNS_DIR + "/" + patternsFiles[i]);
         if (lastProcessedTimes[i] == 0 || lastProcessedTimes[i] < file.lastModified()) {
           byte[] fileBytes = Files.readAllBytes(file.toPath());
           if (fileBytes == null) {
             logger.warn("Read an empty file. Ignoring.");
             continue;
           }
-          String altfinPatternsStr = new String(fileBytes);
-          List<ChartPatternSignal> patternFromAltfins = readPatterns(altfinPatternsStr);
+          String sourceSignalsPatternsStr = new String(fileBytes);
+          List<ChartPatternSignal> patternFromAltfins = readPatterns(sourceSignalsPatternsStr);
           if (patternFromAltfins == null) {
-            logger.error("Got null from reading patterns from altfinPatternsStr: " + altfinPatternsStr);
+            logger.error("Got null from reading patterns from sourceSignalsPatternsStr: " + sourceSignalsPatternsStr);
             continue;
           }
           if (patternFromAltfins.size() == 0) {
@@ -162,7 +161,7 @@ public class AltfinPatternsReader {
           invalidatedChartPatternSignals.size(), timeFrame.name()));
 
       for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
-        ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_ALTFINS;
+        ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_SOURCESIGNALS;
         double priceAtTimeOfInvalidation = numberFormat.parse(
             restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
         //logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
@@ -170,7 +169,7 @@ public class AltfinPatternsReader {
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
         logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
         if (useAltfinsInvalidations) {
-          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
         }
       }
     }
@@ -278,11 +277,11 @@ public class AltfinPatternsReader {
   // Which chart pattern signals I marked as invalidated again comes in the input with the same time of occurence of signal.
   List<ChartPatternSignal> getChartPatternSignalsThatAreBack(List<ChartPatternSignal> patternsFromAltfins,
                                                              List<ChartPatternSignal> allPatternsInDB) {
-    Set<ChartPatternSignal> altfinPaternSignals = new HashSet<>();
-    altfinPaternSignals.addAll(patternsFromAltfins);
+    Set<ChartPatternSignal> sourceSignalsPaternSignals = new HashSet<>();
+    sourceSignalsPaternSignals.addAll(patternsFromAltfins);
     List<ChartPatternSignal> invalidatedPatternsInDBThatHaveComeBack = allPatternsInDB.stream().filter(
         chartPatternSignal -> !chartPatternSignal.isSignalOn() &&
-            altfinPaternSignals.contains(chartPatternSignal))
+            sourceSignalsPaternSignals.contains(chartPatternSignal))
         .collect(Collectors.toList());
     // Calculate the highest attempt count for each comeback pattern in the DB.
     Map<ChartPatternSignal, ChartPatternSignal> comebackPatternsMap = new HashMap<>();
@@ -295,7 +294,7 @@ public class AltfinPatternsReader {
         comebackPatternsMap.put(comebackPattern, comebackPattern);
       }
     });
-    // Iterate over the altfin patterns again to pick comeback patterns with previous count in db + 1.
+    // Iterate over the sourceSignals patterns again to pick comeback patterns with previous count in db + 1.
     Set<ChartPatternSignal> patternsInDB = new HashSet<>();
     patternsInDB.addAll(allPatternsInDB.stream().filter(chartPatternSignal ->
         chartPatternSignal.isSignalOn()).collect(Collectors.toList()));
@@ -322,7 +321,7 @@ public class AltfinPatternsReader {
         .collect(Collectors.toList());
     chartPatternSignalDao.incrementNumTimesMissingInInput(chartPatternsMissingInInput);
 
-    //printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, altfinPatternsStr, tmpAltfinsPatternsFilePath);
+    //printSuspiciousRemovals(patternsFromAltfins, chartPatternsMissingInInput, sourceSignalsPatternsStr, tmpAltfinsPatternsFilePath);
     /*Map<ChartPatternSignal, ChartPatternSignal> allPatternsInDBMap = new HashMap<>();
     allPatternsInDB.stream().forEach(patternInDB -> {
       allPatternsInDBMap.put(patternInDB, patternInDB);
@@ -339,7 +338,7 @@ public class AltfinPatternsReader {
     return chartPatternSignalDao.getChartPatternSignalsToInvalidate();
   }
 
-  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput, String altfinPatternsStr, String tmpAltfinsPatternsFilePath) {
+  private void printSuspiciousRemovals(List<ChartPatternSignal> patternsFromAltfins, List<ChartPatternSignal> chartPatternsMissingInInput, String sourceSignalsPatternsStr, String tmpAltfinsPatternsFilePath) {
     TimeFrame timeFrame = patternsFromAltfins.get(0).timeFrame();
     for (ChartPatternSignal patternFromAltfin: patternsFromAltfins) {
       for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
@@ -350,8 +349,8 @@ public class AltfinPatternsReader {
     }
 
     for (ChartPatternSignal patternMissing: chartPatternsMissingInInput) {
-      if (altfinPatternsStr.contains(patternMissing.coinPair())) {
-        logger.error("Suspicious removal in timeframe " + timeFrame.name() + " of pattern for coin pair " + patternMissing.coinPair() + " as it is seen in the altfins patterns file " + tmpAltfinsPatternsFilePath);
+      if (sourceSignalsPatternsStr.contains(patternMissing.coinPair())) {
+        logger.error("Suspicious removal in timeframe " + timeFrame.name() + " of pattern for coin pair " + patternMissing.coinPair() + " as it is seen in the sourcesignals patterns file " + tmpAltfinsPatternsFilePath);
       }
     }
   }

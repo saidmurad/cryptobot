@@ -85,7 +85,7 @@ public class BinanceTradingBot {
     @Value("${use_macd_for_entry}")
     boolean entry_using_macd;
     final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
-    @Value("${use_altfins_invalidations}")
+    @Value("${use_sourcesignals_invalidations}")
     boolean useAltfinsInvalidations;
     private MarginAccount account;
     private BookTickerPrices.BookTicker btcPrice;

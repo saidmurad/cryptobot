@@ -5,6 +5,6 @@ Hour: 1.5%
 Four Hours: 27.278
 DAY: -36%
 
-Uisng altfin invalidations for signals after 08/02/2022 08:55:
+Uisng sourceSignals invalidations for signals after 08/02/2022 08:55:
 overall: mere 2%.
 Fifteen minutes; 20%.

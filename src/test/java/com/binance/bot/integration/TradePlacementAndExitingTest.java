@@ -99,7 +99,7 @@ public class TradePlacementAndExitingTest {
 
     // Exit the trade now.
     double currPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_ALTFINS);
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignal.isSignalOn()).isFalse();
     assertThat(chartPatternSignal.isPositionExited()).isTrue();

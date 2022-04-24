@@ -1,7 +1,7 @@
 package com.binance.bot.tradesignals;
 
 public enum ReasonForSignalInvalidation {
-  REMOVED_FROM_ALTFINS,
+  REMOVED_FROM_SOURCESIGNALS,
   SYMBOL_NOT_SUPPORTED,
   EXPIRED,
   FAKEOUT,

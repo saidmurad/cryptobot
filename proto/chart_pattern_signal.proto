@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package altfins;
-option java_package = "com.altfins";
+package sourcesignals;
+option java_package = "com.sourcesignals";
 option java_multiple_files = true;
 
 // Command to generate the java code ChartPatternSignal.proto using the protoc compiler:

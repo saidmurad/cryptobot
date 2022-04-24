@@ -77,7 +77,7 @@ public class GateIoTradingBot {
   @Value("${late_time_daily_timeframe}")
   int lateTimeDailyTimeFrame;
   final int[] numOutstandingTradesLimitByTimeFrame = new int[4];
-  @Value("${use_altfins_invalidations}")
+  @Value("${use_sourcesignals_invalidations}")
   boolean useAltfinsInvalidations;
   @Value("${use_macd_for_entry}")
   boolean useMACDForEntry;

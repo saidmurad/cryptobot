@@ -1,4 +1,4 @@
-package com.binance.bot.altfins;
+package com.binance.bot.sourcesignals;
 
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;

@@ -34,6 +34,7 @@ import static org.mockito.Mockito.*;
 public class AltfinPatternsReaderTest extends TestCase {
 
   private static final String TEST_PATTERNS_FILE = "/test_data_patterns1.txt";
+  private static final String TEST_PATTERNS_WITHOUT_PPP_FILE = "/data_patterns_without_ppp.txt";
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private AltfinPatternsReader altfinPatternsReader;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -78,7 +79,7 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns).hasSize(7);
   }
 
-    public void testReadPatterns() throws IOException {
+  public void testReadPatterns() throws IOException {
     List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsFileContents());
     ChartPatternSignal pattern = patterns.get(0);
     assertThat(pattern.coinPair()).isEqualTo("ORNUSDT");
@@ -109,6 +110,13 @@ public class AltfinPatternsReaderTest extends TestCase {
     assertThat(patterns.get(4).priceTarget()).isEqualTo(5000.0);
     // In range.
     assertThat(patterns.get(5).priceTarget()).isEqualTo(5000.0);
+  }
+
+  public void testReadPatterns_withoutPPP() throws IOException {
+    List<ChartPatternSignal> patterns = altfinPatternsReader.readPatterns(getPatternsWithoutPPPFileContents());
+    ChartPatternSignal pattern = patterns.get(0);
+    assertThat(pattern.coinPair()).isEqualTo("WXTUSDT");
+    assertThat(pattern.profitPotentialPercent()).isZero();
   }
 
   public void testReadPatterns_convertsBUSDToUSDT() throws IOException {
@@ -452,6 +460,10 @@ public class AltfinPatternsReaderTest extends TestCase {
       default:
         return TimeFrame.FIFTEEN_MINUTES;
     }
+  }
+
+  private String getPatternsWithoutPPPFileContents() throws IOException {
+    return new String(getClass().getResourceAsStream(TEST_PATTERNS_WITHOUT_PPP_FILE).readAllBytes());
   }
 
   private String getPatternsFileContents() throws IOException {

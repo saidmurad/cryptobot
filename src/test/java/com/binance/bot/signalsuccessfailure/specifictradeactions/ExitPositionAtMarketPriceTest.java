@@ -304,7 +304,8 @@ public class ExitPositionAtMarketPriceTest {
     when(mockBinanceApiRestClient.cancelOrder(any(CancelOrderRequest.class))).thenReturn(cancelOrderResponse);
     MarginAssetBalance ethBalance = new MarginAssetBalance();
     ethBalance.setAsset("ETH");
-    ethBalance.setFree("10.0");
+    ethBalance.setBorrowed("10.0");
+    ethBalance.setFree("0.0");
     ethBalance.setLocked("0.0");
     MarginAccount account = new MarginAccount();
     account.setUserAssets(Lists.newArrayList(ethBalance));

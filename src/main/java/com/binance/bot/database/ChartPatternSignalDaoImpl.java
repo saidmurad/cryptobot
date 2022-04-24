@@ -384,9 +384,9 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()), chartPatternSignal.attempt());
     if (ret == 1) {
-      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit market order id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+      logger.info(String.format("Updated chart pattern signal \n%s\nwith exit stop limit order id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
     } else {
-      logger.error(String.format("Failed to update chart pattern signal \n%s\nwith exit marketorder id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
+      logger.error(String.format("Failed to update chart pattern signal \n%s\nwith exit stop limit id %d.", chartPatternSignal.toString(), exitMarketOrder.orderId()));
     }
     return ret == 1;
   }
@@ -513,9 +513,9 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
         CandlestickUtil.df.format(chartPatternSignal.timeOfSignal())) == 1;
     if (ret) {
-      logger.info("Updated Stop Limit Order status to Canceled for chart pattern signal: %s.", chartPatternSignal);
+      logger.info(String.format("Updated Stop Limit Order status to Canceled for chart pattern signal: %s.", chartPatternSignal));
     } else {
-      logger.error("Failed to update Stop Limit Order status to Canceled for chart pattern signal: %s", chartPatternSignal);
+      logger.error(String.format("Failed to update Stop Limit Order status to Canceled for chart pattern signal: %s", chartPatternSignal));
     }
   }
 

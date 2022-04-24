@@ -1,0 +1,11 @@
+[{
+   "coin_pair": "WXTUSDT",
+   "interval": "2",
+   "current_price": "0.007998",
+   "signal_occurence_time": "2022-4-23 11:00",
+   "pattern": "ABCD",
+   "trade_type": "Buy",
+   "profit_potential_percent": "",
+   "profit_target": "8.118E-3 to 8.739E-3",
+   "profit_target_time": "2022-4-23 22:12"
+   }]

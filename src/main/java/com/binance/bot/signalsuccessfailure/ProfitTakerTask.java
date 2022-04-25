@@ -45,7 +45,7 @@ public class ProfitTakerTask {
       }
       double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
       if (isPriceTargetMet(activePosition, currMarketPrice)) {
-        logger.info(String.format("Price target met for chart pattern signal:\n.", activePosition));
+        logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
         exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
       }
     }

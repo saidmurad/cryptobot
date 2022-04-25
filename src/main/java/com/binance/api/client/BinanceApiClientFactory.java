@@ -30,10 +30,6 @@ public class BinanceApiClientFactory {
   private String marginAcctApiKey;
       @Value("${api_secret}")
   private String marginAcctApiSecret;
-  private String futuresApiKey = "87314199199403b9416250d3105716317a7973bc5a1ae21e9fe10ba45d542abf";
-  private String futuresApiSecret = "8c206e8e8f1fdd8b1183c604ba26cbd7de81cd1dbb812d6907e6b091c0e31247";
-  private boolean useTestnet = true;
-  private static final String FUTURES_TESTNET_URL = "https://testnet.binancefuture.com";
 
   public BinanceApiClientFactory() {}
 

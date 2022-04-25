@@ -123,7 +123,7 @@ public class ExitPositionAtMarketPrice {
           chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
           OrderType.MARKET, /* timeInForce= */ null,
           // TODO: In corner cases, will have to round up this quantity.
-          "" + qtyToExit);
+          "" + qtyToExit).newOrderRespType(NewOrderResponseType.FULL);
       MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(marketExitOrder);
       logger.info(String.format("Executed %s order and got the response: %s.",
           chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",

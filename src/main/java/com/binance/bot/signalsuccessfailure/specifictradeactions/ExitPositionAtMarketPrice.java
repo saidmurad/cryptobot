@@ -61,6 +61,7 @@ public class ExitPositionAtMarketPrice {
       if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
           // This is for backward compatibility.
           || chartPatternSignal.exitStopLimitOrder() == null)) {
+        logger.info("cps.isPositionExited being %s, do nothing.", chartPatternSignal.isPositionExited() == null ? "null" : "true");
         return;
       }
       OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
@@ -72,9 +73,13 @@ public class ExitPositionAtMarketPrice {
           stopLimitOrderStatus.getExecutedQty() != null ? numberFormat.parse(stopLimitOrderStatus.getExecutedQty()).doubleValue() : 0,
           stopLimitOrderStatus.getPrice() != null ? numberFormat.parse(stopLimitOrderStatus.getPrice()).doubleValue() : 0,
           stopLimitOrderStatus.getStatus()));
+      logger.info("Sleeping for a second between update and a query.");
+      // To try if the empty result problem goes away.
+      Thread.sleep(1000);
+      logger.info("Woke up from sleep.");
       chartPatternSignal = dao.getChartPattern(chartPatternSignal);
       if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
-        return;
+        logger.info("cps.isPositionExited being %s, do nothing.", chartPatternSignal.isPositionExited() == null ? "null" : "true");
       }
       logger.info(String.format("Found position to exit: %s.", chartPatternSignal.toStringOrderValues()));
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();

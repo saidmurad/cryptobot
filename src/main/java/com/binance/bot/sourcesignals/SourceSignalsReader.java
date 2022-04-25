@@ -157,8 +157,8 @@ public class SourceSignalsReader {
     List<ChartPatternSignal> invalidatedChartPatternSignals = getChartPatternSignalsToInvalidate(
         patternFromAltfins, chartPatternsInDB);
     if (!invalidatedChartPatternSignals.isEmpty()) {
-      logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.",
-          invalidatedChartPatternSignals.size(), timeFrame.name()));
+      /*logger.info(String.format("Invalidating %d chart pattern signals for time frame %s.",
+          invalidatedChartPatternSignals.size(), timeFrame.name()));*/
 
       for (ChartPatternSignal chartPatternSignal : invalidatedChartPatternSignals) {
         ReasonForSignalInvalidation reasonForInvalidation = ReasonForSignalInvalidation.REMOVED_FROM_SOURCESIGNALS;

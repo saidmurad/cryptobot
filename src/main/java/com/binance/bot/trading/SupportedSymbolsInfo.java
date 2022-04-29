@@ -82,12 +82,26 @@ public class SupportedSymbolsInfo {
 
   public Pair<Double, Integer> getMinPriceAndTickSize(String symbol) throws BinanceApiException {
     if (minPriceAndTickSizeMap.isEmpty()) {
-      binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-        Integer tickSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getTickSize());
-        Double minPrice = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getMinPrice());
-        minPriceAndTickSizeMap.put(symbolInfo.getSymbol(), Pair.of(minPrice, tickSize));
-      });
+      fillMinPriceAndTickSizeMapFromExchangeInfo();
     }
-    return minPriceAndTickSizeMap.get(symbol);
+    Pair<Double, Integer> val = minPriceAndTickSizeMap.get(symbol);
+    if (val == null) {
+      // don't know when this occurs, this occurred even for ETHUSDT on 2022-04-24 02:18:06,699
+      fillMinPriceAndTickSizeMapFromExchangeInfo();
+      val = minPriceAndTickSizeMap.get(symbol);
+    }
+    return val;
+  }
+
+  private void fillMinPriceAndTickSizeMapFromExchangeInfo() throws BinanceApiException {
+    binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
+      Integer tickSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getTickSize());
+      Double minPrice = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.PRICE_FILTER).getMinPrice());
+      minPriceAndTickSizeMap.put(symbolInfo.getSymbol(), Pair.of(minPrice, tickSize));
+    });
+  }
+
+  public int getMinPricAndTickSizeMapSize() {
+    return minPriceAndTickSizeMap.size();
   }
 }

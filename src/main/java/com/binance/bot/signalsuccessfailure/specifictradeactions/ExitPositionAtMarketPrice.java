@@ -14,14 +14,18 @@ import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.OutstandingTrades;
+import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.CrossMarginAccountBalance;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
+import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import javax.mail.MessagingException;
@@ -40,28 +44,34 @@ public class ExitPositionAtMarketPrice {
   private final Mailer mailer;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final OutstandingTrades outstandingTrades;
+  private final SupportedSymbolsInfo supportedSymbolsInfo;
+  private final BookTickerPrices bookTickerPrices;
+  private final CrossMarginAccountBalance crossMarginAccountBalance;
   @Value("${do_not_decrement_num_outstanding_trades}")
   boolean doNotDecrementNumOutstandingTrades;
 
   @Autowired
   ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao,
                             Mailer mailer, RepayBorrowedOnMargin repayBorrowedOnMargin,
-                            OutstandingTrades outstandingTrades) {
+                            OutstandingTrades outstandingTrades,
+                            SupportedSymbolsInfo supportedSymbolsInfo,
+                            BookTickerPrices bookTickerPrices,
+                            CrossMarginAccountBalance crossMarginAccountBalance) {
     this.binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.dao = dao;
     this.mailer = mailer;
     this.repayBorrowedOnMargin = repayBorrowedOnMargin;
     this.outstandingTrades = outstandingTrades;
+    this.supportedSymbolsInfo = supportedSymbolsInfo;
+    this.bookTickerPrices = bookTickerPrices;
+    this.crossMarginAccountBalance = crossMarginAccountBalance;
   }
 
-  public void exitPositionIfStillHeld(
-      ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType)
-      throws MessagingException {
-    try {
+  private void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException, InterruptedException {
       if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
           // This is for backward compatibility.
           || chartPatternSignal.exitStopLimitOrder() == null)) {
-        logger.info("cps.isPositionExited being %s, do nothing.", chartPatternSignal.isPositionExited() == null ? "null" : "true");
+        logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
         return;
       }
       OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
@@ -79,9 +89,31 @@ public class ExitPositionAtMarketPrice {
       logger.info("Woke up from sleep.");
       chartPatternSignal = dao.getChartPattern(chartPatternSignal);
       if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited())) {
-        logger.info("cps.isPositionExited being %s, do nothing.", chartPatternSignal.isPositionExited() == null ? "null" : "true");
+        logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
       }
       logger.info(String.format("Found position to exit: %s.", chartPatternSignal.toStringOrderValues()));
+
+      if (stopLimitOrderStatus.getStatus() != OrderStatus.CANCELED) {
+        CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
+            chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
+        CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
+        logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
+        dao.cancelStopLimitOrder(chartPatternSignal);
+      }
+      dao.writeAccountBalanceToDB();
+  }
+
+  public void exitPositionIfStillHeld(
+      ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType) throws MessagingException {
+    try {
+      String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
+      MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
+      double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
+      double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
+      double borrowed = numberFormat.parse(assetBalance.getBorrowed()).doubleValue();
+      logger.info(String.format("Asset %s quantity free: %f, quantity locked: %f, borrowed: %f",
+          baseAsset, freeBalance, lockedBalance, borrowed));
+      double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY ? freeBalance : borrowed;
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
       // If partial order has been executed it could only be the stop limit order.
       // exitStopLimitOrder can never be null.
@@ -91,60 +123,83 @@ public class ExitPositionAtMarketPrice {
       } else {
         logger.info(String.format("Need to exit the %f qty.", qtyToExit));
       }
-      if (stopLimitOrderStatus.getStatus() != OrderStatus.CANCELED) {
-        CancelOrderRequest cancelStopLimitOrderRequest = new CancelOrderRequest(
-            chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
-        CancelOrderResponse cancelStopLimitOrderResponse = binanceApiMarginRestClient.cancelOrder(cancelStopLimitOrderRequest);
-        logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
-        dao.cancelStopLimitOrder(chartPatternSignal);
+      if (qtyToExitAvail < qtyToExit) {
+        String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
+            qtyToExit, baseAsset, qtyToExitAvail);
+        logger.error(errorMsg);
+        mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
+        return;
       }
-      exitMarginAccountQty(chartPatternSignal, qtyToExit, tradeExitType);
-      dao.writeAccountBalanceToDB();
+      if (qtyToExit > 0) {
+        String qtyToExitStr;
+        if (chartPatternSignal.tradeType() == TradeType.SELL) {
+          // TODO: Need to do this for the Stop loss order also.
+          qtyToExit /= 0.999;
+          Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
+              chartPatternSignal.coinPair());
+          if (minNotionalAndLotSize == null) {
+            String errMsg = String.format("Unexpectedly supportedSymbolsInfo.getMinNotionalAndLotSize returned null for %s. Not exiting trade.", chartPatternSignal.coinPair());
+            logger.error(errMsg);
+            mailer.sendEmail("Missing minNotionalAndLotSize", errMsg);
+            return;
+          }
+          qtyToExitStr = Util.getFormattedQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
+          MarginAccount marginAccount = binanceApiMarginRestClient.getAccount();
+          // Borrow 0.1% more to account for any fluctuations in market price.
+          int usdtValueNeededToBuyBackCoin = (int) (Math.ceil(Double.parseDouble(qtyToExitStr) * bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk()) * 1.001);
+          int freeUSDT = (int) numberFormat.parse(marginAccount.getAssetBalance("USDT").getFree()).doubleValue();
+          if (freeUSDT < usdtValueNeededToBuyBackCoin) {
+            double marginLevel = numberFormat.parse(marginAccount.getMarginLevel()).doubleValue();
+            if (marginLevel < 1.2) {
+              String errMsg = String.format("Not borrowing USDT to buy back %f quantity of %s due to margin at dangerously low level of %f, cps=%s.",
+                  qtyToExit, chartPatternSignal.coinPair(), marginLevel, chartPatternSignal);
+              logger.warn(errMsg);
+              mailer.sendEmail("Margin at high risk", errMsg);
+              return;
+            }
+            int usdtMoreNeeded = usdtValueNeededToBuyBackCoin - freeUSDT;
+            Pair<Integer, Integer> totalAndBorrowedAccountValueInUSDT = crossMarginAccountBalance.getTotalAndBorrowedUSDTValue();
+            double marginLevelNew = ((double) (totalAndBorrowedAccountValueInUSDT.getFirst() + usdtMoreNeeded)) / (totalAndBorrowedAccountValueInUSDT.getSecond() + usdtMoreNeeded);
+            if (marginLevelNew < 1.2) {
+              String errMsg = String.format("Not borrowing USDT to buy back %f quantity of %s due to margin will go to dangerously low level of %f, cps=%s.",
+                  qtyToExit, chartPatternSignal.coinPair(), marginLevelNew, chartPatternSignal);
+              logger.warn(errMsg);
+              mailer.sendEmail("Margin at high risk", errMsg);
+              return;
+            }
+            logger.info(String.format("Borrowing %d USDT in order to buy back shorted cps %s.", usdtMoreNeeded, chartPatternSignal));
+            binanceApiMarginRestClient.borrow("USDT", "" + usdtMoreNeeded);
+          }
+        } else {
+          qtyToExitStr = "" + qtyToExit;
+        }
+        // Cancel the stop limit order first to unlock the quantity.
+        cancelStopLimitOrder(chartPatternSignal);
+        MarginNewOrder marketExitOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
+            chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
+            OrderType.MARKET, /* timeInForce= */ null,
+            // TODO: In corner cases, will have to round up this quantity.
+            qtyToExitStr).newOrderRespType(NewOrderResponseType.FULL);
+        MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(marketExitOrder);
+        logger.info(String.format("Executed %s order and got the response: %s.",
+            chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
+            marketExitOrderResponse));
+        double executedQty = numberFormat.parse(marketExitOrderResponse.getExecutedQty()).doubleValue();
+        double avgTradePrice = getAvgTradePrice(marketExitOrderResponse);
+        dao.setExitOrder(chartPatternSignal,
+            ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
+                executedQty,
+                avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);
+        if (chartPatternSignal.tradeType() == TradeType.SELL) {
+          repayBorrowedOnMargin.repay(baseAsset, executedQty);
+        }
+        if (!doNotDecrementNumOutstandingTrades) {
+          outstandingTrades.decrementNumOutstandingTrades(chartPatternSignal.timeFrame());
+        }
+      }
     } catch (Exception ex) {
-      logger.error("Exception for trade exit type %s." , tradeExitType.name(), ex);
+      logger.error(String.format("Exception for trade exit type %s." , tradeExitType.name()), ex);
       mailer.sendEmail("ExitPositionAtMarketPrice uncaught exception for trade exit type" + tradeExitType.name(), ex.getMessage());
-    }
-  }
-
-  private void exitMarginAccountQty(ChartPatternSignal chartPatternSignal, double qtyToExit, TradeExitType tradeExitType)
-      throws ParseException, MessagingException, BinanceApiException {
-    String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
-    MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
-    double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
-    double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
-    double borrowed = numberFormat.parse(assetBalance.getBorrowed()).doubleValue();
-    logger.info(String.format("Asset %s quantity free: %f, quantity locked: %f, borrowed: %f",
-        baseAsset, freeBalance, lockedBalance, borrowed));
-    double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY? freeBalance : borrowed;
-    if (qtyToExitAvail < qtyToExit) {
-      String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
-          qtyToExit, baseAsset, qtyToExitAvail);
-      logger.error(errorMsg);
-      mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
-      return;
-    }
-    if (qtyToExit > 0) {
-      MarginNewOrder marketExitOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
-          chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
-          OrderType.MARKET, /* timeInForce= */ null,
-          // TODO: In corner cases, will have to round up this quantity.
-          "" + qtyToExit).newOrderRespType(NewOrderResponseType.FULL);
-      MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(marketExitOrder);
-      logger.info(String.format("Executed %s order and got the response: %s.",
-          chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
-          marketExitOrderResponse));
-      double executedQty = numberFormat.parse(marketExitOrderResponse.getExecutedQty()).doubleValue();
-      double avgTradePrice = getAvgTradePrice(marketExitOrderResponse);
-      dao.setExitOrder(chartPatternSignal,
-          ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
-              executedQty,
-              avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);
-      if (chartPatternSignal.tradeType() == TradeType.SELL){
-        repayBorrowedOnMargin.repay(baseAsset, executedQty);
-      }
-      if (!doNotDecrementNumOutstandingTrades) {
-        outstandingTrades.decrementNumOutstandingTrades(chartPatternSignal.timeFrame());
-      }
     }
   }
 

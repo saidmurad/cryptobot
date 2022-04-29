@@ -29,8 +29,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import javax.mail.MessagingException;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.*;
@@ -119,18 +117,6 @@ public class BinanceTradingBot {
         this.mailer = mailer;
     }
 
-    String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
-        String pattern = "#";
-        for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {
-            if (i == 0) {
-                pattern += ".";
-            }
-            pattern += "#";
-        }
-        DecimalFormat df = new DecimalFormat(pattern);
-        df.setRoundingMode(RoundingMode.CEILING);
-        return df.format(qty);
-    }
 
     @Value("${fifteen_minute_timeframe}")
     String fifteenMinuteTimeFrameAllowedTradeTypeConfig;
@@ -265,7 +251,7 @@ public class BinanceTradingBot {
     }
 
     /** Return Pair of usdt free and value in usdt available to borrow. **/
-    Pair<Integer, Integer> getAccountBalance() throws ParseException, BinanceApiException {
+    Pair<Integer, Integer> getAccountBalanceFreeUSDTAndMoreBorrowableUSDTValue() throws ParseException, BinanceApiException {
         this.account = binanceApiMarginRestClient.getAccount();
         int usdtFree = numberFormat.parse(account.getAssetBalance("USDT").getFree()).intValue();
         double marginLevel = numberFormat.parse(account.getMarginLevel()).doubleValue();
@@ -293,11 +279,13 @@ public class BinanceTradingBot {
     }
 
     public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades) throws ParseException, BinanceApiException, MessagingException {
-        Pair<Integer, Integer> accountBalance = getAccountBalance();
+        Pair<Integer, Integer> accountBalance = getAccountBalanceFreeUSDTAndMoreBorrowableUSDTValue();
         Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
             chartPatternSignal.coinPair());
         if (minNotionalAndLotSize == null) {
-            logger.error(String.format("Unexpectedly supportedSymbolsInfo.getMinNotionalAndLotSize returned null for %s", chartPatternSignal.coinPair()));
+          String errMsg = String.format("Unexpectedly supportedSymbolsInfo.getMinNotionalAndLotSize returned null for %s", chartPatternSignal.coinPair());
+            logger.error(errMsg);
+            mailer.sendEmail("Missing minNotionalAndLotSize", errMsg);
             return;
         }
         int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
@@ -323,7 +311,7 @@ public class BinanceTradingBot {
                 }
                 break;
             case SELL:
-                String numCoinsToBorrow = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
+                String numCoinsToBorrow = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
                 String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
                 if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
                     logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
@@ -345,7 +333,7 @@ public class BinanceTradingBot {
                 }
             default:
         }
-        String roundedQuantity = getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
+        String roundedQuantity = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
 
         OrderSide orderSide;
         int sign;
@@ -379,26 +367,32 @@ public class BinanceTradingBot {
                 entryPrice, // because the order response returns just 0 as the price for market order fill.
                 marketOrderResp.getStatus()));
 
-        int tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
-        //stopLossPercents =
-        String stopPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
-        String stopLimitPrice = getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
-        MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
-            stopLossOrderSide,
-            OrderType.STOP_LOSS_LIMIT,
-            TimeInForce.GTC,
-            marketOrderResp.getExecutedQty(),
-            stopLimitPrice);
-        stopLossOrder.stopPrice(stopPrice);
-        MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
-        logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
-            stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
+        Integer tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
+        if (tickSizeNumDecimals != null) {
+          //stopLossPercents =
+          String stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
+          String stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
+          MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
+              stopLossOrderSide,
+              OrderType.STOP_LOSS_LIMIT,
+              TimeInForce.GTC,
+              marketOrderResp.getExecutedQty(),
+              stopLimitPrice);
+          stopLossOrder.stopPrice(stopPrice);
+          MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
+          logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
+              stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
 
-        dao.setExitStopLimitOrder(chartPatternSignal,
-            ChartPatternSignal.Order.create(
-                stopLossOrderResp.getOrderId(),
-                0,0,
-                stopLossOrderResp.getStatus()));
+          dao.setExitStopLimitOrder(chartPatternSignal,
+              ChartPatternSignal.Order.create(
+                  stopLossOrderResp.getOrderId(),
+                  0, 0,
+                  stopLossOrderResp.getStatus()));
+        } else {
+          String errMsg = String.format("Weirdity occured for coin pair %s, got null minPriceAndTickSize for the symbol. Did not place stop loss order because of this. SupportedSymbolsInfo size was %d.", chartPatternSignal.coinPair(), supportedSymbolsInfo.getMinPricAndTickSizeMapSize());
+          logger.error(errMsg);
+          mailer.sendEmail("Missing minPriceAndTickSize unexpectedly.", errMsg);
+        }
         dao.writeAccountBalanceToDB();
     }
 

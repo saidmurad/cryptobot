@@ -3,6 +3,8 @@ package com.binance.bot.common;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.VolumeProfile;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.time.Instant;
@@ -66,5 +68,18 @@ public class Util {
 
   public static String getGateFormattedCurrencyPair(String currencyPair) {
     return currencyPair.substring(0, currencyPair.length() - 4) + "_USDT";
+  }
+
+  public static String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
+    String pattern = "#";
+    for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {
+      if (i == 0) {
+        pattern += ".";
+      }
+      pattern += "#";
+    }
+    DecimalFormat df = new DecimalFormat(pattern);
+    df.setRoundingMode(RoundingMode.CEILING);
+    return df.format(qty);
   }
 }

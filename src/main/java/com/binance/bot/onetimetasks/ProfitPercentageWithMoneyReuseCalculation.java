@@ -95,7 +95,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       "  where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and cps.CoinPair = replace(macd.CoinPair, '_', '') and \n" +
       "      ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and \n" +
       //" DateTime(cps.TimeOfSignal)>=DateTime('2022-03-01 00:00') and " +
-      " DateTime(cps.TimeOfSignal)<=DateTime('2022-04-23 00:00') and " +
+      " DateTime(cps.TimeOfSignal)<=DateTime('2022-02-28 11:59') and " +
       "      ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and \n" +
       "      ((cps.TradeType='BUY' and macd.macd >=0) or \n" +
       "      (cps.TradeType='SELL' and macd.macd <=0)) and " +

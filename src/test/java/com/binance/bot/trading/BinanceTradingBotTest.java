@@ -1418,10 +1418,7 @@ public class BinanceTradingBotTest {
             OrderStatus.NEW));
   }
 
-  @Test
-  public void formattedQuantity_forWholeLotSizeOnly() {
-    assertThat(binanceTradingBot.getFormattedQuantity(10.123, 0)).isEqualTo("11");
-  }
+
 
   private ChartPatternSignal.Builder getChartPatternSignal() {
     return ChartPatternSignal.newBuilder()

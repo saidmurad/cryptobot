@@ -942,7 +942,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.SELL);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.0051");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("3800");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("3780");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
@@ -1167,7 +1167,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.0051");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("4200");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("4220");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
@@ -1240,7 +1240,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.0051");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("4200");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("4220");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
@@ -1329,7 +1329,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.0051");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("4200");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("4220");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,
@@ -1409,7 +1409,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005");
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.0051");
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("4200");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("4220");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,

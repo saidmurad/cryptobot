@@ -372,11 +372,20 @@ public class BinanceTradingBot {
           //stopLossPercents =
           String stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
           String stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
+          String qtyForStopLossExit;
+          if (chartPatternSignal.tradeType() == TradeType.BUY) {
+            // For buy trades, the qty can be sold with commisison calculated only on the USDT proceeds from the sale.
+            qtyForStopLossExit = marketOrderResp.getExecutedQty();
+          } else {
+            // For sell orders, while buying back the commission 0.1% is deducted on the base asset.
+            double qtyAdjustedForCommission = numberFormat.parse(marketOrderResp.getExecutedQty()).doubleValue() / 0.999;
+            qtyForStopLossExit = Util.getFormattedQuantity(qtyAdjustedForCommission, stepSizeNumDecimalPlaces);
+          }
           MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
               stopLossOrderSide,
               OrderType.STOP_LOSS_LIMIT,
               TimeInForce.GTC,
-              marketOrderResp.getExecutedQty(),
+              qtyForStopLossExit,
               stopLimitPrice);
           stopLossOrder.stopPrice(stopPrice);
           MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);

@@ -7,22 +7,23 @@ invalidation.
 
 Next steps:
 0. Price target already reached.
-1. Fake out (wait till atleast 1 candlestick).
-2. What causes the duplicate trades in the same list so often?
-3. Include dtime of signal in the where clause when querying for signals to trade.
-4. Set Profit percent at time of signal invalidation for the time period from
+1. Commission eating into usdt proceeds from Long trade closing. 
+2. Fake out (wait till atleast 1 candlestick).
+3. What causes the duplicate trades in the same list so often?
+4. Include dtime of signal in the where clause when querying for signals to trade.
+5. Set Profit percent at time of signal invalidation for the time period from
 06/02/2022 07:38 pm to 08/02/2022 02:25 pm
-5. Symbol may not be in trading stage at the time of signal arrival and at the time of signal 
+6. Symbol may not be in trading stage at the time of signal arrival and at the time of signal 
 invalidation. Need to handle it.
 For the time period the above fix is not there, I also need a lagging task to back fill those prices.
-6. In AltfinPatternsReader set ten candlestick time no more than the target time.
-7. Things to check before placing a trade:
+7. In AltfinPatternsReader set ten candlestick time no more than the target time.
+8. Things to check before placing a trade:
     HOw far the real price is away from the price at the time of signal (may be already over it)
         2z32gtbbhand from the price target.
     May be ignore isInsertedLate for trading decsion as comeback signals don't have that info, and
         also ok to place trade if large percent of the target price is yet to be met.
-8. Trading status of the symbol.
-9. Signal for the same symbol getting replaced with a different trade in the same trade type
+9. Trading status of the symbol.
+10. Signal for the same symbol getting replaced with a different trade in the same trade type
 - no need to kill the trade here.
 7. Add an error message column to the table and put failed actions there.
 8. BinanceapiException to be made a checked exception.d

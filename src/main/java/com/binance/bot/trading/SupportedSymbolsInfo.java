@@ -1,6 +1,7 @@
 package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.general.FilterType;
 import com.binance.api.client.domain.general.SymbolStatus;
@@ -17,6 +18,7 @@ import java.util.*;
 @Component
 public class SupportedSymbolsInfo {
 
+  private final BinanceApiMarginRestClient binanceApiMarginRestClient;
   private BinanceApiRestClient binanceApiRestClient;
   private Set<String> supportedSymbols = new HashSet<>();
   private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new HashMap<>();
@@ -30,6 +32,7 @@ public class SupportedSymbolsInfo {
   @Autowired
   public SupportedSymbolsInfo(BinanceApiClientFactory binanceApiClientFactory) {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
+    binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
   }
 
   public Set<String> getSupportedSymbols() throws BinanceApiException {
@@ -51,9 +54,11 @@ public class SupportedSymbolsInfo {
     tradingSymbolsMap = new HashMap();
     lastFetchTime = System.currentTimeMillis();
     //logger.info("Calling getExchangeInfo at time " + dateFormat.format(new Date(lastFetchTime)));
-    binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-      if (symbolInfo.getStatus() == SymbolStatus.TRADING) {
-        tradingSymbolsMap.put(symbolInfo.getSymbol(), symbolInfo.isMarginTradingAllowed());
+    binanceApiMarginRestClient.getCrossMarginCurrencyPairs().forEach(crossMarginPair ->{
+      if (crossMarginPair.getSymbol().endsWith("USDT")) {
+        if (crossMarginPair.getIsMarginTrade()) {
+          tradingSymbolsMap.put(crossMarginPair.getSymbol(), true);
+        }
       }
     });
     return tradingSymbolsMap;

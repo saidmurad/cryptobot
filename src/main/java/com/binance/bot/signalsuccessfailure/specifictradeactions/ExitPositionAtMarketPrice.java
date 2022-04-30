@@ -68,12 +68,6 @@ public class ExitPositionAtMarketPrice {
   }
 
   private void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException, InterruptedException {
-      if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
-          // This is for backward compatibility.
-          || chartPatternSignal.exitStopLimitOrder() == null)) {
-        logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
-        return;
-      }
       OrderStatusRequest stopLimitOrderStatusRequest = new OrderStatusRequest(
           chartPatternSignal.coinPair(), chartPatternSignal.exitStopLimitOrder().orderId());
       // To get the most update from binance.
@@ -106,6 +100,13 @@ public class ExitPositionAtMarketPrice {
   public void exitPositionIfStillHeld(
       ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType) throws MessagingException {
     try {
+      if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
+          || chartPatternSignal.entryOrder() == null
+          // This is for backward compatibility.
+          || chartPatternSignal.exitStopLimitOrder() == null)) {
+        logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
+        return;
+      }
       String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
       MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
       double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();

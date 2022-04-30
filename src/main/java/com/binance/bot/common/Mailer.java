@@ -34,7 +34,7 @@ public class Mailer{
     MimeMessage message = new MimeMessage(session);
     message.addRecipient(Message.RecipientType.TO, new InternetAddress(EMAIL_ADDRESS));
     message.setSubject(sub);
-    message.setText(msg);
+    message.setText(msg == null? "null message": msg);
     //send message
     Transport.send(message);
   }

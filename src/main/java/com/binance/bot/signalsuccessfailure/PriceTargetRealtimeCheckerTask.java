@@ -60,7 +60,9 @@ public class PriceTargetRealtimeCheckerTask {
         continue;
       }
       double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+      // TODO: Race condition with ProfitTakerTask.
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
+            TradeExitType.TARGET_TIME_PASSED);
       boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
       //logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
     }

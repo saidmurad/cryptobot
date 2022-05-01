@@ -126,6 +126,8 @@ public class ExitPositionAtMarketPriceTest {
   @Test
   public void exitPositionIfStillHeld_buySignal_noPartialStopLossTrade_exitsTradeForFullQty()
       throws MessagingException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
@@ -154,9 +156,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -190,6 +194,8 @@ public class ExitPositionAtMarketPriceTest {
   @Test
   public void alreadyCanceledStopLossBySomeOccurence_exitsTradeForProfitTaking()
       throws MessagingException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
@@ -214,9 +220,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -276,9 +284,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill1.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -330,9 +340,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -439,6 +451,8 @@ public class ExitPositionAtMarketPriceTest {
   @Test
   public void exitPositionIfStillHeld_partialStopLossTrade_exitsTradeForRemainingQty()
       throws MessagingException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -469,9 +483,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("2.5");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("2.5");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setExecutedQty("5.0");
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
@@ -545,9 +561,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -609,9 +627,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -671,9 +691,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
+    fill2.setCommission("0");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);

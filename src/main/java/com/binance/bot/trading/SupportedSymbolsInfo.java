@@ -76,15 +76,30 @@ public class SupportedSymbolsInfo {
 
   public Pair<Double, Integer> getMinNotionalAndLotSize(String symbol) throws BinanceApiException {
     if (minNotionalAndLotSizeMap.isEmpty()) {
-      binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
-        Integer stepSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.LOT_SIZE).getStepSize());
-        Double minNotional = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.MIN_NOTIONAL).getMinNotional());
-        minNotionalAndLotSizeMap.put(symbolInfo.getSymbol(), Pair.of(minNotional, stepSize));
-      });
+      fillMinNotionalAndLotSize();
     }
-    return minNotionalAndLotSizeMap.get(symbol);
+    Pair<Double, Integer> ret = minNotionalAndLotSizeMap.get(symbol);
+    if (ret == null) {
+      logger.error(String.format("Missing entry for %s in minNotionalAndLotSize. Total number of entries in map=%d.",
+          symbol, minNotionalAndLotSizeMap.size()));
+      fillMinNotionalAndLotSize();
+      ret = minNotionalAndLotSizeMap.get(symbol);
+      if (ret == null) {
+        logger.error("Refetched the info from binance, but it is still null.");
+      } else {
+        logger.info("After refetching it is not null");
+      }
+    }
+    return ret;
   }
 
+  private void fillMinNotionalAndLotSize() throws BinanceApiException {
+    binanceApiRestClient.getExchangeInfo().getSymbols().parallelStream().forEach(symbolInfo -> {
+      Integer stepSize = getTickSizeAsNum(symbolInfo.getSymbolFilter(FilterType.LOT_SIZE).getStepSize());
+      Double minNotional = Double.parseDouble(symbolInfo.getSymbolFilter(FilterType.MIN_NOTIONAL).getMinNotional());
+      minNotionalAndLotSizeMap.put(symbolInfo.getSymbol(), Pair.of(minNotional, stepSize));
+    });
+  }
   public Pair<Double, Integer> getMinPriceAndTickSize(String symbol) throws BinanceApiException {
     if (minPriceAndTickSizeMap.isEmpty()) {
       fillMinPriceAndTickSizeMapFromExchangeInfo();
@@ -92,8 +107,15 @@ public class SupportedSymbolsInfo {
     Pair<Double, Integer> val = minPriceAndTickSizeMap.get(symbol);
     if (val == null) {
       // don't know when this occurs, this occurred even for ETHUSDT on 2022-04-24 02:18:06,699
+      logger.error(String.format("Missing entry for %s in minPriceAndTickSizeMap. Total number of entries in map=%d.",
+          symbol, minPriceAndTickSizeMap.size()));
       fillMinPriceAndTickSizeMapFromExchangeInfo();
       val = minPriceAndTickSizeMap.get(symbol);
+      if (val == null) {
+        logger.error("Refetched the info from binance, but it is still null.");
+      } else {
+        logger.info("After refetching it is not null");
+      }
     }
     return val;
   }

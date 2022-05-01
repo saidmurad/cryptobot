@@ -185,14 +185,16 @@ public class ExitPositionAtMarketPrice {
         logger.info(String.format("Executed %s order and got the response: %s.",
             chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
             marketExitOrderResponse));
-        double executedQty = numberFormat.parse(marketExitOrderResponse.getExecutedQty()).doubleValue();
-        double avgTradePrice = getAvgTradePrice(marketExitOrderResponse);
+        TradeFillData tradeFillData = new TradeFillData(marketExitOrderResponse, chartPatternSignal.tradeType(),
+            chartPatternSignal.tradeType() == TradeType.BUY
+                ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk()
+            : bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid());
         dao.setExitOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
-                executedQty,
-                avgTradePrice, marketExitOrderResponse.getStatus()), tradeExitType);
+                tradeFillData.getQuantity(),
+                tradeFillData.getAvgPrice(), marketExitOrderResponse.getStatus()), tradeExitType);
         if (chartPatternSignal.tradeType() == TradeType.SELL) {
-          repayBorrowedOnMargin.repay(baseAsset, executedQty);
+          repayBorrowedOnMargin.repay(baseAsset, tradeFillData.getQuantity());
         }
         if (!doNotDecrementNumOutstandingTrades) {
           outstandingTrades.decrementNumOutstandingTrades(chartPatternSignal.timeFrame());
@@ -202,17 +204,5 @@ public class ExitPositionAtMarketPrice {
       logger.error(String.format("Exception for trade exit type %s." , tradeExitType.name()), ex);
       mailer.sendEmail("ExitPositionAtMarketPrice uncaught exception for trade exit type" + tradeExitType.name(), ex.getMessage());
     }
-  }
-
-  private double getAvgTradePrice(MarginNewOrderResponse sellOrderResponse) throws ParseException {
-    List<Trade> fills = sellOrderResponse.getFills();
-    double weightedSum=0, weight = 0;
-    for (Trade fill: fills) {
-      double fillPrice = Util.getDoubleValue(fill.getPrice());
-      double fillQty = Util.getDoubleValue(fill.getQty());
-      weightedSum += fillPrice * fillQty;
-      weight += fillQty;
-    }
-    return weightedSum / weight;
   }
 }

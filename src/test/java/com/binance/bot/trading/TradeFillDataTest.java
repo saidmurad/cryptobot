@@ -2,6 +2,7 @@ package com.binance.bot.trading;
 
 import com.binance.api.client.domain.account.MarginNewOrderResponse;
 import com.binance.api.client.domain.account.Trade;
+import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.TradeType;
 import com.google.common.collect.ImmutableList;
 import junit.framework.TestCase;
@@ -28,11 +29,11 @@ public class TradeFillDataTest {
     fill1.setCommission("0.0122");
     buyTradeResponse.setFills(ImmutableList.of(fill1, fill1));
 
-    TradeFillData tradeFillData = new TradeFillData(buyTradeResponse, TradeType.BUY, 1.5);
+    TradeFillData tradeFillData = new TradeFillData(buyTradeResponse, TradeType.BUY);
 
     assertThat(decimalCompare(tradeFillData.getAvgPrice(), 0.881)).isTrue();
     assertThat(tradeFillData.getQuantity()).isEqualTo(24.3756);
-    assertThat(tradeFillData.getCommissionUSDT()).isEqualTo(0.0366);
+    assertThat(Util.decimalCompare(tradeFillData.getCommissionUSDT(), 0.0214964)).isTrue();
   }
 
   @Test
@@ -44,7 +45,7 @@ public class TradeFillDataTest {
     fill1.setCommission("0.0122");
     sellTradeResponse.setFills(ImmutableList.of(fill1, fill1));
 
-    TradeFillData tradeFillData = new TradeFillData(sellTradeResponse, TradeType.SELL, 1.5);
+    TradeFillData tradeFillData = new TradeFillData(sellTradeResponse, TradeType.SELL);
 
     assertThat(decimalCompare(tradeFillData.getAvgPrice(), 0.881)).isTrue();
     assertThat(tradeFillData.getQuantity()).isEqualTo(24.4);

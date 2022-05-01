@@ -8,6 +8,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
 import org.junit.Before;
@@ -19,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
@@ -40,17 +42,18 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   private Date currentTime = new Date();
 
   private PriceTenCandlestickRealtimeCheckerTask priceTenCandlestickRealtimeCheckerTask;
+  @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
 
   @Before
   public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
     priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(
-        mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
+        mockBinanceApiClientFactory, mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -65,7 +68,7 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes_tradeTypeSell() throws ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.SELL)
         .build();
@@ -82,7 +85,7 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_hour() throws ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_hour() throws ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.HOUR).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -97,7 +100,7 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_4hour() throws ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_4hour() throws ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.FOUR_HOURS).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())
@@ -112,7 +115,7 @@ public class PriceTenCandlestickRealtimeCheckerTaskTest {
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException, ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_day() throws InterruptedException, ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal(TimeFrame.DAY).build();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())

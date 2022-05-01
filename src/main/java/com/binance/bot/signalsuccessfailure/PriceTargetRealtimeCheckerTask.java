@@ -12,6 +12,7 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,8 @@ public class PriceTargetRealtimeCheckerTask {
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
+  @Value("${exit_trades_at_ten_candlestick_time}")
+  boolean exitTradesAtTenCandlestickTime;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   @Autowired
   PriceTargetRealtimeCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
@@ -61,8 +64,10 @@ public class PriceTargetRealtimeCheckerTask {
       }
       double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
       // TODO: Race condition with ProfitTakerTask.
-      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
+      if (!exitTradesAtTenCandlestickTime) {
+        exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
             TradeExitType.TARGET_TIME_PASSED);
+      }
       boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
       //logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
     }

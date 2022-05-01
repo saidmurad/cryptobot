@@ -6,6 +6,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
 import org.junit.Before;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.Date;
@@ -34,16 +36,18 @@ public class PriceTenCandlestickRealtimeCheckerTaskIntegrationTest {
 
   @Mock private ChartPatternSignalDaoImpl mockChartPatternSignalDaoImpl;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
+  @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
   private Date currentTime = new Date();
   private PriceTenCandlestickRealtimeCheckerTask priceTenCandlestickRealtimeCheckerTask;
 
   @Before
   public void setUp() {
-    priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo);
+    priceTenCandlestickRealtimeCheckerTask = new PriceTenCandlestickRealtimeCheckerTask(
+        new BinanceApiClientFactory(true, null, null), mockChartPatternSignalDaoImpl, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
   }
 
   @Test
-  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException, IOException, BinanceApiException {
+  public void testPerformPriceTargetChecks_timeFrame_fifteenMinutes() throws InterruptedException, ParseException, IOException, BinanceApiException, MessagingException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     List<ChartPatternSignal> chartPatternSignals = Lists.newArrayList(chartPatternSignal);
     when(mockChartPatternSignalDaoImpl.getChatPatternSignalsThatJustReachedTenCandleStickTime())

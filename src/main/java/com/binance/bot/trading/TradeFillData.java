@@ -10,24 +10,33 @@ import java.text.ParseException;
 import java.util.List;
 import java.util.Locale;
 
-class TradeFillData {
+public class TradeFillData {
    private double qty;
    private double avgPrice;
    private double commissionUSDT;
 
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
-   TradeFillData(MarginNewOrderResponse sellOrderResponse, TradeType tradeType, double currPrice)
+  // For market order fills.
+   public TradeFillData(MarginNewOrderResponse marginNewOrderResponse, TradeType tradeType)
        throws ParseException {
-    List<Trade> fills = sellOrderResponse.getFills();
+    List<Trade> fills = marginNewOrderResponse.getFills();
+    construct(fills, tradeType);
+  }
+
+  public TradeFillData(List<Trade> trades, TradeType tradeType) throws ParseException {
+     construct(trades, tradeType);
+  }
+
+  void construct(List<Trade> trades, TradeType tradeType) throws ParseException {
     double weightedSum=0;
-    for (Trade fill: fills) {
+    for (Trade fill: trades) {
       double fillPrice = Util.getDoubleValue(fill.getPrice());
       double fillQty = Util.getDoubleValue(fill.getQty());
       if (tradeType == TradeType.BUY) {
         double commissionInAsset = numberFormat.parse(fill.getCommission()).doubleValue();
         fillQty -= commissionInAsset;
-        commissionUSDT += commissionInAsset * currPrice;
+        commissionUSDT += commissionInAsset * fillPrice;
       } else {
         double commissionInUSDT = numberFormat.parse(fill.getCommission()).doubleValue();
         commissionUSDT += commissionInUSDT;
@@ -38,15 +47,15 @@ class TradeFillData {
     avgPrice = weightedSum / qty;
   }
 
-  double getQuantity() {
+  public double getQuantity() {
      return qty;
   }
 
-  double getAvgPrice() {
+  public double getAvgPrice() {
      return avgPrice;
   }
 
-  double getCommissionUSDT() {
+  public double getCommissionUSDT() {
      return commissionUSDT;
   }
 }

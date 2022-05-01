@@ -104,7 +104,6 @@ public class ExitPositionAtMarketPrice {
           || chartPatternSignal.entryOrder() == null
           // This is for backward compatibility.
           || chartPatternSignal.exitStopLimitOrder() == null)) {
-        logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
         return;
       }
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
@@ -191,10 +190,7 @@ public class ExitPositionAtMarketPrice {
             marketExitOrderResponse));
         // Trade here isof the reverse direction as the chart pattern entry trade type.
         TradeFillData tradeFillData = new TradeFillData(marketExitOrderResponse,
-            chartPatternSignal.tradeType() == TradeType.BUY ? TradeType.SELL : TradeType.BUY,
-            chartPatternSignal.tradeType() == TradeType.BUY
-                ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid()
-            : bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk());
+            chartPatternSignal.tradeType() == TradeType.BUY ? TradeType.SELL : TradeType.BUY);
         dao.setExitOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
                 tradeFillData.getQuantity(),

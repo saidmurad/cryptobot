@@ -56,9 +56,9 @@ public class BinanceTradingBot {
     @Value("${use_breakout_candlestick_for_stop_loss}")
     public boolean useBreakoutCandlestickForStopLoss;
     @Value("${stop_loss_percent}")
-    double stopLossPercent;
+    public double stopLossPercent;
     @Value("${stop_limit_percent}")
-    double stopLimitPercent;
+    public double stopLimitPercent;
     @Value("${min_margin_level}")
     double minMarginLevel;
 
@@ -383,7 +383,7 @@ public class BinanceTradingBot {
         mailer.sendEmail("Placed trade", logmsg);
         outstandingTrades.incrementNumOutstandingTrades(chartPatternSignal.timeFrame());
         // TODO: delayed market order executions.
-        TradeFillData tradeFillData = new TradeFillData(marketOrderResp, chartPatternSignal.tradeType(), entryPrice);
+        TradeFillData tradeFillData = new TradeFillData(marketOrderResp, chartPatternSignal.tradeType());
         dao.setEntryOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(
                 marketOrderResp.getOrderId(),
@@ -394,8 +394,14 @@ public class BinanceTradingBot {
         Integer tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
         if (tickSizeNumDecimals != null) {
           //stopLossPercents =
-          String stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
-          String stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
+          String stopPrice, stopLimitPrice;
+          if (stopLossPercent == 0.0) { // integ test
+            stopPrice = Double.toString(entryPrice - 0.02);
+            stopLimitPrice = Double.toString(entryPrice - 0.5);
+          } else {
+            stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
+            stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
+          }
           String qtyForStopLossExit;
           if (chartPatternSignal.tradeType() == TradeType.BUY) {
             // For buy trades, the qty can be sold with commisison calculated only on the USDT proceeds from the sale.

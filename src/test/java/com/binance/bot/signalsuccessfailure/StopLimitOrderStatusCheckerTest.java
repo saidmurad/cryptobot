@@ -94,9 +94,11 @@ public class StopLimitOrderStatusCheckerTest {
     Trade fill1 = new Trade();
     fill1.setQty("2.5");
     fill1.setPrice("3.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setQty("2.5");
     fill2.setPrice("5.0");
+    fill2.setCommission("0");
     when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
         Lists.newArrayList(fill1, fill2));
     stopLimitOrderStatusChecker.perform();
@@ -107,7 +109,6 @@ public class StopLimitOrderStatusCheckerTest {
     verify(mockDao).updateExitStopLimitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(2L, 5, 4, OrderStatus.FILLED));
     verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
-    verify(mockRepayBorrowedOnMargin).repay(eq("USDT"), eq(20.0));
     verify(mockDao).writeAccountBalanceToDB();
   }
 
@@ -186,9 +187,11 @@ public class StopLimitOrderStatusCheckerTest {
     Trade fill1 = new Trade();
     fill1.setQty("2.5");
     fill1.setPrice("1.0");
+    fill1.setCommission("0");
     Trade fill2 = new Trade();
     fill2.setQty("2.5");
     fill2.setPrice("3.0");
+    fill2.setCommission("0");
     when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
         Lists.newArrayList(fill1, fill2));
 
@@ -221,6 +224,7 @@ public class StopLimitOrderStatusCheckerTest {
     Trade fill1 = new Trade();
     fill1.setQty("2.5");
     fill1.setPrice("2.0");
+    fill1.setCommission("0");
     when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
         Lists.newArrayList(fill1));
 

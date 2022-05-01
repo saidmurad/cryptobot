@@ -16,6 +16,7 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.RepayBorrowedOnMargin;
+import com.binance.bot.trading.TradeFillData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,16 +70,23 @@ public class StopLimitOrderStatusChecker {
         Order orderStatus = binanceApiMarginRestClient.getOrderStatus(orderStatusRequest);
         if (orderStatus.getStatus() == OrderStatus.FILLED ||
             orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
-          Double qty = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
-          double price = getAvgFillPrice(activePosition.coinPair(), orderStatus.getOrderId());
+          Thread.sleep(5000);
+          List<Trade> trades = binanceApiMarginRestClient.getMyTrades(activePosition.coinPair(), orderStatus.getOrderId());
+          if (trades == null) {
+            String errMsg = String.format("Got empty trades list for stop loss order id %d for cps %s.", orderStatus.getOrderId(), activePosition);
+            logger.error(errMsg);
+            mailer.sendEmail("Stop loss order empty trades list", errMsg);
+            return;
+          }
+          TradeFillData tradeFillData = new TradeFillData(
+              trades,
+              activePosition.tradeType() == TradeType.BUY ? TradeType.SELL : TradeType.BUY);
           dao.updateExitStopLimitOrder(activePosition,
-              ChartPatternSignal.Order.create(orderStatus.getOrderId(), qty,
-                  price, orderStatus.getStatus()));
+              ChartPatternSignal.Order.create(orderStatus.getOrderId(), tradeFillData.getQuantity(),
+                  tradeFillData.getAvgPrice(), orderStatus.getStatus()));
           if (orderStatus.getStatus() == OrderStatus.FILLED) {
             if (activePosition.tradeType() == TradeType.SELL) {
-              repayBorrowedOnMargin.repay(Util.getBaseAsset(activePosition.coinPair()), qty);
-            } else {
-              repayBorrowedOnMargin.repay("USDT", qty * price);
+              repayBorrowedOnMargin.repay(Util.getBaseAsset(activePosition.coinPair()), tradeFillData.getQuantity());
             }
             if (!doNotDecrementNumOutstandingTrades) {
               outstandingTrades.decrementNumOutstandingTrades(activePosition.timeFrame());
@@ -91,15 +99,5 @@ public class StopLimitOrderStatusChecker {
       logger.error("Exception.", ex);
       mailer.sendEmail("StopLimitOrderStatusChecker uncaught exception.", ex.getMessage() != null ? ex.getMessage() : ex.getClass().getCanonicalName());
     }
-  }
-
-  private double getAvgFillPrice(String coinPair, long orderId) throws BinanceApiException, ParseException {
-    List<Trade> trades = binanceApiMarginRestClient.getMyTrades(coinPair, orderId);
-    double weightedSum =0.0, weight = 0.0;
-    for (Trade trade: trades) {
-      weightedSum += getDoubleValue(trade.getQty()) * getDoubleValue(trade.getPrice());
-      weight += getDoubleValue(trade.getQty());
-    }
-    return weightedSum / weight;
   }
 }

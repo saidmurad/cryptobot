@@ -299,7 +299,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
-    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10.0");
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10");
     verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
@@ -564,7 +564,7 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
-    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("5.0");
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("5");
     verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             5.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);

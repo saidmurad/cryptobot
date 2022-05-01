@@ -1001,7 +1001,7 @@ public class BinanceTradingBotTest {
     assertThat(sellStopLossOrder.getSide()).isEqualTo(OrderSide.SELL);
     assertThat(sellStopLossOrder.getType()).isEqualTo(OrderType.STOP_LOSS_LIMIT);
     assertThat(sellStopLossOrder.getTimeInForce()).isEqualTo(TimeInForce.GTC);
-    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.004995"); // After commissions.
+    assertThat(sellStopLossOrder.getQuantity()).isEqualTo("0.005"); // After commissions 004995 but rounded up.
     assertThat(sellStopLossOrder.getStopPrice()).isEqualTo("3800");
     assertThat(sellStopLossOrder.getPrice()).isEqualTo("3780");
     verify(mockDao).setExitStopLimitOrder(chartPatternSignal,

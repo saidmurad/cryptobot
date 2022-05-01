@@ -46,7 +46,7 @@ public class BinanceTradingBot {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final BookTickerPrices bookTickerPrices;
     private final RepayBorrowedOnMargin repayBorrowedOnMargin;
-    private Mailer mailer = new Mailer();
+    public Mailer mailer = new Mailer();
     private final OutstandingTrades outstandingTrades;
     private final MACDDataDao macdDataDao;
 
@@ -375,7 +375,7 @@ public class BinanceTradingBot {
         }
         MarginNewOrder marketOrder = new MarginNewOrder(chartPatternSignal.coinPair(), orderSide,
             OrderType.MARKET, /* timeInForce= */ null,
-            roundedQuantity);
+            roundedQuantity).newOrderRespType(NewOrderResponseType.FULL);
         MarginNewOrderResponse marketOrderResp = binanceApiMarginRestClient.newOrder(marketOrder);
         String logmsg = String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
             marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal);
@@ -387,9 +387,8 @@ public class BinanceTradingBot {
         dao.setEntryOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(
                 marketOrderResp.getOrderId(),
-                numberFormat.parse(marketOrderResp.getExecutedQty()).doubleValue(),
-                /// TODO: Find the actual price from the associated Trade
-                entryPrice, // because the order response returns just 0 as the price for market order fill.
+                tradeFillData.getQuantity(),
+                tradeFillData.getAvgPrice(),
                 marketOrderResp.getStatus()));
 
         Integer tickSizeNumDecimals = supportedSymbolsInfo.getMinPriceAndTickSize(chartPatternSignal.coinPair()).getSecond();
@@ -400,10 +399,11 @@ public class BinanceTradingBot {
           String qtyForStopLossExit;
           if (chartPatternSignal.tradeType() == TradeType.BUY) {
             // For buy trades, the qty can be sold with commisison calculated only on the USDT proceeds from the sale.
-            qtyForStopLossExit = marketOrderResp.getExecutedQty();
+            // qtyForStopLossExit for a BUY fill for 0.0039 will be 0.1% less than that.
+            qtyForStopLossExit = Util.getFormattedQuantity(tradeFillData.getQuantity(), stepSizeNumDecimalPlaces);
           } else {
             // For sell orders, while buying back the commission 0.1% is deducted on the base asset.
-            double qtyAdjustedForCommission = numberFormat.parse(marketOrderResp.getExecutedQty()).doubleValue() / 0.999;
+            double qtyAdjustedForCommission = tradeFillData.getQuantity() / 0.999;
             qtyForStopLossExit = Util.getFormattedQuantity(qtyAdjustedForCommission, stepSizeNumDecimalPlaces);
           }
           MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),

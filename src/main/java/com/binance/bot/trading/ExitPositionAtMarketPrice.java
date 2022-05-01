@@ -133,6 +133,10 @@ public class ExitPositionAtMarketPrice {
       }
       if (qtyToExit > 0) {
         String qtyToExitStr;
+        // For BUY type trades, the qty specified in the sell to exit order should be the exact amount in the account.
+        // Hence the BinanceTradingBot would need to get the actual fill quantity and maintain that info, rather than
+        // the quantity without taking commissions into account.
+        // Commission is taken on teh USDT proceeds not on the base asset during a sell, hence this logic.
         if (chartPatternSignal.tradeType() == TradeType.SELL) {
           // TODO: Need to do this for the Stop loss order also.
           qtyToExit /= 0.999;

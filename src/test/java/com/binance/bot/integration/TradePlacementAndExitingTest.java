@@ -1,10 +1,15 @@
 package com.binance.bot.integration;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderStatus;
+import com.binance.api.client.domain.account.Order;
+import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
+import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -15,14 +20,23 @@ import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.VolumeProfile;
 import com.binance.bot.util.CreateCryptobotDB;
 import com.google.common.collect.Lists;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.sqlite.SQLiteException;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import javax.mail.MessagingException;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Date;
@@ -30,16 +44,20 @@ import java.util.Locale;
 
 import static com.google.common.truth.Truth.assertThat;
 
-/*@RunWith(SpringJUnit4ClassRunner.class)
+@RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest
 @EnableConfigurationProperties
 @TestPropertySource(locations = {
-    "classpath:application.properties"},
-    properties = "app.scheduling.enable=false")*/
+    "classpath:application.properties",
+    "classpath:test-application.properties"},
+    properties = "app.scheduling.enable=false")
 /**
  * Disabled for frequent running becaause cross margin test doesn't have a testnet to use.
  */
 public class TradePlacementAndExitingTest {
+  @Rule
+  public MockitoRule mocks = MockitoJUnit.rule();
+  @Mock private Mailer mockMailer;
   @Autowired
   private BinanceTradingBot binanceTradingBot;
   @Autowired
@@ -51,17 +69,19 @@ public class TradePlacementAndExitingTest {
   @Autowired
   BinanceApiClientFactory binanceApiClientFactory;
   BinanceApiRestClient binanceApiRestClient;
-  @Value("${api_key}") String apiKey;
+  @Value("${run_integ_tests_with_real_trades}")
+  boolean runIntegTestsWithRealTrades;
   private long timeOfSignal = System.currentTimeMillis();
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private VolumeProfile volProfile;
+  private double currPrice;
+  private BinanceApiMarginRestClient binanceApiMarginRestClient;
 
-  //@Before
-  public void setUp() throws SQLException {
-    assertThat(apiKey).startsWith("31");
-    Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
+  @Before
+  public void setUp() throws SQLException, BinanceApiException, ParseException {
     CreateCryptobotDB.createCryptobotDB(jdbcTemplate.getDataSource());
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
+    binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100.0000");
     volProfile = VolumeProfile.newBuilder()
@@ -73,10 +93,17 @@ public class TradePlacementAndExitingTest {
         .setIsVolSurged(true)
         .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
         .build();
+    currPrice = numberFormat.parse(binanceApiRestClient.getPrice("ETHUSDT").getPrice()).doubleValue();
+    binanceTradingBot.mailer = mockMailer;
   }
 
-  //@Test
-  public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException {
+  @Test
+  public void buyAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException, InterruptedException {
+    if (!runIntegTestsWithRealTrades) {
+      return;
+    }
+    // For ticker price to get updated via web socket stream.
+    Thread.sleep(5000);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     binanceTradingBot.perTradeAmountConfigured = 10;
@@ -85,15 +112,19 @@ public class TradePlacementAndExitingTest {
 
     assertThat(chartPatternSignal.isSignalOn()).isTrue();
     assertThat(chartPatternSignal.entryOrder()).isNotNull();
-    assertThat(chartPatternSignal.entryOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignal.entryOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     System.out.println(String.format("Executed entry order: %s.", chartPatternSignal.entryOrder()));
     assertThat(Math.abs(chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()
-    -10)).isLessThan(0.5);
+    -10)).isLessThan(2.0); // Min notional calculation factorsin.
     assertThat(chartPatternSignal.exitStopLimitOrder()).isNotNull();
     System.out.println(String.format("Placed stop limit order: %s.", chartPatternSignal.exitStopLimitOrder()));
+    OrderStatusRequest stopLossOrderStatusReq =
+        new OrderStatusRequest("ETHUSDT", chartPatternSignal.exitStopLimitOrder().orderId());
+    Order stopLossOrderStatusResp = binanceApiMarginRestClient.getOrderStatus(stopLossOrderStatusReq);
+    assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
+        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
 
     // Exit the trade now.
-    double currPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignal.isSignalOn()).isFalse();
@@ -101,7 +132,8 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
     assertThat(chartPatternSignal.exitOrder()).isNotNull();
     assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(OrderStatus.FILLED);
-    assertThat(chartPatternSignal.exitOrder().executedQty()).isEqualTo(chartPatternSignal.exitOrder().executedQty());
+    // This is because commissions on the exit order is not on the base asset but on USDT.
+    assertThat(chartPatternSignal.exitOrder().executedQty()).isEqualTo(chartPatternSignal.entryOrder().executedQty());
     assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
@@ -114,6 +146,7 @@ public class TradePlacementAndExitingTest {
   private boolean isCloseEnough(double val1, double val2) {
     return Math.abs(val1 - val2) < 0.1;
   }
+
   private ChartPatternSignal getChartPatternSignal() {
     return ChartPatternSignal.newBuilder()
         .setCoinPair("ETHUSDT")

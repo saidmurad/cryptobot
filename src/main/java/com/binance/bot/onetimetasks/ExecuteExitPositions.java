@@ -3,7 +3,7 @@ package com.binance.bot.onetimetasks;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.exception.BinanceApiException;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;

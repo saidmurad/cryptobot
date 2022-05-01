@@ -301,7 +301,7 @@ public class BinanceTradingBot {
                         tradeValueInUSDTToDo, chartPatternSignal));
                 } else if (tradeValueInUSDTToDo - accountBalance.getFirst() <= accountBalance.getSecond()) {
                     Integer usdtToBorrow = (int) Math.ceil(tradeValueInUSDTToDo - accountBalance.getFirst());
-                    logger.info("Borrowing %d USDT.", usdtToBorrow);
+                    logger.info(String.format("Borrowing %d USDT.", usdtToBorrow));
                     binanceApiMarginRestClient.borrow("USDT", usdtToBorrow.toString());
                 } else {
                     String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);

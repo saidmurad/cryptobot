@@ -6,9 +6,7 @@ import com.binance.api.client.domain.market.AggTrade;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
-import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -25,8 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-
-import static com.binance.bot.common.Util.getProfitPercentAtWithPrice;
 
 public abstract class PriceTargetCheckerLaggingTask {
 

@@ -1,6 +1,7 @@
 package com.binance.bot.onetimetasks;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.account.CrossMarginPair;
 import com.binance.api.client.exception.BinanceApiException;
@@ -65,6 +66,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private final boolean useMACDForExit = false;
   private final boolean useHistogramTrendReversalForExit = false;
   private final boolean avoidOverdoneTradeTypes = false;
+  private final BinanceApiMarginRestClient binanceApiMarginRestClient;
 
   @Autowired
   private JdbcTemplate jdbcTemplate;
@@ -111,27 +113,9 @@ public class ProfitPercentageWithMoneyReuseCalculation {
                                                    ChartPatternSignalDaoImpl dao,
                                                    MACDDataDao macdDao) throws BinanceApiException {
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
+    binanceApiMarginRestClient = binanceApiClientFactory.newMarginRestClient();
     this.dao = dao;
     this.macdDao = macdDao;
-    AtomicInteger numCrossMarginPairs = new AtomicInteger();
-    AtomicInteger numCrossMarginPairsBuyAllowed = new AtomicInteger();
-    AtomicInteger numCrossMarginPairsSellAllowed = new AtomicInteger();
-    binanceApiClientFactory.newMarginRestClient().getCrossMarginCurrencyPairs().forEach(crossMarginPair ->{
-      if (crossMarginPair.getSymbol().endsWith("USDT")) {
-        symbolAndIsMarginTradingAllowed.put(crossMarginPair.getSymbol(), crossMarginPair);
-        if (crossMarginPair.getIsMarginTrade()) {
-          numCrossMarginPairs.incrementAndGet();
-          if (crossMarginPair.getIsBuyAllowed()) {
-            numCrossMarginPairsBuyAllowed.incrementAndGet();
-          }
-          if (crossMarginPair.getIsSellAllowed()) {
-            numCrossMarginPairsSellAllowed.incrementAndGet();
-          }
-        }
-      }
-    });
-    logger.info(String.format("Number of cross margin pairs=%d, buy allowed=%d, sell allowed =%d.",
-        numCrossMarginPairs.get(), numCrossMarginPairsBuyAllowed.get(), numCrossMarginPairsSellAllowed.get()));
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
@@ -180,7 +164,27 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return TradeType.NONE;
   }
 
-  public void calculate() {
+  public void calculate() throws BinanceApiException {
+    AtomicInteger numCrossMarginPairs = new AtomicInteger();
+    AtomicInteger numCrossMarginPairsBuyAllowed = new AtomicInteger();
+    AtomicInteger numCrossMarginPairsSellAllowed = new AtomicInteger();
+    binanceApiMarginRestClient.getCrossMarginCurrencyPairs().forEach(crossMarginPair ->{
+      if (crossMarginPair.getSymbol().endsWith("USDT")) {
+        symbolAndIsMarginTradingAllowed.put(crossMarginPair.getSymbol(), crossMarginPair);
+        if (crossMarginPair.getIsMarginTrade()) {
+          numCrossMarginPairs.incrementAndGet();
+          if (crossMarginPair.getIsBuyAllowed()) {
+            numCrossMarginPairsBuyAllowed.incrementAndGet();
+          }
+          if (crossMarginPair.getIsSellAllowed()) {
+            numCrossMarginPairsSellAllowed.incrementAndGet();
+          }
+        }
+      }
+    });
+    logger.info(String.format("Number of cross margin pairs=%d, buy allowed=%d, sell allowed =%d.",
+        numCrossMarginPairs.get(), numCrossMarginPairsBuyAllowed.get(), numCrossMarginPairsSellAllowed.get()));
+
     List<ChartPatternSignal> chartPatternSignals;
     if (USE_SIGNAL_INVALIDATIONS) {
       chartPatternSignals = jdbcTemplate.query(QUERY_USING_INVALIDATIONS, new ChartPatternSignalMapper());

@@ -2,7 +2,6 @@ package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.springframework.beans.factory.annotation.Autowired;

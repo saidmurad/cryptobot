@@ -1,4 +1,4 @@
-package com.binance.bot.signalsuccessfailure.specifictradeactions;
+package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiMarginRestClient;
@@ -18,9 +18,6 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.CrossMarginAccountBalance;
-import com.binance.bot.trading.RepayBorrowedOnMargin;
-import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.google.common.collect.Lists;
 import org.junit.Before;
 import org.junit.Rule;

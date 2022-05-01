@@ -6,7 +6,7 @@ import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.domain.market.TickerPrice;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;

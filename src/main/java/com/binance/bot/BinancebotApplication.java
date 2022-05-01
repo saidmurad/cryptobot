@@ -28,7 +28,7 @@ public class BinancebotApplication implements CommandLineRunner {
   @Autowired
 	private ExecuteExitPositions executeExitPositions;
 	@Autowired private MarketPriceStream marketPriceStream;
-	@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
+	//@Autowired private ProfitPercentageWithMoneyReuseCalculation calculation;
 	@Autowired private MACDTrendBackfill macdTrendBackfill;
 	public static void main(String[] args) {
 		SpringApplication.run(BinancebotApplication.class, args);

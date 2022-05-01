@@ -2,7 +2,7 @@ package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;

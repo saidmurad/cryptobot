@@ -6,13 +6,14 @@ import com.binance.api.client.domain.OrderStatus;
 import com.binance.api.client.domain.market.Candlestick;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
-import com.binance.bot.signalsuccessfailure.specifictradeactions.ExitPositionAtMarketPrice;
+import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.BinanceTradingBot;
 import com.binance.bot.trading.VolumeProfile;
+import com.binance.bot.util.CreateCryptobotDB;
 import com.google.common.collect.Lists;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +28,6 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.Locale;
 
-import static com.binance.bot.database.ChartPatternSignalDaoImplTest.createTableStmt;
 import static com.google.common.truth.Truth.assertThat;
 
 /*@RunWith(SpringJUnit4ClassRunner.class)
@@ -60,12 +60,7 @@ public class TradePlacementAndExitingTest {
   public void setUp() throws SQLException {
     assertThat(apiKey).startsWith("31");
     Statement stmt = jdbcTemplate.getDataSource().getConnection().createStatement();
-    try {
-      stmt.execute("drop table ChartPatternSignal");
-    } catch (SQLiteException ignore) {
-
-    }
-    stmt.execute(createTableStmt);
+    CreateCryptobotDB.createCryptobotDB(jdbcTemplate.getDataSource());
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100.0000");

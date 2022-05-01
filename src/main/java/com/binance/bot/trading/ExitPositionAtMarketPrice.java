@@ -1,4 +1,4 @@
-package com.binance.bot.signalsuccessfailure.specifictradeactions;
+package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiMarginRestClient;

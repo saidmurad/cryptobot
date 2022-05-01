@@ -11,7 +11,8 @@ import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.VolumeProfile;
-import com.binance.bot.util.SetupDatasource;
+import com.binance.bot.util.CreateCryptobotDB;
+import com.binance.bot.util.CreateDatasource;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
@@ -50,89 +51,6 @@ public class ChartPatternSignalDaoImplTest {
   private final long currentTimeMillis = System.currentTimeMillis();
   ChartPatternSignalDaoImpl dao;
   private VolumeProfile volProfile;
-  public static final String createTableStmt = "Create Table ChartPatternSignal(\n" +
-      "    CoinPair TEXT NOT NULL,\n" +
-      "    TimeFrame TEXT NOT NULL,\n" +
-      "    TradeType TEXT NOT NULL,\n" +
-      "    Pattern TEXT NOT NULL,\n" +
-      "    Attempt INTEGER NOT NULL,\n" +
-      "    PriceAtTimeOfSignal REAL NOT NULL,\n" +
-      "    PriceAtTimeOfSignalReal REAL,\n" +
-      "    PriceRelatedToPattern REAL,\n" +
-      "    TimeOfSignal TEXT NOT NULL,\n" +
-      "    TimeOfInsertion TEXT,\n" +
-      "    IsInsertedLate INTEGER,\n" +
-      "    PriceTarget REAL NOT NULL,\n" +
-      "    PriceTargetTime TEXT NOT NULL,\n" +
-      "    ProfitPotentialPercent REAL NOT NULL,\n" +
-      "    IsSignalOn INTEGER,\n" +
-      "    NumTimesMissingInInput INTEGER,\n" +
-      "    VolumeAtSignalCandlestick INTEGER,\n" +
-      "    VolumeAverage REAL,\n" +
-      "    IsVolumeSurge INTEGER,\n" +
-      "    TimeOfSignalInvalidation TEXT,\n" +
-      "    PriceAtTimeOfSignalInvalidation REAL,\n" +
-      "    ProfitPercentAtTimeOfSignalInvalidation REAL,\n" +
-      "    ReasonForSignalInvalidation TEXT,\n" +
-      "    PriceAtSignalTargetTime REAL,\n" +
-      "    ProfitPercentAtSignalTargetTime REAL,\n" +
-      "    TenCandlestickTime TEXT,\n" +
-      "    PriceAtTenCandlestickTime REAL,\n" +
-      "    FailedToGetPriceAtTenCandlestickTime INTEGER,\n" +
-      "    FailedToGetPriceAtSignalTargetTime INTEGER,\n" +
-      "    ProfitPercentAtTenCandlestickTime REAL,\n" +
-      "    PriceBestReached REAL,\n" +
-      "    PriceCurrent REAL,\n" +
-      "    CurrentTime TEXT, \n" +
-      "    EntryOrderId INTEGER, \n" +
-      "    EntryExecutedQty REAL, \n" +
-      "    EntryAvgPrice REAL, \n" +
-      "    EntryOrderStatus TEXT, \n" +
-      "    ExitStopLossOrderId INTEGER, \n" +
-      "    ExitStopLossOrderExecutedQty REAL, \n" +
-      "    ExitStopLossAvgPrice REAL, \n" +
-      "    ExitStopLossOrderStatus TEXT, \n" +
-      "    ExitOrderId INTEGER, \n" +
-      "    ExitOrderExecutedQty REAL, \n" +
-      "    ExitOrderAvgPrice REAL, \n" +
-      "    ExitOrderStatus TEXT, \n" +
-      "    Realized REAL, \n" +
-      "    RealizedPercent REAL, \n" +
-      "    UnRealized REAL, \n" +
-      "    UnRealizedPercent REAL,\n" +
-      "    IsPositionExited INTEGER, \n" +
-      "    MaxLoss REAL,\n" +
-      "    MaxLossPercent REAL,\n" +
-      "    MaxLossTime TEXT,\n" +
-      "    StopLossPrice REAL,\n" +
-      "    IsPriceTargetMet INTEGER,\n" +
-      "    PriceTargetMetTime REAL," +
-      "    TradeExitType TEXT,\n" +
-      "    EntryEligibleBasedOnMACDSignalCrossOver INTEGER,\n" +
-      "    CONSTRAINT chartpatternsignal_pk PRIMARY KEY (CoinPair, TimeFrame, TradeType, TimeOfSignal, Attempt)\n" +
-      ");";
-  public static final String CREATE_TABLE_STMT_BITCOIN_MONITORING = "create table BitcoinPriceMonitoring(" +
-      "time TEXT not Null, timeFrame TEXT not Null, candleOpenPrice REAL, candleClosePrice REAL, " +
-      "tradeTypeOverdone TEXT," +
-      "Constraint PK Primary Key(time, timeFrame))";
-
-  private static final String CREATE_CROSS_MARGIN_FUNDING_HISTORY_TABLE = "create table CrossMarginAccountFundingHistory(\n" +
-      "    Time TEXT not NULL,\n" +
-      "    Principal REAL not NULL\n" +
-      ")";
-
-  private static final String CREATE_CROSS_MARGIN_ACCOUNT_BALANCE_HISTORY_TABLE = "create table CrossMarginAccountBalanceHistory(\n" +
-      "    Time TEXT not NULL,\n" +
-      "    FreeUSDT INTEGER not NULL,\n" +
-      "    LockedUSDT INTEGER not NULL,\n" +
-      "    BorrowedUSDT INTEGER NOT NULL,\n" +
-      "    NetUSDT INTEGER not NULL,    \n" +
-      "    TotalValue INTEGER not NULL,\n" +
-      "    LiabilityValue INTEGER not NULL,\n" +
-      "    NetValue INTEGER not NULL,\n" +
-      "    MarginLevel REAL not NULL,\n" +
-      "    ReturnRate REAL\n" +
-      ")";
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   /*
@@ -149,13 +67,9 @@ public class ChartPatternSignalDaoImplTest {
   public void setUp() throws SQLException {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-    DataSource dataSource = SetupDatasource.getDataSource();
+    DataSource dataSource = CreateDatasource.createDataSource();
     dao = new ChartPatternSignalDaoImpl(mockBinanceApiClientFactory, mockBookTickerPrices);
     dao.setDataSource(dataSource);
-    Statement stmt = dataSource.getConnection().createStatement();
-    stmt.execute(createTableStmt);
-    stmt.execute(CREATE_TABLE_STMT_BITCOIN_MONITORING);
-    stmt.execute("create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, TimeOfSignal Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);");
     Candlestick currentCandlestick = new Candlestick();
     currentCandlestick.setVolume("100.0000");
     volProfile = VolumeProfile.newBuilder()
@@ -167,10 +81,7 @@ public class ChartPatternSignalDaoImplTest {
         .setIsVolSurged(true)
         .setRecentCandlesticks(Lists.newArrayList(currentCandlestick))
         .build();
-    stmt.execute(CREATE_CROSS_MARGIN_FUNDING_HISTORY_TABLE);
-    stmt.execute(CREATE_CROSS_MARGIN_ACCOUNT_BALANCE_HISTORY_TABLE);
-    dao.jdbcTemplate.update(String.format("insert into CrossMarginAccountFundingHistory(Time, Principal) values('%s',12345)",
-        new Date()));
+    CreateCryptobotDB.createCryptobotDB(dataSource);
   }
 
   @Test

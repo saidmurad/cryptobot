@@ -1,8 +1,8 @@
 package com.binance.bot.database;
 
 import com.binance.bot.tradesignals.TimeFrame;
-import com.binance.bot.util.SetupDatasource;
-import junit.framework.TestCase;
+import com.binance.bot.util.CreateCryptobotDB;
+import com.binance.bot.util.CreateDatasource;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,20 +16,14 @@ import static com.google.common.truth.Truth.assertThat;
 @RunWith(JUnit4.class)
 public class OutstandingTradesTest {
 
-  private static final String CREATE_TABLE_STMT = "create table NumOutstandingTrades(\n" +
-      "    TimeFrame TEXT NOT NULL,\n" +
-      "    NumOutstandingTrades INTEGER,\n" +
-      "    Constraint PK Primary Key(TimeFrame)\n" +
-      ");";
   private final OutstandingTrades outstandingTrades = new OutstandingTrades();
 
   @Before
   public void setUp() {
-    DataSource dataSource = SetupDatasource.getDataSource();
+    DataSource dataSource = CreateDatasource.createDataSource();
     JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
     outstandingTrades.setJdbcTemplate(jdbcTemplate);
-    jdbcTemplate.execute(CREATE_TABLE_STMT);
-    jdbcTemplate.update("insert into NumOutstandingTrades values('FIFTEEN_MINUTES', 0)");
+    CreateCryptobotDB.createCryptobotDB(dataSource);
   }
 
   @Test

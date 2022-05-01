@@ -1,8 +1,8 @@
 package com.gateiobot.db;
 
 import com.binance.bot.tradesignals.TimeFrame;
-import com.binance.bot.util.SetupDatasource;
-import junit.framework.TestCase;
+import com.binance.bot.util.CreateCryptobotDB;
+import com.binance.bot.util.CreateDatasource;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,11 +34,9 @@ public class MACDDataDaoTest {
 
   @Before
   public void setUp() throws IOException {
-    DataSource dataSource = SetupDatasource.getDataSource();
+    DataSource dataSource = CreateDatasource.createDataSource();
     macdDataDao.jdbcTemplate = new JdbcTemplate(dataSource);
-    String macdCreateStmt = new String(getClass().getResourceAsStream("/macd_schema.sql")
-        .readAllBytes());
-    macdDataDao.jdbcTemplate.execute(macdCreateStmt);
+    CreateCryptobotDB.createCryptobotDB(dataSource);
     macdDataDao.setMockClock(mockClock);
   }
 

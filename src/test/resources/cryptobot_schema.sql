@@ -54,12 +54,13 @@ MaxLossPercent REAL,
 MaxLossTime TEXT,
 StopLossPrice REAL,
 IsPriceTargetMet INTEGER,
-PriceTargetMetTime REAL," +
+PriceTargetMetTime REAL,
 TradeExitType TEXT,
 EntryEligibleBasedOnMACDSignalCrossOver INTEGER,
 CONSTRAINT chartpatternsignal_pk PRIMARY KEY (CoinPair, TimeFrame, TradeType, TimeOfSignal, Attempt)
-");
+);
 
+create table ChartPatternSignalInvalidationEvents(CoinPair TEXT not null, TimeFrame text not null, TradeType text not null, Pattern Text not null, TimeOfSignal Text not null, InvalidationEventTime TEXT not null, Event TEXT not null);
 
 create table BitcoinPriceMonitoring(
       Time TEXT not Null, timeFrame TEXT not Null, candleOpenPrice REAL, candleClosePrice REAL,
@@ -70,6 +71,8 @@ create table CrossMarginAccountFundingHistory(
     Time TEXT not NULL,
     Principal REAL not NULL
 );
+
+insert into CrossMarginAccountFundingHistory values('2022-04-01 00:00', 12345);
 
 create table CrossMarginAccountBalanceHistory(
     Time TEXT not NULL,
@@ -93,3 +96,21 @@ insert into NumOutstandingTrades values('FIFTEEN_MINUTES', 0);
 insert into NumOutstandingTrades values('HOUR', 0);
 insert into NumOutstandingTrades values('FOUR_HOURS', 0);
 insert into NumOutstandingTrades values('DAY', 0);
+
+create table MACDData(
+CoinPair TEXT,
+TimeFrame TEXT not null,
+Time TEXT not null,
+CandleClosingPrice REAL not null,
+SMA REAL not null,
+Trend TEXT not null,
+SMASlope REAL not null,
+
+EMA26 REAL,
+EMA12 REAL,
+MACD REAL,
+MACDSignal REAL,
+Histogram REAL,
+HistogramEMA REAL,
+HistogramTrendType TEXT
+);

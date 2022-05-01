@@ -6,9 +6,9 @@ import javax.sql.DataSource;
 import java.io.File;
 import java.util.TimeZone;
 
-public class SetupDatasource {
-  public static DataSource getDataSource() {
-    new File("/home/kannanj/IdeaProjects/cryptobot/testcryptobot.db").delete();
+public class CreateDatasource {
+  public static DataSource createDataSource() {
+    //new File("/home/kannanj/IdeaProjects/cryptobot/testcryptobot.db").delete();
     SQLiteDataSource dataSource = new SQLiteDataSource();
     dataSource.setUrl("jdbc:sqlite:testcryptobot.db");
     return dataSource;

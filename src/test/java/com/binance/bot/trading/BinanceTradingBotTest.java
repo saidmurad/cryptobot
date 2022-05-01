@@ -1,6 +1,7 @@
 package com.binance.bot.trading;
 
 import com.binance.api.client.BinanceApiClientFactory;
+import com.binance.api.client.BinanceApiError;
 import com.binance.api.client.BinanceApiMarginRestClient;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.OrderSide;
@@ -1177,6 +1178,52 @@ public class BinanceTradingBotTest {
   }
 
   @Test
+  public void assetToBorrowNotAvailableOnExchange_caseOfUnderMarginLimit() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    // Allows for an additional $20 to be borrowed and new margin level will be 1.5
+    setUsdtBalance(12, 4);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000)
+        .build();
+    BinanceApiError binanceApiError = new BinanceApiError();
+    binanceApiError.setCode(-3405);
+    BinanceApiException binanceApiException = new BinanceApiException(binanceApiError);
+    when(mockBinanceApiMarginRestClient.borrow(eq("ETH"), any())).thenThrow(binanceApiException);
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockBinanceApiMarginRestClient).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void assetToBorrowNotAvailableOnExchange_caseOfAtMarginLimitButDoableAfterRepayUSDT() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    // Already at margin level 1.5
+    setUsdtBalance(10, 20, 20);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000)
+        .build();
+    BinanceApiError binanceApiError = new BinanceApiError();
+    binanceApiError.setCode(-3405);
+    BinanceApiException binanceApiException = new BinanceApiException(binanceApiError);
+    when(mockBinanceApiMarginRestClient.borrow(eq("ETH"), any())).thenThrow(binanceApiException);
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockBinanceApiMarginRestClient).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+    @Test
   public void testPlaceSellTrade_macdForEntry_met_placesTrade() throws MessagingException, ParseException, BinanceApiException {
     binanceTradingBot.entry_using_macd = true;
     MACDData macdData = new MACDData();

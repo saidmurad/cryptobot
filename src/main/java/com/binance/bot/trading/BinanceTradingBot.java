@@ -311,26 +311,36 @@ public class BinanceTradingBot {
                 }
                 break;
             case SELL:
+              try {
                 String numCoinsToBorrow = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
                 String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
                 if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
+                  logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
+                  binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
+                } else {
+                  int usdtToBeRepaidToAllowBorrowToSell = usdtToBeRepaidToAllowBorrowToSell(tradeValueInUSDTToDo);
+                  if (usdtToBeRepaidToAllowBorrowToSell > 0) {
+                    logger.info(String.format("Repaying %d USDT to make room for borrowing %s coins of '%s'.",
+                        usdtToBeRepaidToAllowBorrowToSell, numCoinsToBorrow, Util.getBaseAsset(chartPatternSignal.coinPair())));
+                    repayBorrowedOnMargin.repay("USDT", usdtToBeRepaidToAllowBorrowToSell);
                     logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
                     binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
-                } else {
-                    int usdtToBeRepaidToAllowBorrowToSell = usdtToBeRepaidToAllowBorrowToSell(tradeValueInUSDTToDo);
-                    if (usdtToBeRepaidToAllowBorrowToSell > 0) {
-                        logger.info(String.format("Repaying %d USDT to make room for borrowing %s coins of '%s'.",
-                            usdtToBeRepaidToAllowBorrowToSell, numCoinsToBorrow, Util.getBaseAsset(chartPatternSignal.coinPair())));
-                        repayBorrowedOnMargin.repay("USDT", usdtToBeRepaidToAllowBorrowToSell);
-                        logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
-                        binanceApiMarginRestClient.borrow(baseAsset, numCoinsToBorrow);
-                    } else {
-                        String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
-                        logger.warn(msg);
-                        mailer.sendEmail("Insufficient funds.", msg);
-                        return;
-                    }
+                  } else {
+                    String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
+                    logger.warn(msg);
+                    mailer.sendEmail("Insufficient funds.", msg);
+                    return;
+                  }
                 }
+              } catch (BinanceApiException ex) {
+                // TODO: Unit test.
+                if (ex.getError().getCode() == -3405) {
+                  logger.warn(String.format("Got BinanceApiError for unavailable to borrow right now. Ignoring trade in this attempt for cps %s.", chartPatternSignal));
+                  return;
+                } else {
+                  throw ex;
+                }
+              }
             default:
         }
         String roundedQuantity = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
@@ -405,7 +415,7 @@ public class BinanceTradingBot {
         dao.writeAccountBalanceToDB();
     }
 
-    private int usdtToBeRepaidToAllowBorrowToSell(double tradeValueInUSDTToDo) throws ParseException {
+  private int usdtToBeRepaidToAllowBorrowToSell(double tradeValueInUSDTToDo) throws ParseException {
         MarginAssetBalance usdtBalance = account.getAssetBalance("USDT");
       int usdtFree = numberFormat.parse(usdtBalance.getFree()).intValue();
       int usdtBorrowed = numberFormat.parse(usdtBalance.getBorrowed()).intValue();

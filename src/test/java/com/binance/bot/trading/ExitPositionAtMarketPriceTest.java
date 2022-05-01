@@ -58,11 +58,12 @@ public class ExitPositionAtMarketPriceTest {
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
 
   @Before
-  public void setUp() {
+  public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiRestClient);
     exitPositionAtMarketPrice = new ExitPositionAtMarketPrice(
         mockBinanceApiClientFactory, mockDao, mockMailer, mockRepayBorrowedOnMargin, mockOutstandingTrades,
         mockSupportedSymbolsInfo, mockBookTickerPrices, mockCrossMarginAccountBalance);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
   }
 
   private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
@@ -156,11 +157,11 @@ public class ExitPositionAtMarketPriceTest {
     Trade fill1 = new Trade();
     fill1.setPrice("0.9");
     fill1.setQty("5.0");
-    fill1.setCommission("0");
+    fill1.setCommission("0.05"); // High fake Commission here in USDT for Sell trade should have no impact on my calculations.
     Trade fill2 = new Trade();
     fill2.setPrice("1.1");
     fill2.setQty("5.0");
-    fill2.setCommission("0");
+    fill2.setCommission("0.0005");
     exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
     exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
     when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
@@ -183,12 +184,65 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
-    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10.0");
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10");
     verify(mockDao).setExitOrder(chartPatternSignal,
         ChartPatternSignal.Order.create(3L,
             10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
     verify(mockDao).writeAccountBalanceToDB();
     verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+  }
+
+  @Test
+  public void exitPositionIfStillHeld_buySignal_exitOrderQtyRoundedUpUsingLotSize()
+      throws MessagingException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 9.12345, 20.0, OrderStatus.FILLED))
+        .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
+        .build();
+    Order exitStopLossOrderStatus = new Order();
+    exitStopLossOrderStatus.setOrderId(1L);
+    exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
+    when(mockBinanceApiRestClient.getOrderStatus(any())).thenReturn(exitStopLossOrderStatus);
+    // Return the same unchanged exit stop loss order status as NEW.
+    when(mockDao.getChartPattern(chartPatternSignal)).thenReturn(chartPatternSignal);
+    CancelOrderResponse cancelOrderResponse = new CancelOrderResponse();
+    cancelOrderResponse.setOrderId(2L);
+    cancelOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.cancelOrder(any(CancelOrderRequest.class))).thenReturn(cancelOrderResponse);
+    MarginAssetBalance ethBalance = new MarginAssetBalance();
+    ethBalance.setAsset("ETH");
+    ethBalance.setFree("10.0");
+    ethBalance.setLocked("0.0");
+    MarginAccount account = new MarginAccount();
+    account.setUserAssets(Lists.newArrayList(ethBalance));
+    when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("10.0");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    fill1.setCommission("0");
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    fill2.setCommission("0");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+
+
+    verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
+    assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
+    assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
+    assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("9.1235"); // Is rounded up
   }
 
   @Test
@@ -322,7 +376,6 @@ public class ExitPositionAtMarketPriceTest {
     account.setUserAssets(Lists.newArrayList(usdtBalance, ethBalance));
     when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
 
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     Order exitStopLossOrderStatus = new Order();
     exitStopLossOrderStatus.setOrderId(1L);
     exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
@@ -403,10 +456,10 @@ public class ExitPositionAtMarketPriceTest {
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
-    verify(mockBinanceApiRestClient, never()).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
-    verify(mockBinanceApiRestClient, never()).cancelOrder(any());
-    verify(mockDao, never()).cancelStopLimitOrder(chartPatternSignal);
+    verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), any());
+    verify(mockBinanceApiRestClient).cancelOrder(any());
+    verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verify(mockDao, never()).setExitOrder(any(), any(), any());
     verify(mockMailer).sendEmail(any(), any());
@@ -439,7 +492,7 @@ public class ExitPositionAtMarketPriceTest {
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
-    verify(mockBinanceApiRestClient, never()).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
     verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
     verify(mockBinanceApiRestClient, never()).cancelOrder(any());
     verify(mockDao, never()).cancelStopLimitOrder(chartPatternSignal);
@@ -543,7 +596,6 @@ public class ExitPositionAtMarketPriceTest {
     // the code checks for 1.2 minimum margin level.
     account.setMarginLevel("1.19");
 
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     Order exitStopLossOrderStatus = new Order();
     exitStopLossOrderStatus.setOrderId(1L);
     exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
@@ -572,10 +624,10 @@ public class ExitPositionAtMarketPriceTest {
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
-    verify(mockBinanceApiRestClient, never()).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
-    verify(mockBinanceApiRestClient, never()).cancelOrder(any());
-    verify(mockDao, never()).cancelStopLimitOrder(chartPatternSignal);
+    verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), any());
+    verify(mockBinanceApiRestClient).cancelOrder(any());
+    verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verify(mockDao, never()).setExitOrder(any(), any(), any());
     verify(mockMailer).sendEmail(any(), any());
@@ -609,7 +661,6 @@ public class ExitPositionAtMarketPriceTest {
     // After borrowing 1 USDT more the new margin level will the below 1.2 using the below account balance in USDT.
     when(mockCrossMarginAccountBalance.getTotalAndBorrowedUSDTValue()).thenReturn(Pair.of(30060, 25050));
 
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     Order exitStopLossOrderStatus = new Order();
     exitStopLossOrderStatus.setOrderId(1L);
     exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
@@ -638,10 +689,10 @@ public class ExitPositionAtMarketPriceTest {
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
-    verify(mockBinanceApiRestClient, never()).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
-    verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
-    verify(mockBinanceApiRestClient, never()).cancelOrder(any());
-    verify(mockDao, never()).cancelStopLimitOrder(chartPatternSignal);
+    verify(mockBinanceApiRestClient).getOrderStatus(stopLossOrderStatusRequestCapture.capture());
+    verify(mockDao).updateExitStopLimitOrder(any(), any());
+    verify(mockBinanceApiRestClient).cancelOrder(any());
+    verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
     verify(mockBinanceApiRestClient, never()).newOrder(any());
     verify(mockDao, never()).setExitOrder(any(), any(), any());
     verify(mockMailer).sendEmail(any(), any());
@@ -673,7 +724,6 @@ public class ExitPositionAtMarketPriceTest {
     // After borrowing 1 USDT more the new margin level will still be 1.2 using the below account balance in USDT.
     when(mockCrossMarginAccountBalance.getTotalAndBorrowedUSDTValue()).thenReturn(Pair.of(30060, 25049));
 
-    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(Pair.of(10.0, 4));
     Order exitStopLossOrderStatus = new Order();
     exitStopLossOrderStatus.setOrderId(1L);
     exitStopLossOrderStatus.setStatus(OrderStatus.NEW);

@@ -107,14 +107,6 @@ public class ExitPositionAtMarketPrice {
         logger.info(String.format("cps.isPositionExited being %s, do nothing for cps %s.", chartPatternSignal.isPositionExited() == null ? "null" : "true", chartPatternSignal));
         return;
       }
-      String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
-      MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
-      double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
-      double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
-      double borrowed = numberFormat.parse(assetBalance.getBorrowed()).doubleValue();
-      logger.info(String.format("Asset %s quantity free: %f, quantity locked: %f, borrowed: %f",
-          baseAsset, freeBalance, lockedBalance, borrowed));
-      double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY ? freeBalance : borrowed;
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
       // If partial order has been executed it could only be the stop limit order.
       // exitStopLimitOrder can never be null.
@@ -124,6 +116,16 @@ public class ExitPositionAtMarketPrice {
       } else {
         logger.info(String.format("Need to exit the %f qty.", qtyToExit));
       }
+      // Cancel the stop limit order first to unlock the quantity.
+      cancelStopLimitOrder(chartPatternSignal);
+      String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
+      MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
+      double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
+      double lockedBalance = numberFormat.parse(assetBalance.getLocked()).doubleValue();
+      double borrowed = numberFormat.parse(assetBalance.getBorrowed()).doubleValue();
+      logger.info(String.format("Asset %s quantity free: %f, quantity locked: %f, borrowed: %f",
+          baseAsset, freeBalance, lockedBalance, borrowed));
+      double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY ? freeBalance : borrowed;
       if (qtyToExitAvail < qtyToExit) {
         String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
             qtyToExit, baseAsset, qtyToExitAvail);
@@ -132,6 +134,8 @@ public class ExitPositionAtMarketPrice {
         return;
       }
       if (qtyToExit > 0) {
+        Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
+            chartPatternSignal.coinPair());
         String qtyToExitStr;
         // For BUY type trades, the qty specified in the sell to exit order should be the exact amount in the account.
         // Hence the BinanceTradingBot would need to get the actual fill quantity and maintain that info, rather than
@@ -140,8 +144,6 @@ public class ExitPositionAtMarketPrice {
         if (chartPatternSignal.tradeType() == TradeType.SELL) {
           // TODO: Need to do this for the Stop loss order also.
           qtyToExit /= 0.999;
-          Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
-              chartPatternSignal.coinPair());
           if (minNotionalAndLotSize == null) {
             String errMsg = String.format("Unexpectedly supportedSymbolsInfo.getMinNotionalAndLotSize returned null for %s. Not exiting trade.", chartPatternSignal.coinPair());
             logger.error(errMsg);
@@ -176,10 +178,8 @@ public class ExitPositionAtMarketPrice {
             binanceApiMarginRestClient.borrow("USDT", "" + usdtMoreNeeded);
           }
         } else {
-          qtyToExitStr = "" + qtyToExit;
+          qtyToExitStr = Util.getFormattedQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
         }
-        // Cancel the stop limit order first to unlock the quantity.
-        cancelStopLimitOrder(chartPatternSignal);
         MarginNewOrder marketExitOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
             chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
             OrderType.MARKET, /* timeInForce= */ null,
@@ -189,10 +189,12 @@ public class ExitPositionAtMarketPrice {
         logger.info(String.format("Executed %s order and got the response: %s.",
             chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",
             marketExitOrderResponse));
-        TradeFillData tradeFillData = new TradeFillData(marketExitOrderResponse, chartPatternSignal.tradeType(),
+        // Trade here isof the reverse direction as the chart pattern entry trade type.
+        TradeFillData tradeFillData = new TradeFillData(marketExitOrderResponse,
+            chartPatternSignal.tradeType() == TradeType.BUY ? TradeType.SELL : TradeType.BUY,
             chartPatternSignal.tradeType() == TradeType.BUY
-                ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk()
-            : bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid());
+                ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid()
+            : bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk());
         dao.setExitOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
                 tradeFillData.getQuantity(),

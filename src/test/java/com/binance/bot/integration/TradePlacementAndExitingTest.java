@@ -129,11 +129,58 @@ public class TradePlacementAndExitingTest {
     chartPatternSignal = dao.getChartPattern(chartPatternSignal);
     assertThat(chartPatternSignal.isSignalOn()).isFalse();
     assertThat(chartPatternSignal.isPositionExited()).isTrue();
-    assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(OrderStatus.CANCELED);
+    assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.CANCELED);
     assertThat(chartPatternSignal.exitOrder()).isNotNull();
-    assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(OrderStatus.FILLED);
+    assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     // This is because commissions on the exit order is not on the base asset but on USDT.
-    assertThat(chartPatternSignal.exitOrder().executedQty()).isEqualTo(chartPatternSignal.entryOrder().executedQty());
+    assertThat(Double.toString(chartPatternSignal.exitOrder().executedQty())).isEqualTo(Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+    assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
+    double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
+    double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
+    assertThat(isCloseEnough(chartPatternSignal.realized(), realized)).isTrue();
+    assertThat(isCloseEnough(chartPatternSignal.realizedPercent(), realizedPercent)).isTrue();
+    assertThat(chartPatternSignal.unRealized()).isZero();
+    assertThat(chartPatternSignal.unRealizedPercent()).isZero();
+  }
+
+  @Test
+  public void sellAtMarket_and_exitAtMarket() throws ParseException, MessagingException, BinanceApiException, InterruptedException {
+    if (!runIntegTestsWithRealTrades) {
+      return;
+    }
+    // For ticker price to get updated via web socket stream.
+    Thread.sleep(5000);
+    ChartPatternSignal chartPatternSignal = getSellChartPatternSignal();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    binanceTradingBot.perTradeAmountConfigured = 10;
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+
+    assertThat(chartPatternSignal.isSignalOn()).isTrue();
+    assertThat(chartPatternSignal.entryOrder()).isNotNull();
+    assertThat(chartPatternSignal.entryOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
+    System.out.println(String.format("Executed entry order: %s.", chartPatternSignal.entryOrder()));
+    assertThat(Math.abs(chartPatternSignal.entryOrder().executedQty() * chartPatternSignal.entryOrder().avgPrice()
+        -10)).isLessThan(2.0); // Min notional calculation factorsin.
+    assertThat(chartPatternSignal.exitStopLimitOrder()).isNotNull();
+    System.out.println(String.format("Placed stop limit order: %s.", chartPatternSignal.exitStopLimitOrder()));
+    OrderStatusRequest stopLossOrderStatusReq =
+        new OrderStatusRequest("ETHUSDT", chartPatternSignal.exitStopLimitOrder().orderId());
+    Order stopLossOrderStatusResp = binanceApiMarginRestClient.getOrderStatus(stopLossOrderStatusReq);
+    assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
+        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
+
+    // Exit the trade now.
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.isSignalOn()).isFalse();
+    assertThat(chartPatternSignal.isPositionExited()).isTrue();
+    assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.CANCELED);
+    assertThat(chartPatternSignal.exitOrder()).isNotNull();
+    assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
+    // The former value below will be in high precision after deducting the ETH commission., hence the rounding for it as well.
+    assertThat(Util.getFormattedQuantity(chartPatternSignal.exitOrder().executedQty(), 4)).isEqualTo(
+        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
     assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
@@ -158,6 +205,23 @@ public class TradePlacementAndExitingTest {
         .setTimeOfInsertion(new Date(timeOfSignal))
         .setIsInsertedLate(false)
         .setPriceTarget(6000)
+        .setPriceTargetTime(new Date(timeOfSignal + 200 * 60000))
+        .setProfitPotentialPercent(2.3)
+        .setIsSignalOn(true)
+        .build();
+  }
+
+  private ChartPatternSignal getSellChartPatternSignal() {
+    return ChartPatternSignal.newBuilder()
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setPattern("Resistance")
+        .setTradeType(TradeType.SELL)
+        .setPriceAtTimeOfSignal(3000)
+        .setTimeOfSignal(new Date(timeOfSignal))
+        .setTimeOfInsertion(new Date(timeOfSignal))
+        .setIsInsertedLate(false)
+        .setPriceTarget(2000)
         .setPriceTargetTime(new Date(timeOfSignal + 200 * 60000))
         .setProfitPotentialPercent(2.3)
         .setIsSignalOn(true)

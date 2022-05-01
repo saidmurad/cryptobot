@@ -380,6 +380,8 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 0);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -419,6 +421,8 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 0);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -446,6 +450,8 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 7000);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -1006,6 +1012,8 @@ public class BinanceTradingBotTest {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 0);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -1308,6 +1316,8 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 7000);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -1465,7 +1475,50 @@ public class BinanceTradingBotTest {
             OrderStatus.NEW));
   }
 
+  @Test
+  public void priceTargetAlreadyReached_buyTrade_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -59))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(chartPatternSignal.priceTarget() + 1, 0);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void priceTargetAlreadyReached_sellTrade_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalance(12, 4);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -59))
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.SELL, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create( 0, chartPatternSignal.priceTarget() - 1);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {
     return ChartPatternSignal.newBuilder()

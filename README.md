@@ -6,7 +6,7 @@ at the time of signal invalidation. Removed backlog_from_coldstart as a reason f
 invalidation. 
 
 Next steps:
-0. Price target already reached.
+0. Price target already reached. (//TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.)
 1. Commission eating into usdt proceeds from Long trade closing. 
 2. Fake out (wait till atleast 1 candlestick).
 3. What causes the duplicate trades in the same list so often?

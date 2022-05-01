@@ -145,7 +145,9 @@ public class BinanceTradingBot {
                         timeFrames[i], tradeTypes[j], useAltfinsInvalidations);
                     for (ChartPatternSignal chartPatternSignal: signalsToPlaceTrade) {
                         try {
-                            if ((!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
+                          // TODO: REcord the reason for rejection in cps in DB.
+                            if (!isPriceTargetAlreadyReached(chartPatternSignal)
+                          && (!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                                 || (chartPatternSignal.profitPotentialPercent() >= 0.5
                                 && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
                                 && isActiveSymbolAndMarginAllowed(chartPatternSignal.coinPair())) {
@@ -163,6 +165,17 @@ public class BinanceTradingBot {
                 }
             }
         }
+    }
+
+    //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.
+    private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) {
+      BookTickerPrices.BookTicker ticker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
+      switch (chartPatternSignal.tradeType()) {
+        case BUY:
+          return ticker.bestAsk() >= chartPatternSignal.priceTarget();
+        default:
+          return ticker.bestBid() <= chartPatternSignal.priceTarget();
+      }
     }
 
     private double getBreakoutPointBasedStopLossPrice(ChartPatternSignal chartPatternSignal) {

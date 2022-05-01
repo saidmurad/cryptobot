@@ -48,6 +48,7 @@ import static org.mockito.Mockito.*;
 @RunWith(JUnit4.class)
 public class BinanceTradingBotTest {
   private static final double BNBBTC = 0.015;
+  private static final double PRICE_AT_TIME_OF_SIGNAL = 4000;
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock
   BinanceApiClientFactory mockBinanceApiClientFactory;
@@ -105,6 +106,8 @@ public class BinanceTradingBotTest {
     binanceTradingBot.useAltfinsInvalidations = true;
 
     when(mockSupportedSymbolsInfo.getMinPriceAndTickSize("ETHUSDT")).thenReturn(Pair.of(0.01, 2));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL, PRICE_AT_TIME_OF_SIGNAL);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
   }
 
   private void setUpDefaultNumOutstandingTradesLimit() {
@@ -478,6 +481,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("3800");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -521,6 +529,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -566,6 +579,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -607,6 +625,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -648,6 +671,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -689,6 +717,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -747,6 +780,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -806,6 +844,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -843,6 +886,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -906,6 +954,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.005");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -960,9 +1013,6 @@ public class BinanceTradingBotTest {
 
   @Test
   public void tickPriceDecimalPlaces() throws MessagingException, ParseException, BinanceApiException {
-    TickerPrice tickerPrice = new TickerPrice();
-    tickerPrice.setPrice("3999");
-    when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Will borrow the $1 more needed.
     setUsdtBalanceForStraightBuys(19);
@@ -973,6 +1023,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.0051");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.0051");
+    trade.setPrice("3999");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -991,6 +1046,8 @@ public class BinanceTradingBotTest {
         return sellStopLossOrderResp;
       }
     });
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(3999, 0);
+    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.placeTrade(chartPatternSignal, 0);
 
@@ -1045,6 +1102,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.0028");
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.0028");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -1087,6 +1149,11 @@ public class BinanceTradingBotTest {
     buyOrderResp.setPrice("0.0");
     buyOrderResp.setExecutedQty("0.0026"); // 0.002525 is rounded up.
     buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.0026");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
     sellStopLossOrderResp.setOrderId(2L);
@@ -1133,6 +1200,11 @@ public class BinanceTradingBotTest {
     sellOrderResp.setPrice("0.0");
     sellOrderResp.setExecutedQty("0.005");
     sellOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    sellOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse buyStopLossOrderResp = new MarginNewOrderResponse();
     buyStopLossOrderResp.setOrderId(2L);
@@ -1252,6 +1324,11 @@ public class BinanceTradingBotTest {
     sellOrderResp.setPrice("0.0");
     sellOrderResp.setExecutedQty("0.005");
     sellOrderResp.setStatus(OrderStatus.FILLED);
+      Trade trade = new Trade();
+      trade.setQty("0.005");
+      trade.setPrice("4000");
+      trade.setCommission("0");
+      sellOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse buyStopLossOrderResp = new MarginNewOrderResponse();
     buyStopLossOrderResp.setOrderId(2L);
@@ -1342,6 +1419,11 @@ public class BinanceTradingBotTest {
     sellOrderResp.setPrice("0.0");
     sellOrderResp.setExecutedQty("0.005");
     sellOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    sellOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse buyStopLossOrderResp = new MarginNewOrderResponse();
     buyStopLossOrderResp.setOrderId(2L);
@@ -1422,6 +1504,11 @@ public class BinanceTradingBotTest {
     sellOrderResp.setPrice("0.0");
     sellOrderResp.setExecutedQty("0.005");
     sellOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    sellOrderResp.setFills(Lists.newArrayList(trade));
 
     MarginNewOrderResponse buyStopLossOrderResp = new MarginNewOrderResponse();
     buyStopLossOrderResp.setOrderId(2L);
@@ -1526,7 +1613,7 @@ public class BinanceTradingBotTest {
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setPattern("Resistance")
         .setTradeType(TradeType.BUY)
-        .setPriceAtTimeOfSignal(4000)
+        .setPriceAtTimeOfSignal(PRICE_AT_TIME_OF_SIGNAL)
         .setPriceAtTimeOfSignalReal(4000.0)
         .setTimeOfSignal(new Date())
         .setTimeOfInsertion(new Date())

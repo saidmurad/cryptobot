@@ -305,7 +305,8 @@ public class BinanceTradingBot {
         double minNotionalAdjustedForStopLoss =
             getMinNotionalAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLimitPercent);
         double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
-        double entryPrice = numberFormat.parse(binanceApiRestClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+      BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
+        double entryPrice = chartPatternSignal.tradeType() == TradeType.BUY? bookTicker.bestAsk() : bookTicker.bestBid();
         // Determine trade feasibility and borrow required quantity.
         switch (chartPatternSignal.tradeType()) {
             case BUY:
@@ -382,6 +383,7 @@ public class BinanceTradingBot {
         mailer.sendEmail("Placed trade", logmsg);
         outstandingTrades.incrementNumOutstandingTrades(chartPatternSignal.timeFrame());
         // TODO: delayed market order executions.
+        TradeFillData tradeFillData = new TradeFillData(marketOrderResp, chartPatternSignal.tradeType(), entryPrice);
         dao.setEntryOrder(chartPatternSignal,
             ChartPatternSignal.Order.create(
                 marketOrderResp.getOrderId(),
@@ -411,6 +413,7 @@ public class BinanceTradingBot {
               qtyForStopLossExit,
               stopLimitPrice);
           stopLossOrder.stopPrice(stopPrice);
+          logger.info(String.format("Placing stop loss order %s for cps %s.", stopLossOrder, chartPatternSignal));
           MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
           logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
               stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));

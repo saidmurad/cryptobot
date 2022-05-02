@@ -141,7 +141,8 @@ public class SourceSignalsReader {
     }
     List<ChartPatternSignal> chartPatternsInDB = chartPatternSignalDao.getAllChartPatterns(timeFrame);
     List<ChartPatternSignal> chartPatternsThatAreBack = getChartPatternSignalsThatAreBack(patternFromAltfins, chartPatternsInDB);
-    printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
+    // TODO: Why the heck do hundreds of chart patterns keep playing hide and seek?
+    //printPatterns(chartPatternsThatAreBack, "Chart Patterns back with their incremented attempt counts", LogLevel.WARN);
     List<ChartPatternSignal> newChartPatternSignals = getNewChartPatternSignals(
         chartPatternsInDB, patternFromAltfins);
     /*if (!newChartPatternSignals.isEmpty()) {
@@ -167,7 +168,7 @@ public class SourceSignalsReader {
         //logger.info("Obtained price " + priceAtTimeOfInvalidation + " from Binance");
         boolean ret = chartPatternSignalDao.invalidateChartPatternSignal(
             chartPatternSignal, priceAtTimeOfInvalidation, reasonForInvalidation);
-        logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
+        //logger.info("Invalidated chart pattern signal " + chartPatternSignal + " with ret val" + ret);
         if (useAltfinsInvalidations) {
           exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
         }

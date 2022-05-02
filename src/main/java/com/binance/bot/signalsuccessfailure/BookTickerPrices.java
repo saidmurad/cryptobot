@@ -9,13 +9,19 @@ import org.springframework.stereotype.Component;
 
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Component
 public class BookTickerPrices {
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private Map<String, Date> tickersAwaited = new HashMap<>();
   private Logger logger = LoggerFactory.getLogger(getClass());
+
+  public BookTickerPrices() {
+    dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   synchronized public void setBookTicker(BookTickerEvent callback) throws ParseException {
     String ticker = callback.getSymbol().toUpperCase();
@@ -34,6 +40,12 @@ public class BookTickerPrices {
   @Scheduled(fixedDelay = 300000)
   public void printNumTasksBlocked() {
     logger.info(String.format("Number of blocked tasks=%d", tickersAwaited.size()));
+    Iterator<String> itr = tickersAwaited.keySet().iterator();
+    while (itr.hasNext()) {
+      String symbol = itr.next();
+      logger.info(String.format("Waiting for ticker %s since %s.", symbol,
+          dateFormat.format(tickersAwaited.get(symbol))));
+    }
   }
 
   @AutoValue
@@ -56,9 +68,11 @@ public class BookTickerPrices {
         now = new Date();
         tickersAwaited.put(symbol, now);
       }
+      logger.info(String.format("Task going to wait for book ticker for symbol %s.", symbol));
       synchronized (now) {
         now.wait();
       }
+      logger.info(String.format("Task woke up from wait for book ticker for symbol %s.", symbol));
     }
     return bookTickerMap.get(symbol);
   }

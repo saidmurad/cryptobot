@@ -189,8 +189,8 @@ public class BinanceTradingBot {
     private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
         MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
         if (lastMACD == null) {
-            logger.error("Got null last MACD data for cps " + chartPatternSignal);
             if (!emailsAlreadySent.contains(Pair.of(chartPatternSignal, MISSING_MACD_DATA))) {
+              logger.error("Got null last MACD data for cps " + chartPatternSignal);
               mailer.sendEmail("Missing MACD data", "Got null last MACD data for cps " + chartPatternSignal);
               emailsAlreadySent.add(Pair.of(chartPatternSignal, MISSING_MACD_DATA));
             }

@@ -1053,7 +1053,7 @@ public class ChartPatternSignalDaoImplTest {
 
 
   @Test
-  public void writeAccountBalanceToDB() throws BinanceApiException, ParseException {
+  public void writeAccountBalanceToDB() throws BinanceApiException, InterruptedException, ParseException {
     MarginAccount account = new MarginAccount();
     when(mockBinanceApiMarginRestClient.getAccount()).thenReturn(account);
     MarginAssetBalance usdtAssetBalance = new MarginAssetBalance();

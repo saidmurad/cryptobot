@@ -268,7 +268,7 @@ public class GateIoTradingBot {
     return Pair.of(usdtFree, (int) (moreBorrowableVal));
   }
 
-  public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades, CurrencyPair spotCurrencyPair) throws ParseException, BinanceApiException, MessagingException, ApiException {
+  public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades, CurrencyPair spotCurrencyPair) throws ParseException, BinanceApiException, MessagingException, ApiException, InterruptedException {
     Pair<Integer, Integer> accountBalance = getAccountBalance();
     String currencyPair = Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair());
     Ticker ticker = spotClient.listTickers().currencyPair(currencyPair).execute().get(0);

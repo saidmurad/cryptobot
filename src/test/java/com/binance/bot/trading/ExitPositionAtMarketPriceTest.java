@@ -69,7 +69,7 @@ public class ExitPositionAtMarketPriceTest {
   private ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
   @Test
-  public void exitPositionIfStillHeld_isExitedReturnsNull_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+  public void exitPositionIfStillHeld_isExitedReturnsNull_doesNothing() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(null).build();
 
@@ -80,7 +80,7 @@ public class ExitPositionAtMarketPriceTest {
   }
 
   @Test
-  public void exitPositionIfStillHeld_isExitedReturnsTrue_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+  public void exitPositionIfStillHeld_isExitedReturnsTrue_doesNothing() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setIsPositionExited(true).build();
@@ -97,7 +97,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_stopLossStatusReturnsFILLED_returnsRightAfter()
-      throws MessagingException, BinanceApiException {
+      throws MessagingException, InterruptedException, BinanceApiException {
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
@@ -126,7 +126,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_buySignal_noPartialStopLossTrade_exitsTradeForFullQty()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
@@ -194,7 +194,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_buySignal_exitOrderQtyRoundedUpUsingLotSize()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
@@ -247,7 +247,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void alreadyCanceledStopLossBySomeOccurence_exitsTradeForProfitTaking()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
@@ -309,7 +309,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void decrementNumOutstandingTrades()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
@@ -354,7 +354,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_sellSignal_sufficientFreeUSDTToBuyBackAvailable_exitsTradeForFullQty()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setIsPositionExited(false)
@@ -431,7 +431,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_insfficientQty_shouldNeverHappen()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
         .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
         .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
@@ -467,7 +467,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_sellSignal_minNotionalIsUnexpectedlyNull_returnsWithoutCrashing()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setIsPositionExited(false)
@@ -503,7 +503,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_partialStopLossTrade_exitsTradeForRemainingQty()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
@@ -572,7 +572,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_sellSignal_insufficientFreeUSDTToBuyBackAndMarginAtHighRisk_returnsWithoutDoingAnything()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setIsPositionExited(false)
@@ -635,7 +635,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_sellSignal_insufficientFreeUSDTToBuyBackAndMarginWillBeAtHighRiskAfterUSDTBorrow_returnsWithoutDoingAnything()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setIsPositionExited(false)
@@ -700,7 +700,7 @@ public class ExitPositionAtMarketPriceTest {
 
   @Test
   public void exitPositionIfStillHeld_sellSignal_inSufficientFreeUSDTToBuyBackAvailable_marginNotHighRisk_borrowsUSDTAndBuysBackBorrowed()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException, InterruptedException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setIsPositionExited(false)

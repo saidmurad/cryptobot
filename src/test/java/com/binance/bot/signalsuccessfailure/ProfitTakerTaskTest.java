@@ -44,7 +44,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_noBookTickerCurrentlyAvailable_doesNthing() throws MessagingException, IOException, ParseException, BinanceApiException {
+  public void testPerform_noBookTickerCurrentlyAvailable_doesNthing() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(null);
 
@@ -54,7 +54,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_BUYTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException, BinanceApiException {
+  public void testPerform_BUYTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(5999, 5998);
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
@@ -69,7 +69,7 @@ public class ProfitTakerTaskTest {
   @Captor ArgumentCaptor<TradeExitType> tradeExitTypeArgumentCaptor;
 
   @Test
-  public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException, BinanceApiException {
+  public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         getChartPatternSignal().build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 5998);
@@ -84,7 +84,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_SELLTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, IOException, ParseException, BinanceApiException {
+  public void testPerform_SELLTrade_priceTargetNotYetMet_doesNothing() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         getChartPatternSignal().setTradeType(TradeType.SELL).setPriceTarget(3000).build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(3001, 3001);
@@ -95,7 +95,7 @@ public class ProfitTakerTaskTest {
   }
 
   @Test
-  public void testPerform_SELLTrade_priceTargetMet_exitsTrade() throws MessagingException, IOException, ParseException, BinanceApiException {
+  public void testPerform_SELLTrade_priceTargetMet_exitsTrade() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().setTradeType(TradeType.SELL).setPriceTarget(3000).build();
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         chartPatternSignal));

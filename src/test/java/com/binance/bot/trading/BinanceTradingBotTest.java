@@ -73,7 +73,7 @@ public class BinanceTradingBotTest {
   @Mock private MACDDataDao mockMacdDataDao;
 
   @Before
-  public void setUp() throws MessagingException, BinanceApiException {
+  public void setUp() throws MessagingException, InterruptedException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
@@ -123,15 +123,15 @@ public class BinanceTradingBotTest {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.DAY)).thenReturn(0);
   }
 
-  private void setUsdtBalanceForStraightBuys(Integer usdtBal) throws MessagingException, BinanceApiException {
+  private void setUsdtBalanceForStraightBuys(Integer usdtBal) throws MessagingException, InterruptedException, BinanceApiException {
     setUsdtBalance(usdtBal, 0);
   }
 
-  private void setUsdtBalance(Integer usdtNet, Integer usdtValBorrowed) throws MessagingException, BinanceApiException {
+  private void setUsdtBalance(Integer usdtNet, Integer usdtValBorrowed) throws MessagingException, InterruptedException, BinanceApiException {
     setUsdtBalance(usdtNet, usdtValBorrowed, usdtNet);
   }
 
-  private void setUsdtBalance(Integer usdtNet, Integer usdtValBorrowed,  Integer usdtFree) throws MessagingException, BinanceApiException {
+  private void setUsdtBalance(Integer usdtNet, Integer usdtValBorrowed,  Integer usdtFree) throws MessagingException, InterruptedException, BinanceApiException {
     MarginAccount account = new MarginAccount();
     MarginAssetBalance usdtBalance = new MarginAssetBalance();
     usdtBalance.setAsset("USDT");
@@ -227,7 +227,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_tradeTypeNotAllowed_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_tradeTypeNotAllowed_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "NONE";
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -244,7 +244,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void useAltfinsInvalidations_false() throws MessagingException, ParseException, BinanceApiException {
+  public void useAltfinsInvalidations_false() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.useAltfinsInvalidations = false;
     binanceTradingBot.fifteenMinuteTimeFrameAllowedTradeTypeConfig = "BUY";
 
@@ -254,7 +254,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_numOutstandingTrades_isAtLimit_fifteenMinutes_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_numOutstandingTrades_isAtLimit_fifteenMinutes_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(1);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -271,7 +271,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_numOutstandingTrades_isAtLimit_hourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_numOutstandingTrades_isAtLimit_hourly_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.HOUR)).thenReturn(1);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.HOUR)
@@ -288,7 +288,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_numOutstandingTrades_isAtLimit_fourHourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_numOutstandingTrades_isAtLimit_fourHourly_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FOUR_HOURS)).thenReturn(1);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FOUR_HOURS)
@@ -305,7 +305,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_numOutstandingTrades_isAtLimit_day_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_numOutstandingTrades_isAtLimit_day_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.DAY)).thenReturn(1);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.DAY)
@@ -322,7 +322,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
@@ -340,7 +340,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void symbolNotTradingAtTheMoment_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void symbolNotTradingAtTheMoment_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of());
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -357,7 +357,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void marginNotAvailableForSymbol_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void marginNotAvailableForSymbol_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETH", false));
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
@@ -374,7 +374,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void lotSizeMapReturnsNull_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+  public void lotSizeMapReturnsNull_doesNothing() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT")).thenReturn(null);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -394,7 +394,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Hourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Hourly_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.HOUR)
         .setTradeType(TradeType.BUY)
@@ -410,7 +410,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void buyTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.entry_using_macd = true;
     MACDData macdData = new MACDData();
     macdData.macd = -1;
@@ -436,7 +436,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void sellTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void sellTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.entry_using_macd = true;
     MACDData macdData = new MACDData();
     macdData.macd = 1;
@@ -465,7 +465,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Hourly_placesTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Hourly_placesTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -513,7 +513,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_incrementsNumOutstandingTrades_fifteenMinuteTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_incrementsNumOutstandingTrades_fifteenMinuteTimeFrame() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -559,7 +559,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void macdForEntry_met_placesTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void macdForEntry_met_placesTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.entry_using_macd = true;
     MACDData macdData = new MACDData();
@@ -609,7 +609,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_incrementsNumOutstandingTrades_hourlyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_incrementsNumOutstandingTrades_hourlyTimeFrame() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -655,7 +655,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_incrementsNumOutstandingTrades_FourHourlyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_incrementsNumOutstandingTrades_FourHourlyTimeFrame() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -701,7 +701,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_incrementsNumOutstandingTrades_DailyTimeFrame() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_incrementsNumOutstandingTrades_DailyTimeFrame() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -747,7 +747,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_FourHourly_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_FourHourly_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FOUR_HOURS)
         .setTradeType(TradeType.BUY)
@@ -764,7 +764,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_FourHourly_placesTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_FourHourly_placesTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -811,7 +811,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Daily_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_and_profitPotentialIsThere_butVeryLate_Daily_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.DAY)
         .setTradeType(TradeType.BUY)
@@ -828,7 +828,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Daily_placesTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void perform_insertedLate_but_profitPotentialIsThere_andNotVeryLate_Daily_placesTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -875,7 +875,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceBuyTrade_usesOnlyPerTradeAmount() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceBuyTrade_usesOnlyPerTradeAmount() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -943,7 +943,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceBuyTrade_commissions_stopLossIsForQtyAfterCommissions() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceBuyTrade_commissions_stopLossIsForQtyAfterCommissions() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -1011,7 +1011,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_ableToBorrow() throws MessagingException, ParseException, BinanceApiException {
+  public void buyTrade_ableToBorrow() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Will borrow the $1 more needed.
     setUsdtBalanceForStraightBuys(19);
@@ -1080,7 +1080,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void tickPriceDecimalPlaces() throws MessagingException, ParseException, BinanceApiException {
+  public void tickPriceDecimalPlaces() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Will borrow the $1 more needed.
     setUsdtBalanceForStraightBuys(19);
@@ -1129,7 +1129,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_commissions_netAmountStopLoss_roundingUpUsingStepSize() throws MessagingException, ParseException, BinanceApiException {
+  public void buyTrade_commissions_netAmountStopLoss_roundingUpUsingStepSize() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Will borrow the $1 more needed.
     setUsdtBalanceForStraightBuys(19);
@@ -1178,7 +1178,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_atTheBorrowLimit_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void buyTrade_atTheBorrowLimit_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Can't borrow the $1 more needed because borrowed amount is maxed out at margin level 1.5 (3 * 19 / (2 * 19)).
     setUsdtBalance(19, 38);
@@ -1197,7 +1197,7 @@ public class BinanceTradingBotTest {
   }
 
   /*@Test
-  public void marginThreshold_SellTrade_doesNothing() throws MessagingException, ParseException, BinanceApiException {
+  public void marginThreshold_SellTrade_doesNothing() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     MarginAccount marginAccount = new MarginAccount();
     marginAccount.setMarginLevel("2.0");
     when(mockBinanceApiMarginRestClient.getAccount()).thenReturn(marginAccount);
@@ -1208,7 +1208,7 @@ public class BinanceTradingBotTest {
   }*/
 
   @Test
-  public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws MessagingException, ParseException, BinanceApiException {
+  public void perTradeAmount_greaterThanAdjustedMinNotional_usesPerTradeAmountItself() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 11;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -1255,7 +1255,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits_perTradeAmountIsIgnoredIfLessThanMinNotionalWithAdjustment() throws MessagingException, ParseException, BinanceApiException {
+  public void roundsUpQtyNotDown_and_limitsToStepSizeNumDigits_perTradeAmountIsIgnoredIfLessThanMinNotionalWithAdjustment() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 10.1;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -1302,7 +1302,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceSellTrade_underBorrowLimit_borrows() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceSellTrade_underBorrowLimit_borrows() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
     setUsdtBalance(12, 4);
@@ -1376,7 +1376,7 @@ public class BinanceTradingBotTest {
 
   @Test
   public void testPlaceSellTrade_commissions_ignoredForSellQuantitySinceCommissionIsNotOnBaseAssetButOnUSDT()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
     setUsdtBalance(12, 4);
@@ -1449,7 +1449,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void assetToBorrowNotAvailableOnExchange_caseOfUnderMarginLimit() throws MessagingException, ParseException, BinanceApiException {
+  public void assetToBorrowNotAvailableOnExchange_caseOfUnderMarginLimit() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
     setUsdtBalance(12, 4);
@@ -1472,7 +1472,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void assetToBorrowNotAvailableOnExchange_caseOfAtMarginLimitButDoableAfterRepayUSDT() throws MessagingException, ParseException, BinanceApiException {
+  public void assetToBorrowNotAvailableOnExchange_caseOfAtMarginLimitButDoableAfterRepayUSDT() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Already at margin level 1.5
     setUsdtBalance(10, 20, 20);
@@ -1495,7 +1495,7 @@ public class BinanceTradingBotTest {
   }
 
     @Test
-  public void testPlaceSellTrade_macdForEntry_met_placesTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceSellTrade_macdForEntry_met_placesTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.entry_using_macd = true;
     MACDData macdData = new MACDData();
     macdData.macd = -1;
@@ -1573,7 +1573,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void sellTrade_atTheBorrowLimit_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void sellTrade_atTheBorrowLimit_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Can't borrow the $20 more needed because new margin level will be 37/25=1.48 whihc is < 1.5
     setUsdtBalance(12, 5, 0);
@@ -1595,7 +1595,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceSellTrade_overBorrowLimitAlready_borrowsAfterRepayingUSDT() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceSellTrade_overBorrowLimitAlready_borrowsAfterRepayingUSDT() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // Already at margin level 1.5
     setUsdtBalance(10, 20, 20);
@@ -1669,18 +1669,18 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void testPlaceSellTrade_repayUSDTAndBorrowMoreThanRepaid() throws MessagingException, ParseException, BinanceApiException {
+  public void testPlaceSellTrade_repayUSDTAndBorrowMoreThanRepaid() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     placeSellTrade_repayUSDTAndBorrowMoreThanRepaid(10, 15, 15);
   }
 
   @Test
   public void testPlaceSellTrade_repayUSDTAndBorrowMoreThanRepaid_caseOfBorrowedUSDTLessThanFreeUSDT()
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     placeSellTrade_repayUSDTAndBorrowMoreThanRepaid(10, 15, 16);
   }
 
   private void placeSellTrade_repayUSDTAndBorrowMoreThanRepaid(int usdtNet, int usdtValBorrowed, int usdtFree)
-      throws MessagingException, ParseException, BinanceApiException {
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     // margin level = (10 + 15) / 15 = 1.67
     setUsdtBalance(usdtNet, usdtValBorrowed, usdtFree);
@@ -1754,7 +1754,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void priceTargetAlreadyReached_buyTrade_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void priceTargetAlreadyReached_buyTrade_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -1776,7 +1776,7 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void priceTargetAlreadyReached_sellTrade_doesntPlaceTrade() throws MessagingException, ParseException, BinanceApiException {
+  public void priceTargetAlreadyReached_sellTrade_doesntPlaceTrade() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     setUsdtBalance(12, 4);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))

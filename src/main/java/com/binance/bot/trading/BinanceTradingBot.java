@@ -168,7 +168,7 @@ public class BinanceTradingBot {
     }
 
     //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.
-    private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) {
+    private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) throws InterruptedException {
       BookTickerPrices.BookTicker ticker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       switch (chartPatternSignal.tradeType()) {
         case BUY:
@@ -264,7 +264,7 @@ public class BinanceTradingBot {
     }
 
     /** Return Pair of usdt free and value in usdt available to borrow. **/
-    Pair<Integer, Integer> getAccountBalanceFreeUSDTAndMoreBorrowableUSDTValue() throws ParseException, BinanceApiException {
+    Pair<Integer, Integer> getAccountBalanceFreeUSDTAndMoreBorrowableUSDTValue() throws ParseException, BinanceApiException, InterruptedException {
         this.account = binanceApiMarginRestClient.getAccount();
         int usdtFree = numberFormat.parse(account.getAssetBalance("USDT").getFree()).intValue();
         double marginLevel = numberFormat.parse(account.getMarginLevel()).doubleValue();
@@ -291,7 +291,7 @@ public class BinanceTradingBot {
         return Pair.of(usdtFree, (int) (moreBorrowableVal * btcPrice.bestAsk()));
     }
 
-    public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades) throws ParseException, BinanceApiException, MessagingException {
+    public void placeTrade(ChartPatternSignal chartPatternSignal, int numOutstandingTrades) throws ParseException, BinanceApiException, MessagingException, InterruptedException {
         Pair<Integer, Integer> accountBalance = getAccountBalanceFreeUSDTAndMoreBorrowableUSDTValue();
         Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(
             chartPatternSignal.coinPair());

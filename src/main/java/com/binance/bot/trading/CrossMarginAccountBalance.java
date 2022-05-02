@@ -30,7 +30,7 @@ public class CrossMarginAccountBalance {
    * @throws BinanceApiException
    * @throws ParseException
    */
-  public Pair<Integer, Integer> getTotalAndBorrowedUSDTValue() throws BinanceApiException, ParseException {
+  public Pair<Integer, Integer> getTotalAndBorrowedUSDTValue() throws BinanceApiException, ParseException, InterruptedException {
     MarginAccount account = binanceApiMarginRestClient.getAccount();
     double btcPrice = bookTickerPrices.getBookTicker("BTCUSDT").bestAsk();
     int totalUsdtVal = (int) (numberFormat.parse(account.getTotalAssetOfBtc()).doubleValue() * btcPrice);

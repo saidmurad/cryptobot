@@ -38,7 +38,7 @@ public class CrossMarginAccountBalanceTest {
   }
 
   @Test
-  public void getTotalAndBorrowedUSDTValue() throws BinanceApiException, ParseException {
+  public void getTotalAndBorrowedUSDTValue() throws BinanceApiException, ParseException, InterruptedException {
     CrossMarginAccountBalance crossMarginAccountBalance = new CrossMarginAccountBalance(mockBinanceApiClientFactory, mockBookTickerPrices);
     BookTickerPrices.BookTicker btcTicker = BookTickerPrices.BookTicker.create(20000, 0);
     when(mockBookTickerPrices.getBookTicker("BTCUSDT")).thenReturn(btcTicker);

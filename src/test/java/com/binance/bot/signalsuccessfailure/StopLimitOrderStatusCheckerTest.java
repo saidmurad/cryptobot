@@ -61,7 +61,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void activePositionButWithoutEntryOrderId_skipped() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void activePositionButWithoutEntryOrderId_skipped() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = false;
     when(mockDao.getAllChartPatternsWithActiveTradePositions()).thenReturn(
         Lists.newArrayList(getChartPatternSignal().build()));
@@ -77,7 +77,7 @@ public class StopLimitOrderStatusCheckerTest {
   @Captor
   ArgumentCaptor<OrderStatusRequest> orderStatusRequestArgumentCaptor;
   @Test
-  public void stopLimitOrderFilled_buyTrade_statusGetsUpdatedInDB_borrowedAmountRepaid() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void stopLimitOrderFilled_buyTrade_statusGetsUpdatedInDB_borrowedAmountRepaid() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setEntryOrder(
@@ -113,7 +113,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void doNotDecrementOutstandingTradeCount() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void doNotDecrementOutstandingTradeCount() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     stopLimitOrderStatusChecker.doNotDecrementNumOutstandingTrades = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setEntryOrder(
@@ -141,7 +141,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void stopLimitOrder_buyTrade_PartiallyFilled_borowedAmountNotRepaid() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void stopLimitOrder_buyTrade_PartiallyFilled_borowedAmountNotRepaid() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setEntryOrder(
             ChartPatternSignal.Order.create(1, 2.0, 3.0, OrderStatus.FILLED))
@@ -170,7 +170,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void stopLimitOrderFilled_sellTrade_statusGetsUpdatedInDB_borrowedAmountRepaid() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void stopLimitOrderFilled_sellTrade_statusGetsUpdatedInDB_borrowedAmountRepaid() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setEntryOrder(
@@ -206,7 +206,7 @@ public class StopLimitOrderStatusCheckerTest {
   }
 
   @Test
-  public void stopLimitOrderPartiallyFilled_sellTrade_statusGetsUpdatedInDB_borrowedAmountNotRepaid() throws MessagingException, ParseException, IOException, BinanceApiException {
+  public void stopLimitOrderPartiallyFilled_sellTrade_statusGetsUpdatedInDB_borrowedAmountNotRepaid() throws MessagingException, InterruptedException, ParseException, IOException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
         .setEntryOrder(

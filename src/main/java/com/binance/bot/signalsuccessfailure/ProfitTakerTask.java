@@ -35,7 +35,7 @@ public class ProfitTakerTask {
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-  public void perform() throws IOException, MessagingException, ParseException, BinanceApiException {
+  public void perform() throws IOException, MessagingException, ParseException, BinanceApiException, InterruptedException {
     HeartBeatChecker.logHeartBeat(getClass());
     List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
     for (ChartPatternSignal activePosition: activePositions) {

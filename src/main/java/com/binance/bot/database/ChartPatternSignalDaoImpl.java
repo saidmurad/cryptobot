@@ -616,7 +616,7 @@ public class ChartPatternSignalDaoImpl {
     }
   }
 
-  public synchronized void writeAccountBalanceToDB() throws BinanceApiException, ParseException {
+  public synchronized void writeAccountBalanceToDB() throws BinanceApiException, ParseException, InterruptedException {
     MarginAccount account = binanceApiMarginRestClient.getAccount();
     double btcPrice = bookTickerPrices.getBookTicker("BTCUSDT").bestAsk();
     int principal = getPrincipal();

@@ -46,7 +46,11 @@ public class PriceSignalTargetTimeCheckerLaggingTask extends PriceTargetCheckerL
   // TODO: Unit test doesn't exist for this calss as it is a subclass providing only the overrides.
   @Override
   protected boolean setTargetPrice(ChartPatternSignal chartPatternSignal, double targetTimePrice) throws MessagingException, ParseException, BinanceApiException {
-    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+    // TODO: Race condition with ProfitTakerTask.
+    if (!exitTradesAtTenCandlestickTime) {
+      exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
+          TradeExitType.TARGET_TIME_PASSED);
+    }
     return dao.setSignalTargetTimePrice(chartPatternSignal, targetTimePrice,
         getProfitPercentAtWithPrice(chartPatternSignal, targetTimePrice));
   }

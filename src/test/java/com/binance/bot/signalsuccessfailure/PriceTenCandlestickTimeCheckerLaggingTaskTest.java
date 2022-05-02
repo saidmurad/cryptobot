@@ -5,6 +5,7 @@ import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
+import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.trading.ExitPositionAtMarketPrice;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
@@ -34,7 +35,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.*;
 
 @RunWith(JUnit4.class)
-public class PriceTargetCheckerLaggingTaskTest {
+public class PriceTenCandlestickTimeCheckerLaggingTaskTest {
   @Rule
   public final MockitoRule mockito = MockitoJUnit.rule();
   @Mock
@@ -45,14 +46,14 @@ public class PriceTargetCheckerLaggingTaskTest {
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
   @Mock private ExitPositionAtMarketPrice mockExitPositionAtMarketPrice;
   private final long timeOfSignal = 1640995200000L; // 01/01/2022 0:00 GMT
-  private PriceTargetCheckerLaggingTask priceTargetCheckerLaggingTask;
+  private PriceTenCandlestickTimeCheckerLaggingTask priceTenCandlestickTimeCheckerLaggingTask;
 
   @Before
   public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
-    priceTargetCheckerLaggingTask = new PriceTenCandlestickTimeCheckerLaggingTask(
-        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo);
-    priceTargetCheckerLaggingTask.clock = mockClock;
+    priceTenCandlestickTimeCheckerLaggingTask = new PriceTenCandlestickTimeCheckerLaggingTask(
+        mockBinanceApiClientFactory, mockDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
+    priceTenCandlestickTimeCheckerLaggingTask.clock = mockClock;
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true),
         Map.of("BTCUSDT", true));
   }
@@ -62,7 +63,7 @@ public class PriceTargetCheckerLaggingTaskTest {
     ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ALGOUSDT").build();
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
     
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     assertThat(patternsQueue).isEmpty();
   }
@@ -77,8 +78,27 @@ public class PriceTargetCheckerLaggingTaskTest {
         .thenReturn(getAggTrades(4001.23));
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
+    verify(mockExitPositionAtMarketPrice, never()).exitPositionIfStillHeld(any(), any());
+    verify(mockDao).setTenCandleStickTimePrice(pattern, 4001.23, 0.030750000000000454);
+    assertThat(patternsQueue).isEmpty();
+  }
+
+  @Test
+  public void testPerformIteration_exitAtTenCandlestickTimeFlagIsOn_exitsPosition() throws ParseException, InterruptedException, IOException, MessagingException, BinanceApiException {
+    priceTenCandlestickTimeCheckerLaggingTask.exitTradesAtTenCandlestickTime = true;
+    ChartPatternSignal pattern = getChartPatternSignal().setCoinPair("ETHUSDT").build();
+    when(mockClock.millis()).thenReturn(timeOfSignal + 152 * 60000);
+    when(mockBinanceApiRestClient.getAggTrades("ETHUSDT", null, 1,
+        // Ten candle window is at 2.5 hours, and we get agg trades using a minute window at first.
+        timeOfSignal + 150 * 60000, timeOfSignal + 151 * 60000))
+        .thenReturn(getAggTrades(4001.23));
+    ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
+
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
+
+    verify(mockExitPositionAtMarketPrice).exitPositionIfStillHeld(eq(pattern), eq(TradeExitType.TEN_CANDLESTICK_TIME_PASSED));
     verify(mockDao).setTenCandleStickTimePrice(pattern, 4001.23, 0.030750000000000454);
     assertThat(patternsQueue).isEmpty();
   }
@@ -93,7 +113,7 @@ public class PriceTargetCheckerLaggingTaskTest {
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     verifyNoInteractions(mockDao);
     assertThat(patternsQueue).hasSize(1);
@@ -112,7 +132,7 @@ public class PriceTargetCheckerLaggingTaskTest {
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(
         Pair.of(pattern, 1), Pair.of(pattern2, 1));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     verifyNoInteractions(mockDao);
     assertThat(patternsQueue).hasSize(2);
@@ -134,7 +154,7 @@ public class PriceTargetCheckerLaggingTaskTest {
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     verifyNoInteractions(mockDao);
     assertThat(patternsQueue).isEmpty();
@@ -157,7 +177,7 @@ public class PriceTargetCheckerLaggingTaskTest {
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 1));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     verifyNoInteractions(mockDao);
     assertThat(patternsQueue).hasSize(1);
@@ -174,7 +194,7 @@ public class PriceTargetCheckerLaggingTaskTest {
         .thenReturn(Lists.newArrayList());
     ArrayList<Pair<ChartPatternSignal, Integer>> patternsQueue = Lists.newArrayList(Pair.of(pattern, 60));
 
-    priceTargetCheckerLaggingTask.performIteration(patternsQueue);
+    priceTenCandlestickTimeCheckerLaggingTask.performIteration(patternsQueue);
 
     verify(mockDao).failedToGetPriceAtTenCandlestickTime(pattern);
     assertThat(patternsQueue).isEmpty();

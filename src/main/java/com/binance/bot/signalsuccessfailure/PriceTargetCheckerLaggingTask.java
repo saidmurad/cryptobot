@@ -11,6 +11,7 @@ import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.mail.MessagingException;
@@ -44,6 +45,8 @@ public abstract class PriceTargetCheckerLaggingTask {
   private final static NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   long requestCount = 0;
 
+  @Value("${exit_trades_at_ten_candlestick_time}")
+  boolean exitTradesAtTenCandlestickTime;
   PriceTargetCheckerLaggingTask(BinanceApiClientFactory binanceApiClientFactory,
                                 ChartPatternSignalDaoImpl dao,
                                 SupportedSymbolsInfo supportedSymbolsInfo) {

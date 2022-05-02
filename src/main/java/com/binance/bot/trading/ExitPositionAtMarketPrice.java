@@ -127,11 +127,18 @@ public class ExitPositionAtMarketPrice {
           baseAsset, freeBalance, lockedBalance, borrowed));
       double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY ? freeBalance : borrowed;
       if (qtyToExitAvail < qtyToExit) {
-        String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
-            qtyToExit, baseAsset, qtyToExitAvail);
-        logger.error(errorMsg);
-        mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
-        return;
+        // TODO: Remove.
+        if (qtyToExitAvail == qtyToExit * 0.999) {
+          logger.warn( String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance, but appears to be pre-bug fix for commissions deduction, hence proceeding to exit available quantity.",
+              qtyToExit, baseAsset, qtyToExitAvail));
+          qtyToExit = qtyToExitAvail;
+        } else {
+          String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
+              qtyToExit, baseAsset, qtyToExitAvail);
+          logger.error(errorMsg);
+          mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
+          return;
+        }
       }
       if (qtyToExit > 0) {
         Pair<Double, Integer> minNotionalAndLotSize = supportedSymbolsInfo.getMinNotionalAndLotSize(

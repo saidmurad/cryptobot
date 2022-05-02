@@ -70,7 +70,7 @@ public class Util {
     return currencyPair.substring(0, currencyPair.length() - 4) + "_USDT";
   }
 
-  public static String getFormattedQuantity(double qty, int stepSizeNumDecimalPlaces) {
+  public static String getRoundedUpQuantity(double qty, int stepSizeNumDecimalPlaces) {
     String pattern = "#";
     for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {
       if (i == 0) {
@@ -85,5 +85,18 @@ public class Util {
 
   public static boolean decimalCompare(double val1, double val2) {
       return Math.abs(val1 - val2) / val1 * 100 < 0.0001;
+  }
+
+  public static String getTruncatedQuantity(double qty, Integer stepSizeNumDecimalPlaces) {
+    String pattern = "#";
+    for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {
+      if (i == 0) {
+        pattern += ".";
+      }
+      pattern += "#";
+    }
+    DecimalFormat df = new DecimalFormat(pattern);
+    df.setRoundingMode(RoundingMode.DOWN);
+    return df.format(qty);
   }
 }

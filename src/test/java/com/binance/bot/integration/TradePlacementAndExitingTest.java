@@ -123,7 +123,7 @@ public class TradePlacementAndExitingTest {
         new OrderStatusRequest("ETHUSDT", chartPatternSignal.exitStopLimitOrder().orderId());
     Order stopLossOrderStatusResp = binanceApiMarginRestClient.getOrderStatus(stopLossOrderStatusReq);
     assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+        Util.getTruncatedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
 
     // Exit the trade now.
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
@@ -133,8 +133,9 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.CANCELED);
     assertThat(chartPatternSignal.exitOrder()).isNotNull();
     assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
-    // This is because commissions on the exit order is not on the base asset but on USDT.
-    assertThat(Double.toString(chartPatternSignal.exitOrder().executedQty())).isEqualTo(Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+    // Truncate the position rather than enter short for the small leftover.
+    assertThat(Double.toString(chartPatternSignal.exitOrder().executedQty())).isEqualTo(
+        Util.getTruncatedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
     assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
@@ -173,9 +174,9 @@ public class TradePlacementAndExitingTest {
       Thread.sleep(1000);
     } while (stopLossOrderStatusResp.getStatus() != OrderStatus.FILLED);
     assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+        Util.getTruncatedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
     assertThat(stopLossOrderStatusResp.getExecutedQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+        Util.getTruncatedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
 
     // Exit the trade now.
     stopLimitOrderStatusChecker.perform();
@@ -185,7 +186,7 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     // This is because commissions on the exit order is not on the base asset but on USDT.
     assertThat(Double.toString(chartPatternSignal.exitStopLimitOrder().executedQty()))
-        .isEqualTo(Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
+        .isEqualTo(Util.getTruncatedQuantity(chartPatternSignal.entryOrder().executedQty(), 4));
     assertThat(Math.abs(chartPatternSignal.exitStopLimitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitStopLimitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
@@ -220,7 +221,7 @@ public class TradePlacementAndExitingTest {
         new OrderStatusRequest("ETHUSDT", chartPatternSignal.exitStopLimitOrder().orderId());
     Order stopLossOrderStatusResp = binanceApiMarginRestClient.getOrderStatus(stopLossOrderStatusReq);
     assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
+        Util.getRoundedUpQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
 
     // Exit the trade now.
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.REMOVED_FROM_SOURCESIGNALS);
@@ -231,8 +232,8 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.exitOrder()).isNotNull();
     assertThat(chartPatternSignal.exitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     // The former value below will be in high precision after deducting the ETH commission., hence the rounding for it as well.
-    assertThat(Util.getFormattedQuantity(chartPatternSignal.exitOrder().executedQty(), 4)).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
+    assertThat(Util.getRoundedUpQuantity(chartPatternSignal.exitOrder().executedQty(), 4)).isEqualTo(
+        Util.getRoundedUpQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
     assertThat(Math.abs(chartPatternSignal.exitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;
@@ -271,9 +272,9 @@ public class TradePlacementAndExitingTest {
     } while (stopLossOrderStatusResp.getStatus() != OrderStatus.FILLED);
     // OrigQty (= executedQty) below is before deducting commissions
     assertThat(stopLossOrderStatusResp.getOrigQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
+        Util.getRoundedUpQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
     assertThat(stopLossOrderStatusResp.getExecutedQty()).isEqualTo(
-        Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
+        Util.getRoundedUpQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4));
 
     // Exit the trade now.
     stopLimitOrderStatusChecker.perform();
@@ -283,7 +284,7 @@ public class TradePlacementAndExitingTest {
     assertThat(chartPatternSignal.exitStopLimitOrder().status()).isEqualTo(ChartPatternSignal.Order.OrderStatusInt.FILLED);
     // Below doesn't include commission, (trade fill is unavailable anyway for stop loss orders).
     assertThat(chartPatternSignal.exitStopLimitOrder().executedQty() / 0.999)
-        .isEqualTo(Double.parseDouble(Util.getFormattedQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4)));
+        .isEqualTo(Double.parseDouble(Util.getRoundedUpQuantity(chartPatternSignal.entryOrder().executedQty() / 0.999, 4)));
     assertThat(Math.abs(chartPatternSignal.exitStopLimitOrder().avgPrice() - currPrice)).isLessThan(5.0);
     double realizedPercent = (chartPatternSignal.exitStopLimitOrder().avgPrice() - chartPatternSignal.entryOrder().avgPrice())/chartPatternSignal.entryOrder().avgPrice();
     double realized = chartPatternSignal.entryOrder().executedQty() * realizedPercent / 100;

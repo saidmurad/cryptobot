@@ -326,7 +326,7 @@ public class BinanceTradingBot {
                 break;
             case SELL:
               try {
-                String numCoinsToBorrow = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
+                String numCoinsToBorrow = Util.getRoundedUpQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
                 String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
                 if (tradeValueInUSDTToDo <= accountBalance.getSecond()) {
                   logger.info(String.format("Borrowing %s coins of %s.", numCoinsToBorrow, baseAsset));
@@ -357,7 +357,7 @@ public class BinanceTradingBot {
               }
             default:
         }
-        String roundedQuantity = Util.getFormattedQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
+        String roundedQuantity = Util.getRoundedUpQuantity(tradeValueInUSDTToDo / entryPrice, stepSizeNumDecimalPlaces);
 
         OrderSide orderSide;
         int sign;
@@ -399,18 +399,20 @@ public class BinanceTradingBot {
             stopPrice = Double.toString(entryPrice - sign * 0.02);
             stopLimitPrice = Double.toString(entryPrice - sign * 0.5);
           } else {
-            stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
-            stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
+            stopPrice = Util.getRoundedUpQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
+            stopLimitPrice = Util.getRoundedUpQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
           }
           String qtyForStopLossExit;
           if (chartPatternSignal.tradeType() == TradeType.BUY) {
             // For buy trades, the qty can be sold with commisison calculated only on the USDT proceeds from the sale.
             // qtyForStopLossExit for a BUY fill for 0.0039 will be 0.1% less than that.
-            qtyForStopLossExit = Util.getFormattedQuantity(tradeFillData.getQuantity(), stepSizeNumDecimalPlaces);
+            // Truncating, because otherwise we get an error from the exchange for insufficient quantity. Leave behind
+            // the small position instead.
+            qtyForStopLossExit = Util.getTruncatedQuantity(tradeFillData.getQuantity(), stepSizeNumDecimalPlaces);
           } else {
             // For sell orders, while buying back the commission 0.1% is deducted on the base asset.
             double qtyAdjustedForCommission = tradeFillData.getQuantity() / 0.999;
-            qtyForStopLossExit = Util.getFormattedQuantity(qtyAdjustedForCommission, stepSizeNumDecimalPlaces);
+            qtyForStopLossExit = Util.getRoundedUpQuantity(qtyAdjustedForCommission, stepSizeNumDecimalPlaces);
           }
           MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
               stopLossOrderSide,

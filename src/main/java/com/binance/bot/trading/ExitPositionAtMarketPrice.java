@@ -18,9 +18,6 @@ import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeExitType;
 import com.binance.bot.tradesignals.TradeType;
-import com.binance.bot.trading.CrossMarginAccountBalance;
-import com.binance.bot.trading.RepayBorrowedOnMargin;
-import com.binance.bot.trading.SupportedSymbolsInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +28,6 @@ import org.springframework.stereotype.Component;
 import javax.mail.MessagingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.List;
 import java.util.Locale;
 
 @Component
@@ -128,12 +124,12 @@ public class ExitPositionAtMarketPrice {
       double qtyToExitAvail = chartPatternSignal.tradeType() == TradeType.BUY ? freeBalance : borrowed;
       if (qtyToExitAvail < qtyToExit) {
         // TODO: Remove.
-        if (qtyToExitAvail == qtyToExit * 0.999) {
-          logger.warn( String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance, but appears to be pre-bug fix for commissions deduction, hence proceeding to exit available quantity.",
+        if (Util.decimalCompare(qtyToExitAvail, qtyToExit * 0.999)) {
+          logger.warn( String.format("Expected to find %f quantity of %s to exit but asset found only %f in cross margin account balance, but appears to be pre-bug fix for commissions deduction, hence proceeding to exit available quantity.",
               qtyToExit, baseAsset, qtyToExitAvail));
           qtyToExit = qtyToExitAvail;
         } else {
-          String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in spot account balance.",
+          String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f in cross margin account balance.",
               qtyToExit, baseAsset, qtyToExitAvail);
           logger.error(errorMsg);
           mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
@@ -157,7 +153,7 @@ public class ExitPositionAtMarketPrice {
             mailer.sendEmail("Missing minNotionalAndLotSize", errMsg);
             return;
           }
-          qtyToExitStr = Util.getFormattedQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
+          qtyToExitStr = Util.getRoundedUpQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
           MarginAccount marginAccount = binanceApiMarginRestClient.getAccount();
           // Borrow 0.1% more to account for any fluctuations in market price.
           int usdtValueNeededToBuyBackCoin = (int) (Math.ceil(Double.parseDouble(qtyToExitStr) * bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk()) * 1.001);
@@ -185,13 +181,14 @@ public class ExitPositionAtMarketPrice {
             binanceApiMarginRestClient.borrow("USDT", "" + usdtMoreNeeded);
           }
         } else {
-          qtyToExitStr = Util.getFormattedQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
+          qtyToExitStr = Util.getTruncatedQuantity(qtyToExit, minNotionalAndLotSize.getSecond());
         }
         MarginNewOrder marketExitOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
             chartPatternSignal.tradeType() == TradeType.BUY ? OrderSide.SELL : OrderSide.BUY,
             OrderType.MARKET, /* timeInForce= */ null,
             // TODO: In corner cases, will have to round up this quantity.
             qtyToExitStr).newOrderRespType(NewOrderResponseType.FULL);
+        logger.info(String.format("Sending market exit order %s.", marketExitOrder));
         MarginNewOrderResponse marketExitOrderResponse = binanceApiMarginRestClient.newOrder(marketExitOrder);
         logger.info(String.format("Executed %s order and got the response: %s.",
             chartPatternSignal.tradeType() == TradeType.BUY ? "sell" : "buy",

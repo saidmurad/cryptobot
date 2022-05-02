@@ -292,7 +292,60 @@ public class ExitPositionAtMarketPriceTest {
     assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
     assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
     assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
-    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("9.1235"); // Is rounded up
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("9.1234"); // Is truncated not rounded.
+  }
+
+  @Test
+  public void buySignal_availableQtyLesserThanEntryQuantity_withoutAccountingForCommission_preFixBackwardCompatibility()
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 7.23, 20.0, OrderStatus.FILLED))
+        .setExitStopLimitOrder(ChartPatternSignal.Order.create(2, 0, 0, OrderStatus.NEW))
+        .build();
+    Order exitStopLossOrderStatus = new Order();
+    exitStopLossOrderStatus.setOrderId(1L);
+    exitStopLossOrderStatus.setStatus(OrderStatus.NEW);
+    when(mockBinanceApiRestClient.getOrderStatus(any())).thenReturn(exitStopLossOrderStatus);
+    // Return the same unchanged exit stop loss order status as NEW.
+    when(mockDao.getChartPattern(chartPatternSignal)).thenReturn(chartPatternSignal);
+    CancelOrderResponse cancelOrderResponse = new CancelOrderResponse();
+    cancelOrderResponse.setOrderId(2L);
+    cancelOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.cancelOrder(any(CancelOrderRequest.class))).thenReturn(cancelOrderResponse);
+    MarginAssetBalance ethBalance = new MarginAssetBalance();
+    ethBalance.setAsset("ETH");
+    ethBalance.setFree("7.222770");
+    ethBalance.setLocked("0.0");
+    MarginAccount account = new MarginAccount();
+    account.setUserAssets(Lists.newArrayList(ethBalance));
+    when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("7.2227");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    fill1.setCommission("0");
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    fill2.setCommission("0");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+
+
+    verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
+    assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
+    assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
+    assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("7.2227"); // Is rounded down
   }
 
   @Test

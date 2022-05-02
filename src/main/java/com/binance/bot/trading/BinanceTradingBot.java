@@ -168,7 +168,7 @@ public class BinanceTradingBot {
     }
 
     //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.
-    private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) throws InterruptedException {
+    private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
       BookTickerPrices.BookTicker ticker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       switch (chartPatternSignal.tradeType()) {
         case BUY:

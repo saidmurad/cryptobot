@@ -105,6 +105,8 @@ public class TradePlacementAndExitingTest {
     if (!runIntegTestsWithRealTrades) {
       return;
     }
+    binanceTradingBot.stopLossPercent = 5.0;
+    binanceTradingBot.stopLimitPercent = 5.5;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     binanceTradingBot.perTradeAmountConfigured = 10;
@@ -198,6 +200,8 @@ public class TradePlacementAndExitingTest {
     if (!runIntegTestsWithRealTrades) {
       return;
     }
+    binanceTradingBot.stopLossPercent = 5;
+    binanceTradingBot.stopLimitPercent = 5.5;
     ChartPatternSignal chartPatternSignal = getSellChartPatternSignal();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
     binanceTradingBot.perTradeAmountConfigured = 10;

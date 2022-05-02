@@ -70,7 +70,9 @@ public class StopLimitOrderStatusChecker {
         Order orderStatus = binanceApiMarginRestClient.getOrderStatus(orderStatusRequest);
         if (orderStatus.getStatus() == OrderStatus.FILLED ||
             orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
-          logger.info(String.format("Stop limit order found executed %s for cps %s.", orderStatus, activePosition));
+          String msg = String.format("Stop limit order found executed %s for cps %s.", orderStatus, activePosition);
+          logger.info(msg);
+          mailer.sendEmail("Stop loss hit", msg);
           Double executedQty = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
           // TODO: Take into consideration commissions for pnl calculations.
           // When closing a short position, commission is deducted on the base asset we receive as proceeds.

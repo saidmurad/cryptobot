@@ -147,6 +147,7 @@ public class BinanceTradingBot {
                         try {
                           // TODO: REcord the reason for rejection in cps in DB.
                             if (!isPriceTargetAlreadyReached(chartPatternSignal)
+                                && !permanentErrorCases.contains(chartPatternSignal.coinPair())
                           && (!isLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())
                                 || (chartPatternSignal.profitPotentialPercent() >= 0.5
                                 && notVeryLate(chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal())))
@@ -185,7 +186,7 @@ public class BinanceTradingBot {
     }
 
     private final Set<Pair<ChartPatternSignal, String>> emailsAlreadySent = new HashSet<>();
-
+    private final Set<String> permanentErrorCases = new HashSet<>();
     private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
         MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
         if (lastMACD == null) {
@@ -348,8 +349,11 @@ public class BinanceTradingBot {
                 }
               } catch (BinanceApiException ex) {
                 // TODO: Unit test.
-                if (ex.getError().getCode() == -3405) {
-                  logger.warn(String.format("Got BinanceApiError for unavailable to borrow right now. Ignoring trade in this attempt for cps %s.", chartPatternSignal));
+                if (ex.getError().getCode() == -3045) {
+                  String msg = String.format("Got BinanceApiError for unavailable to borrow right now. Ignoring this cps %s.", chartPatternSignal);
+                  logger.warn(msg);
+                  mailer.sendEmail("Asset Unavailable to borrow", msg);
+                  permanentErrorCases.add(chartPatternSignal.coinPair());
                   return;
                 } else {
                   throw ex;

@@ -94,29 +94,30 @@ public class ExitPositionAtMarketPrice {
         logger.info(String.format("Cancelled Stop Limit Order with response status %s.", cancelStopLimitOrderResponse.getStatus().name()));
         dao.cancelStopLimitOrder(chartPatternSignal);
       }
-      dao.writeAccountBalanceToDB();
   }
 
   public void exitPositionIfStillHeld(
       ChartPatternSignal chartPatternSignal, TradeExitType tradeExitType) throws MessagingException {
     try {
       if (chartPatternSignal.isPositionExited() == null || Boolean.TRUE.equals(chartPatternSignal.isPositionExited()
-          || chartPatternSignal.entryOrder() == null
-          // This is for backward compatibility.
-          || chartPatternSignal.exitStopLimitOrder() == null)) {
+          || chartPatternSignal.entryOrder() == null)) {
         return;
       }
+      logger.info(String.format("Going to exit position for cps %s.", chartPatternSignal));
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
-      // If partial order has been executed it could only be the stop limit order.
-      // exitStopLimitOrder can never be null.
-      if (chartPatternSignal.exitStopLimitOrder().status() == ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED) {
-        qtyToExit -= chartPatternSignal.exitStopLimitOrder().executedQty();
-        logger.info(String.format("Need to exit the remaining %f qty.", qtyToExit));
-      } else {
-        logger.info(String.format("Need to exit the %f qty.", qtyToExit));
+      // This is because there were times when stop loss order failed to be placed due to bugs.
+      if (chartPatternSignal.exitStopLimitOrder() != null) {
+        // If partial order has been executed it could only be the stop limit order.
+        // exitStopLimitOrder can never be null.
+        if (chartPatternSignal.exitStopLimitOrder().status() == ChartPatternSignal.Order.OrderStatusInt.PARTIALLY_FILLED) {
+          qtyToExit -= chartPatternSignal.exitStopLimitOrder().executedQty();
+          logger.info(String.format("Need to exit the remaining %f qty.", qtyToExit));
+        } else {
+          logger.info(String.format("Need to exit the %f qty.", qtyToExit));
+        }
+        // Cancel the stop limit order first to unlock the quantity.
+        cancelStopLimitOrder(chartPatternSignal);
       }
-      // Cancel the stop limit order first to unlock the quantity.
-      cancelStopLimitOrder(chartPatternSignal);
       String baseAsset = Util.getBaseAsset(chartPatternSignal.coinPair());
       MarginAssetBalance assetBalance = binanceApiMarginRestClient.getAccount().getAssetBalance(baseAsset);
       double freeBalance = numberFormat.parse(assetBalance.getFree()).doubleValue();
@@ -202,6 +203,7 @@ public class ExitPositionAtMarketPrice {
           outstandingTrades.decrementNumOutstandingTrades(chartPatternSignal.timeFrame());
         }
       }
+      dao.writeAccountBalanceToDB();
     } catch (Exception ex) {
       logger.error(String.format("Exception for trade exit type %s." , tradeExitType.name()), ex);
       mailer.sendEmail("ExitPositionAtMarketPrice uncaught exception for trade exit type" + tradeExitType.name(), ex.getMessage());

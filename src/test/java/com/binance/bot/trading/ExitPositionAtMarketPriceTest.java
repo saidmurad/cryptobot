@@ -193,6 +193,56 @@ public class ExitPositionAtMarketPriceTest {
   }
 
   @Test
+  public void missingStopLossOrder_skipsCancelingStopLossOrder_andProceedsToExitPosition()
+      throws MessagingException, InterruptedException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    exitPositionAtMarketPrice.doNotDecrementNumOutstandingTrades = false;
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+        .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
+        .build();
+    MarginAssetBalance ethBalance = new MarginAssetBalance();
+    ethBalance.setAsset("ETH");
+    ethBalance.setFree("10.0");
+    ethBalance.setLocked("0.0");
+    MarginAccount account = new MarginAccount();
+    account.setUserAssets(Lists.newArrayList(ethBalance));
+    when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("10.0");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    fill1.setCommission("0.05"); // High fake Commission here in USDT for Sell trade should have no impact on my calculations.
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    fill2.setCommission("0.0005");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+
+    verify(mockBinanceApiRestClient, never()).getOrderStatus(any());
+    verify(mockDao, never()).updateExitStopLimitOrder(any(), any());
+    verify(mockBinanceApiRestClient, never()).cancelOrder(any());
+    verify(mockDao, never()).cancelStopLimitOrder(any());
+    verify(mockBinanceApiRestClient).newOrder(newOrderCapture.capture());
+    assertThat(newOrderCapture.getValue().getSymbol()).isEqualTo("ETHUSDT");
+    assertThat(newOrderCapture.getValue().getSide()).isEqualTo(OrderSide.SELL);
+    assertThat(newOrderCapture.getValue().getType()).isEqualTo(OrderType.MARKET);
+    assertThat(newOrderCapture.getValue().getTimeInForce()).isNull();
+    assertThat(newOrderCapture.getValue().getQuantity()).isEqualTo("10");
+    verify(mockDao).setExitOrder(chartPatternSignal,
+        ChartPatternSignal.Order.create(3L,
+            10.0, 1.0, OrderStatus.FILLED), TradeExitType.TARGET_TIME_PASSED);
+    verify(mockDao).writeAccountBalanceToDB();
+    verify(mockOutstandingTrades).decrementNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES);
+  }
+
+  @Test
   public void exitPositionIfStillHeld_buySignal_exitOrderQtyRoundedUpUsingLotSize()
       throws MessagingException, InterruptedException, ParseException, BinanceApiException {
     BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);

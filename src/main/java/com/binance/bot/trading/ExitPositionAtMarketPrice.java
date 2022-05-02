@@ -200,6 +200,7 @@ public class ExitPositionAtMarketPrice {
             ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
                 tradeFillData.getQuantity(),
                 tradeFillData.getAvgPrice(), marketExitOrderResponse.getStatus()), tradeExitType);
+        mailer.sendEmail(String.format("Exited trade for %s.", tradeExitType.name()), chartPatternSignal.toString());
         if (chartPatternSignal.tradeType() == TradeType.SELL) {
           repayBorrowedOnMargin.repay(baseAsset, tradeFillData.getQuantity());
         }

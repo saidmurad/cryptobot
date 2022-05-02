@@ -70,23 +70,23 @@ public class StopLimitOrderStatusChecker {
         Order orderStatus = binanceApiMarginRestClient.getOrderStatus(orderStatusRequest);
         if (orderStatus.getStatus() == OrderStatus.FILLED ||
             orderStatus.getStatus() == OrderStatus.PARTIALLY_FILLED) {
-          Thread.sleep(5000);
-          List<Trade> trades = binanceApiMarginRestClient.getMyTrades(activePosition.coinPair(), orderStatus.getOrderId());
-          if (trades == null) {
-            String errMsg = String.format("Got empty trades list for stop loss order id %d for cps %s.", orderStatus.getOrderId(), activePosition);
-            logger.error(errMsg);
-            mailer.sendEmail("Stop loss order empty trades list", errMsg);
-            return;
+          logger.info(String.format("Stop limit order found executed %s for cps %s.", orderStatus, activePosition));
+          Double executedQty = numberFormat.parse(orderStatus.getExecutedQty()).doubleValue();
+          // TODO: Take into consideration commissions for pnl calculations.
+          // When closing a short position, commission is deducted on the base asset we receive as proceeds.
+          if (activePosition.tradeType() == TradeType.SELL) {
+            executedQty *= 0.999;
           }
-          TradeFillData tradeFillData = new TradeFillData(
-              trades,
-              activePosition.tradeType() == TradeType.BUY ? TradeType.SELL : TradeType.BUY);
+          /**
+           The 'price' seems to be the stop limit price placed for the stop limit order, while the stopLomitPrice is null, weird.
+           Order[symbol=ETHUSDT,orderId=8758446990,clientOrderId=bwk9Ti2ji1MinoPzaAa0tX,price=2802.68,origQty=0.0037,executedQty=0.0037,status=FILLED,timeInForce=GTC,type=STOP_LOSS_LIMIT,side=SELL,stopPrice=2803.16,stopLimitPrice=<null>,icebergQty=0,time=1651443951248,cummulativeQuoteQty=10.371618,updateTime=1651443965293,isWorking=true,origQuoteOrderQty=<null>]
+           */
           dao.updateExitStopLimitOrder(activePosition,
-              ChartPatternSignal.Order.create(orderStatus.getOrderId(), tradeFillData.getQuantity(),
-                  tradeFillData.getAvgPrice(), orderStatus.getStatus()));
+              ChartPatternSignal.Order.create(orderStatus.getOrderId(), executedQty,
+                  numberFormat.parse(orderStatus.getStopPrice()).doubleValue(), orderStatus.getStatus()));
           if (orderStatus.getStatus() == OrderStatus.FILLED) {
             if (activePosition.tradeType() == TradeType.SELL) {
-              repayBorrowedOnMargin.repay(Util.getBaseAsset(activePosition.coinPair()), tradeFillData.getQuantity());
+              repayBorrowedOnMargin.repay(Util.getBaseAsset(activePosition.coinPair()), executedQty);
             }
             if (!doNotDecrementNumOutstandingTrades) {
               outstandingTrades.decrementNumOutstandingTrades(activePosition.timeFrame());

@@ -14,6 +14,7 @@ import com.binance.api.client.domain.account.request.CancelOrderResponse;
 import com.binance.api.client.domain.account.request.OrderRequest;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.api.client.impl.BinanceApiMarginRestClientImpl;
 import com.binance.bot.tradesignals.TradeType;
 
 import java.util.List;
@@ -27,8 +28,7 @@ public class MarginOrdersExample {
 
     public static void main(String[] args) {
         try {
-            BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("31MUPiM1hMNKt4uUXJ8et0GbYwXYvZ33HzLmRdXYEtrvvM8A0p59N510EvQcA99A", "SVI8zkiPBsM96Uyd1UijdojGpIefAT9ZzB5pWPSB9M6uPYSUHGyK32O6Bxdxppzf", true, true);
-            BinanceApiMarginRestClient client = factory.newMarginRestClient();
+            BinanceApiMarginRestClient client = new BinanceApiMarginRestClientImpl("PJNBU6yYrAPrkHXyAMx6EnsciNEmbsVmXsPvWWuvEO7aaecRrySJ1HKiNDnYafho", "LrgKpLCX1lp88hrsQPieSy830N7uIooLWeokqmhb47ZnLFejhkmM8XA6i8PO8mHF");
 
            /* // Getting list of open orders
             List<Order> openOrders = client.getOpenOrders(new OrderRequest("LINKETH"));
@@ -47,13 +47,18 @@ public class MarginOrdersExample {
             }
 
             // Placing a LIMIT order.
-            MarginNewOrderResponse newOrderResponse = client.newOrder(limitBuy("LINKUSDT", TimeInForce.GTC, "1000", "0.0001").newOrderRespType(NewOrderResponseType.FULL));*/
+            MarginNewOrderResponse newOrderResponse = client.newOrder(limitBuy("LINKUSDT", TimeInForce.GTC, "1000", "0.0001").newOrderRespType(NewOrderResponseType.FULL));
             MarginNewOrder marketExitOrder = new MarginNewOrder("BTCUSDT",
                 OrderSide.BUY,
-                OrderType.MARKET, /* timeInForce= */ null,
+                OrderType.MARKET, null,
             "0.0001");
             MarginNewOrderResponse marketExitOrderResponse = client.newOrder(marketExitOrder);
-            System.out.println(marketExitOrderResponse);
+            System.out.println(marketExitOrderResponse);*/
+
+            OrderStatusRequest orderStatusRequest = new OrderStatusRequest(
+                "ETHUSDT", 8758446990L);
+            Order orderStatus = client.getOrderStatus(orderStatusRequest);
+            System.out.println(orderStatus);
         } catch (Exception ex) {
             ex.printStackTrace();
         }

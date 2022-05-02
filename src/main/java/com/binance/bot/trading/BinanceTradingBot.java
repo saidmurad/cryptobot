@@ -396,8 +396,8 @@ public class BinanceTradingBot {
           //stopLossPercents =
           String stopPrice, stopLimitPrice;
           if (stopLossPercent == 0.0) { // integ test
-            stopPrice = Double.toString(entryPrice - 0.02);
-            stopLimitPrice = Double.toString(entryPrice - 0.5);
+            stopPrice = Double.toString(entryPrice - sign * 0.02);
+            stopLimitPrice = Double.toString(entryPrice - sign * 0.5);
           } else {
             stopPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLossPercent) / 100, tickSizeNumDecimals);
             stopLimitPrice = Util.getFormattedQuantity(entryPrice * (100 - sign * stopLimitPercent) / 100, tickSizeNumDecimals);
@@ -419,7 +419,8 @@ public class BinanceTradingBot {
               qtyForStopLossExit,
               stopLimitPrice);
           stopLossOrder.stopPrice(stopPrice);
-          logger.info(String.format("Placing stop loss order %s for cps %s.", stopLossOrder, chartPatternSignal));
+          logger.info(String.format("Placing stop loss order %s with stop price %s and stop limit price %s for cps %s.",
+              stopLossOrder, stopPrice, stopLimitPrice, chartPatternSignal));
           MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
           logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
               stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));

@@ -88,19 +88,10 @@ public class StopLimitOrderStatusCheckerTest {
         Lists.newArrayList(chartPatternSignal));
     Order exitLimitOrderStatus = new Order();
     exitLimitOrderStatus.setOrderId(2L);
+    exitLimitOrderStatus.setStopPrice("4");
     exitLimitOrderStatus.setStatus(OrderStatus.FILLED);
     exitLimitOrderStatus.setExecutedQty("5.0");
     when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
-    Trade fill1 = new Trade();
-    fill1.setQty("2.5");
-    fill1.setPrice("3.0");
-    fill1.setCommission("0");
-    Trade fill2 = new Trade();
-    fill2.setQty("2.5");
-    fill2.setPrice("5.0");
-    fill2.setCommission("0");
-    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
-        Lists.newArrayList(fill1, fill2));
     stopLimitOrderStatusChecker.perform();
 
     verify(mockBinanceApiMarginRestClient).getOrderStatus(orderStatusRequestArgumentCaptor.capture());
@@ -126,15 +117,8 @@ public class StopLimitOrderStatusCheckerTest {
     exitLimitOrderStatus.setOrderId(2L);
     exitLimitOrderStatus.setStatus(OrderStatus.FILLED);
     exitLimitOrderStatus.setExecutedQty("5.0");
+    exitLimitOrderStatus.setStopPrice("4");
     when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
-    Trade fill1 = new Trade();
-    fill1.setQty("2.5");
-    fill1.setPrice("3.0");
-    Trade fill2 = new Trade();
-    fill2.setQty("2.5");
-    fill2.setPrice("5.0");
-    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
-        Lists.newArrayList(fill1, fill2));
     stopLimitOrderStatusChecker.perform();
 
     verifyNoInteractions(mockOutstandingTrades);
@@ -153,15 +137,8 @@ public class StopLimitOrderStatusCheckerTest {
     exitLimitOrderStatus.setOrderId(2L);
     exitLimitOrderStatus.setStatus(OrderStatus.PARTIALLY_FILLED);
     exitLimitOrderStatus.setExecutedQty("5.0");
+    exitLimitOrderStatus.setStopPrice("4");
     when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
-    Trade fill1 = new Trade();
-    fill1.setQty("2.5");
-    fill1.setPrice("3.0");
-    Trade fill2 = new Trade();
-    fill2.setQty("2.5");
-    fill2.setPrice("5.0");
-    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
-        Lists.newArrayList(fill1, fill2));
 
     stopLimitOrderStatusChecker.perform();
 
@@ -183,17 +160,8 @@ public class StopLimitOrderStatusCheckerTest {
     exitLimitOrderStatus.setOrderId(2L);
     exitLimitOrderStatus.setStatus(OrderStatus.FILLED);
     exitLimitOrderStatus.setExecutedQty("5.0");
+    exitLimitOrderStatus.setStopPrice("2");
     when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
-    Trade fill1 = new Trade();
-    fill1.setQty("2.5");
-    fill1.setPrice("1.0");
-    fill1.setCommission("0");
-    Trade fill2 = new Trade();
-    fill2.setQty("2.5");
-    fill2.setPrice("3.0");
-    fill2.setCommission("0");
-    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
-        Lists.newArrayList(fill1, fill2));
 
     stopLimitOrderStatusChecker.perform();
 
@@ -201,8 +169,8 @@ public class StopLimitOrderStatusCheckerTest {
     assertThat(orderStatusRequestArgumentCaptor.getValue().getOrderId()).isEqualTo(2);
     assertThat(orderStatusRequestArgumentCaptor.getValue().getSymbol()).isEqualTo("ETHUSDT");
     verify(mockDao).updateExitStopLimitOrder(eq(chartPatternSignal),
-        eq(ChartPatternSignal.Order.create(2L, 5, 2, OrderStatus.FILLED)));
-    verify(mockRepayBorrowedOnMargin).repay(eq("ETH"), eq(5.0));
+        eq(ChartPatternSignal.Order.create(2L, 4.995, 2, OrderStatus.FILLED)));
+    verify(mockRepayBorrowedOnMargin).repay(eq("ETH"), eq(4.995));
   }
 
   @Test
@@ -220,13 +188,8 @@ public class StopLimitOrderStatusCheckerTest {
     exitLimitOrderStatus.setStatus(OrderStatus.PARTIALLY_FILLED);
     exitLimitOrderStatus.setPrice("2.0");
     exitLimitOrderStatus.setExecutedQty("2.5");
+    exitLimitOrderStatus.setStopPrice("2");
     when(mockBinanceApiMarginRestClient.getOrderStatus(any())).thenReturn(exitLimitOrderStatus);
-    Trade fill1 = new Trade();
-    fill1.setQty("2.5");
-    fill1.setPrice("2.0");
-    fill1.setCommission("0");
-    when(mockBinanceApiMarginRestClient.getMyTrades("ETHUSDT", 2L)).thenReturn(
-        Lists.newArrayList(fill1));
 
     stopLimitOrderStatusChecker.perform();
 
@@ -234,7 +197,7 @@ public class StopLimitOrderStatusCheckerTest {
     assertThat(orderStatusRequestArgumentCaptor.getValue().getOrderId()).isEqualTo(2);
     assertThat(orderStatusRequestArgumentCaptor.getValue().getSymbol()).isEqualTo("ETHUSDT");
     verify(mockDao).updateExitStopLimitOrder(chartPatternSignal,
-        ChartPatternSignal.Order.create(2L, 2.5, 2.0, OrderStatus.PARTIALLY_FILLED));
+        ChartPatternSignal.Order.create(2L, 2.4975, 2.0, OrderStatus.PARTIALLY_FILLED));
     verify(mockRepayBorrowedOnMargin, never()).repay(any(), anyLong());
   }
 

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class SupportedSymbolsInfo {
@@ -21,8 +22,9 @@ public class SupportedSymbolsInfo {
   private final BinanceApiMarginRestClient binanceApiMarginRestClient;
   private BinanceApiRestClient binanceApiRestClient;
   private Set<String> supportedSymbols = new HashSet<>();
-  private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new HashMap<>();
-  private Map<String, Pair<Double, Integer>> minPriceAndTickSizeMap = new HashMap<>();
+
+  private Map<String, Pair<Double, Integer>> minNotionalAndLotSizeMap = new ConcurrentHashMap<>();
+  private Map<String, Pair<Double, Integer>> minPriceAndTickSizeMap = new ConcurrentHashMap<>();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Map<String, Boolean> tradingSymbolsMap = new HashMap<String, Boolean>();
   private long lastFetchTime = 0;

@@ -62,7 +62,7 @@ public abstract class PriceTargetCheckerLaggingTask {
   @Scheduled(fixedDelay = 600000, initialDelayString = "${timing.initialDelay}")
   public void perform() throws InterruptedException, ParseException, IOException, MessagingException, BinanceApiException {
     List<ChartPatternSignal> patterns = getChartPatternSignalsThatLongSinceReachedTargetTime();
-    //logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
+    logger.info(String.format("Retrieved %d patterns from DB.", patterns.size()));
     List<Pair<ChartPatternSignal, Integer>>  attemptedPatterns = new ArrayList<>();
     for (ChartPatternSignal pattern: patterns) {
       attemptedPatterns.add(Pair.of(pattern, 1));
@@ -74,7 +74,7 @@ public abstract class PriceTargetCheckerLaggingTask {
       }
       performIteration(attemptedPatterns);
     }
-    //logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");
+    logger.info("PriceTargetCheckerLaggingTask of type " + targetTimeType + " finished work.");
   }
 
   protected abstract List<ChartPatternSignal> getChartPatternSignalsThatLongSinceReachedTargetTime();

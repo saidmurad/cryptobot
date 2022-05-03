@@ -165,7 +165,13 @@ public class BinanceTradingBot {
     }
 
   private boolean isPriceAlreadyRetracedToPreBreakoutLevel(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
-      double breakoutBasedStopLoss = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+    double breakoutBasedStopLoss;
+      try {
+        breakoutBasedStopLoss = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+      } catch (NullPointerException ex) {
+        logger.warn(String.format("Pre-breakout candlestick missing for cps %s. Ignoring for trade.", chartPatternSignal));
+        return true;
+      }
       boolean ret;
       if (chartPatternSignal.tradeType() == TradeType.BUY) {
         ret = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk() < breakoutBasedStopLoss;
@@ -350,7 +356,7 @@ public class BinanceTradingBot {
                 } else {
                     String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
                     logger.warn(msg);
-                    mailer.sendEmail("Insufficient funds.", msg);
+                    //mailer.sendEmail("Insufficient funds.", msg);
                     return;
                 }
                 break;

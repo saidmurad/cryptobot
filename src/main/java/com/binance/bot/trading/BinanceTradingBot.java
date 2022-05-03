@@ -166,11 +166,17 @@ public class BinanceTradingBot {
 
   private boolean isPriceAlreadyRetracedToPreBreakoutLevel(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
       double breakoutBasedStopLoss = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+      boolean ret;
       if (chartPatternSignal.tradeType() == TradeType.BUY) {
-        return bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk() < breakoutBasedStopLoss;
+        ret = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk() < breakoutBasedStopLoss;
       } else {
-        return bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid() > breakoutBasedStopLoss;
+        ret = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid() > breakoutBasedStopLoss;
       }
+    BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
+      logger.info("isPriceAlreadyRetracedToPreBreakoutLevel: cps=%s breakoutBasedStopLoss=%f Returning %s." +
+          "BookTicker ask=%f, bid=%f", chartPatternSignal, breakoutBasedStopLoss,
+          bookTicker.bestAsk(), bookTicker.bestBid(), ret? "true" : "false");
+      return ret;
   }
 
   //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.

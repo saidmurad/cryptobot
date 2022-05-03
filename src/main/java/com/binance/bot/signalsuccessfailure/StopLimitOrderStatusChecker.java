@@ -40,7 +40,7 @@ public class StopLimitOrderStatusChecker {
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final BinanceApiMarginRestClient binanceApiMarginRestClient;
   private final OutstandingTrades outstandingTrades;
-  private final Mailer mailer = new Mailer();
+  public Mailer mailer = new Mailer();
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   @Value("${do_not_decrement_num_outstanding_trades}")

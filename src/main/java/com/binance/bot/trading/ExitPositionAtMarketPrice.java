@@ -37,7 +37,7 @@ public class ExitPositionAtMarketPrice {
   private final ChartPatternSignalDaoImpl dao;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
-  private final Mailer mailer;
+  public Mailer mailer;
   private final RepayBorrowedOnMargin repayBorrowedOnMargin;
   private final OutstandingTrades outstandingTrades;
   private final SupportedSymbolsInfo supportedSymbolsInfo;

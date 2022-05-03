@@ -1298,7 +1298,7 @@ public class BinanceTradingBotTest {
     assertThat(buyOrder.getSymbol()).isEqualTo("ETHUSDT");
     assertThat(buyOrder.getSide()).isEqualTo(OrderSide.BUY);
     assertThat(buyOrder.getType()).isEqualTo(OrderType.MARKET);
-    assertThat(buyOrder.getQuantity()).isEqualTo("0.0028"); // Equivalent of $10.52 = 0.00263 rounded up after adjusted for stop loss notional.
+    assertThat(buyOrder.getQuantity()).isEqualTo("0.0028");
   }
 
   @Test
@@ -1460,7 +1460,7 @@ public class BinanceTradingBotTest {
         .setPriceTarget(3000)
         .build();
     BinanceApiError binanceApiError = new BinanceApiError();
-    binanceApiError.setCode(-3405);
+    binanceApiError.setCode(-3045);
     BinanceApiException binanceApiException = new BinanceApiException(binanceApiError);
     when(mockBinanceApiMarginRestClient.borrow(eq("ETH"), any())).thenThrow(binanceApiException);
 
@@ -1483,7 +1483,7 @@ public class BinanceTradingBotTest {
         .setPriceTarget(3000)
         .build();
     BinanceApiError binanceApiError = new BinanceApiError();
-    binanceApiError.setCode(-3405);
+    binanceApiError.setCode(-3045);
     BinanceApiException binanceApiException = new BinanceApiException(binanceApiError);
     when(mockBinanceApiMarginRestClient.borrow(eq("ETH"), any())).thenThrow(binanceApiException);
 

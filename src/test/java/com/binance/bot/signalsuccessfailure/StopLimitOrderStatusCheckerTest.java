@@ -8,6 +8,7 @@ import com.binance.api.client.domain.account.Order;
 import com.binance.api.client.domain.account.Trade;
 import com.binance.api.client.domain.account.request.OrderStatusRequest;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.OutstandingTrades;
 import com.binance.bot.tradesignals.ChartPatternSignal;
@@ -50,7 +51,7 @@ public class StopLimitOrderStatusCheckerTest {
   ChartPatternSignalDaoImpl mockDao;
   @Mock
   OutstandingTrades mockOutstandingTrades;
-
+  @Mock private Mailer mockMailer;
   private StopLimitOrderStatusChecker stopLimitOrderStatusChecker;
 
   @Before
@@ -58,6 +59,7 @@ public class StopLimitOrderStatusCheckerTest {
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     stopLimitOrderStatusChecker = new StopLimitOrderStatusChecker(mockDao, mockRepayBorrowedOnMargin,
         mockBinanceApiClientFactory, mockOutstandingTrades);
+    stopLimitOrderStatusChecker.mailer = mockMailer;
   }
 
   @Test

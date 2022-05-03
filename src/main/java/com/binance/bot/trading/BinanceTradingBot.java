@@ -10,6 +10,7 @@ import com.binance.api.client.domain.account.*;
 import com.binance.api.client.exception.BinanceApiException;
 import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.common.Mailer;
+import com.binance.bot.common.MinNotionalTradeValueInUSDTCalculator;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.database.OutstandingTrades;
@@ -38,6 +39,7 @@ import static com.binance.bot.tradesignals.TimeFrame.FIFTEEN_MINUTES;
 @Component
 public class BinanceTradingBot {
   private static final String MISSING_MACD_DATA = "Missing MACD Data";
+  private static final double MIN_NOTIONAL_USDT_VALUE = 10;
   private final BinanceApiRestClient binanceApiRestClient;
     private final BinanceApiMarginRestClient binanceApiMarginRestClient;
     private final ChartPatternSignalDaoImpl dao;
@@ -303,11 +305,17 @@ public class BinanceTradingBot {
             return;
         }
         int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
-        double minNotionalAdjustedForStopLoss =
-            getMinNotionalAdjustedForStopLoss(minNotionalAndLotSize.getFirst(), stopLimitPercent);
-        double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
       BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
-        double entryPrice = chartPatternSignal.tradeType() == TradeType.BUY? bookTicker.bestAsk() : bookTicker.bestBid();
+      double entryPrice = chartPatternSignal.tradeType() == TradeType.BUY? bookTicker.bestAsk() : bookTicker.bestBid();
+        double minNotionalAdjustedForStopLoss;
+        if (chartPatternSignal.tradeType() == TradeType.BUY) {
+          minNotionalAdjustedForStopLoss = MinNotionalTradeValueInUSDTCalculator.getMinNotionalTradeValueInUSDTForBuyTrade(
+              minNotionalAndLotSize.getFirst(), minNotionalAndLotSize.getSecond(), stopLossPercent, entryPrice);
+        } else {
+          minNotionalAdjustedForStopLoss = MinNotionalTradeValueInUSDTCalculator.getMinNotionalTradeValueInUSDTForSellTrade(
+              minNotionalAndLotSize.getFirst(), minNotionalAndLotSize.getSecond(), entryPrice);
+        }
+        double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
         // Determine trade feasibility and borrow required quantity.
         switch (chartPatternSignal.tradeType()) {
             case BUY:
@@ -410,8 +418,8 @@ public class BinanceTradingBot {
           if (chartPatternSignal.tradeType() == TradeType.BUY) {
             // For buy trades, the qty can be sold with commisison calculated only on the USDT proceeds from the sale.
             // qtyForStopLossExit for a BUY fill for 0.0039 will be 0.1% less than that.
-            // Truncating, because otherwise we get an error from the exchange for insufficient quantity. Leave behind
-            // the small position instead.
+            // Truncating, because otherwise we get an error from the exchange for insufficient quantity in the account
+            // So Leave behind the small position instead.
             qtyForStopLossExit = Util.getTruncatedQuantity(tradeFillData.getQuantity(), stepSizeNumDecimalPlaces);
           } else {
             // For sell orders, while buying back the commission 0.1% is deducted on the base asset.
@@ -462,11 +470,5 @@ public class BinanceTradingBot {
           return usdtToRepay;
       }
       return -1;
-    }
-
-    private double getMinNotionalAdjustedForStopLoss(Double minNotional, double stopLossPercent) {
-        // Adding extra 25 cents to account for quick price drops when placing order that would reduce the amount being
-        // ordered below min notional.
-        return minNotional * 100 / (100 - stopLossPercent) + 0.25;
     }
 }

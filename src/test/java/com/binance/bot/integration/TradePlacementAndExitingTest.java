@@ -98,6 +98,8 @@ public class TradePlacementAndExitingTest {
         .build();
     currPrice = numberFormat.parse(binanceApiRestClient.getPrice("ETHUSDT").getPrice()).doubleValue();
     binanceTradingBot.mailer = mockMailer;
+    stopLimitOrderStatusChecker.mailer = mockMailer;
+    exitPositionAtMarketPrice.mailer = mockMailer;
   }
 
   @Test

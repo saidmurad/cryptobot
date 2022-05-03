@@ -108,6 +108,11 @@ public class BinanceTradingBotTest {
     when(mockSupportedSymbolsInfo.getMinPriceAndTickSize("ETHUSDT")).thenReturn(Pair.of(0.01, 2));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL, PRICE_AT_TIME_OF_SIGNAL);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
+
+    // So that the condition for stop loss based on breakout candlestick is satisifed regardless of the trade type.
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any(ChartPatternSignal.class)))
+        .thenReturn(PRICE_AT_TIME_OF_SIGNAL);
+    binanceTradingBot.useBreakoutCandlestickForStopLoss = false;
   }
 
   private void setUpDefaultNumOutstandingTradesLimit() {
@@ -271,6 +276,44 @@ public class BinanceTradingBotTest {
   }
 
   @Test
+  public void perform_stopLossBasedOnBreakoutCandlestick_alreadyRetraced_buyTrade_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.BUY)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any(ChartPatternSignal.class)))
+        .thenReturn(PRICE_AT_TIME_OF_SIGNAL);
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL - 1, PRICE_AT_TIME_OF_SIGNAL);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
+  public void perform_stopLossBasedOnBreakoutCandlestick_alreadyRetraced_sellTrade_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+    when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.FIFTEEN_MINUTES)).thenReturn(1);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
+        .setTradeType(TradeType.SELL)
+        .build();
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL, PRICE_AT_TIME_OF_SIGNAL + 1);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
+
+    binanceTradingBot.perform();
+
+    verify(mockBinanceApiMarginRestClient, never()).getAccount();
+    verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
+    verify(mockDao, never()).setEntryOrder(any(), any());
+  }
+
+  @Test
   public void perform_numOutstandingTrades_isAtLimit_hourly_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
     when(mockOutstandingTrades.getNumOutstandingTrades(TimeFrame.HOUR)).thenReturn(1);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -383,8 +426,6 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
-    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 0);
-    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -510,6 +551,58 @@ public class BinanceTradingBotTest {
     verify(mockBinanceApiMarginRestClient).getAccount();
     verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
     verify(mockDao).writeAccountBalanceToDB();
+  }
+
+  @Test
+  public void buyTrade_stopLossBasedOnBreakoutCandlestickPrice() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+    binanceTradingBot.useBreakoutCandlestickForStopLoss = true;
+    binanceTradingBot.stopLossPercent = 5.0;
+    setUsdtBalanceForStraightBuys(120);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTimeFrame(TimeFrame.HOUR)
+        .setTimeOfSignal(DateUtils.addMinutes(new Date(), -59))
+        .build();
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal)).thenReturn(3900.0);
+    when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.HOUR, TradeType.BUY, true))
+        .thenReturn(Lists.newArrayList(chartPatternSignal));
+    MarginNewOrderResponse buyOrderResp = new MarginNewOrderResponse();
+    buyOrderResp.setOrderId(1L);
+    buyOrderResp.setPrice("0.0");
+    buyOrderResp.setExecutedQty("0.005");
+    buyOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    buyOrderResp.setFills(Lists.newArrayList(trade));
+
+    MarginNewOrderResponse sellStopLossOrderResp = new MarginNewOrderResponse();
+    sellStopLossOrderResp.setOrderId(2L);
+    sellStopLossOrderResp.setExecutedQty("0");
+    sellStopLossOrderResp.setPrice("3900");
+    sellStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return buyOrderResp;
+        }
+        return sellStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockBinanceApiMarginRestClient).getAccount();
+    verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
+    MarginNewOrder stopLimitOrderReq = orderCaptor.getAllValues().get(1);
+    assertThat(Double.parseDouble(stopLimitOrderReq.getPrice())).isEqualTo(3880.0); // 3%
+    assertThat(Double.parseDouble(stopLimitOrderReq.getStopPrice())).isEqualTo(3900.0); // 2.5%
   }
 
   @Test
@@ -1186,8 +1279,6 @@ public class BinanceTradingBotTest {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
-    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 0);
-    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 
@@ -1372,6 +1463,56 @@ public class BinanceTradingBotTest {
         ChartPatternSignal.Order.create(
             buyStopLossOrderResp.getOrderId(), 0.0, 0,
             OrderStatus.NEW));
+  }
+
+  @Test
+  public void useBreakoutCandlestickPriceForStoploss_sellTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+    binanceTradingBot.useBreakoutCandlestickForStopLoss = true;
+    binanceTradingBot.stopLossPercent = 5.0;
+    // Allows for an additional $20 to be borrowed and new margin level will be 1.5
+    setUsdtBalance(12, 4);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000)
+        .build();
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal)).thenReturn(4100.0); // 2.5%
+    MarginNewOrderResponse sellOrderResp = new MarginNewOrderResponse();
+    sellOrderResp.setOrderId(1L);
+    sellOrderResp.setPrice("0.0");
+    sellOrderResp.setExecutedQty("0.005");
+    sellOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0"); // In USDT.
+    sellOrderResp.setFills(Lists.newArrayList(trade));
+
+    MarginNewOrderResponse buyStopLossOrderResp = new MarginNewOrderResponse();
+    buyStopLossOrderResp.setOrderId(2L);
+    buyStopLossOrderResp.setExecutedQty("0");
+    buyStopLossOrderResp.setPrice("4200");
+    buyStopLossOrderResp.setStatus(OrderStatus.NEW);
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return sellOrderResp;
+        }
+        return buyStopLossOrderResp;
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+
+    verify(mockBinanceApiMarginRestClient, times(2)).newOrder(orderCaptor.capture());
+    MarginNewOrder buyStopLossOrder = orderCaptor.getAllValues().get(1);
+    assertThat(buyStopLossOrder.getPrice()).isEqualTo("4120"); // 3%
+    assertThat(buyStopLossOrder.getStopPrice()).isEqualTo("4100");// 2.5%
   }
 
   @Test
@@ -1584,8 +1725,6 @@ public class BinanceTradingBotTest {
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.SELL, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
-    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(0, 7000);
-    when(mockBookTickerPrices.getBookTicker(chartPatternSignal.coinPair())).thenReturn(bookTicker);
 
     binanceTradingBot.perform();
 

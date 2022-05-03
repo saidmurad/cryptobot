@@ -108,13 +108,6 @@ public class BinanceTradingBot {
         this.macdDataDao = macdDataDao;
     }
 
-    private Pair<Double, Double> getStopLossPercents(ChartPatternSignal chartPatternSignal) {
-        if (useBreakoutCandlestickForStopLoss) {
-
-        }
-        return Pair.of(stopLossPercent, stopLimitPercent);
-    }
-
     void setMockMailer(Mailer mailer) {
         this.mailer = mailer;
     }
@@ -156,7 +149,8 @@ public class BinanceTradingBot {
                                 && isActiveSymbolAndMarginAllowed(chartPatternSignal.coinPair())) {
                                 int numOutstandingTrades = outstandingTrades.getNumOutstandingTrades(timeFrames[i]);
                                 if (numOutstandingTrades < numOutstandingTradesLimitByTimeFrame[i]
-                                && (!entry_using_macd || canEnterBasedOnMACD(chartPatternSignal))) {
+                                && (!entry_using_macd || canEnterBasedOnMACD(chartPatternSignal))
+                                && !isPriceAlreadyRetracedToPreBreakoutLevel(chartPatternSignal)) {
                                   placeTrade(chartPatternSignal, numOutstandingTrades);
                                 }
                             }
@@ -170,7 +164,16 @@ public class BinanceTradingBot {
         }
     }
 
-    //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.
+  private boolean isPriceAlreadyRetracedToPreBreakoutLevel(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
+      double breakoutBasedStopLoss = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+      if (chartPatternSignal.tradeType() == TradeType.BUY) {
+        return bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk() < breakoutBasedStopLoss;
+      } else {
+        return bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid() > breakoutBasedStopLoss;
+      }
+  }
+
+  //TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.
     private boolean isPriceTargetAlreadyReached(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
       BookTickerPrices.BookTicker ticker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       switch (chartPatternSignal.tradeType()) {
@@ -307,6 +310,18 @@ public class BinanceTradingBot {
         int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
       BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       double entryPrice = chartPatternSignal.tradeType() == TradeType.BUY? bookTicker.bestAsk() : bookTicker.bestBid();
+      if (useBreakoutCandlestickForStopLoss) {
+        double stopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+        switch (chartPatternSignal.tradeType()) {
+          case BUY:
+            stopLossPercent = (entryPrice - stopLossPrice) / entryPrice * 100;
+            stopLimitPercent = stopLossPercent + 0.5;
+            break;
+          default:
+            stopLossPercent = (stopLossPrice - entryPrice) / entryPrice * 100;
+            stopLimitPercent = stopLossPercent + 0.5;
+        }
+      }
         double minNotionalAdjustedForStopLoss;
         if (chartPatternSignal.tradeType() == TradeType.BUY) {
           minNotionalAdjustedForStopLoss = MinNotionalTradeValueInUSDTCalculator.getMinNotionalTradeValueInUSDTForBuyTrade(

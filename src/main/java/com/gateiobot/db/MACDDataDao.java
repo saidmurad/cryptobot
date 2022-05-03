@@ -1,6 +1,7 @@
 package com.gateiobot.db;
 
 import com.binance.bot.common.CandlestickUtil;
+import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
 import org.apache.commons.lang3.time.DateUtils;
@@ -194,5 +195,12 @@ public class MACDDataDao {
     Date currentCandlestickStart = CandlestickUtil.getCandlestickStart(new Date(clock.millis()), timeFrame);
     Date lastCandlestickStart = CandlestickUtil.getIthCandlestickTime(currentCandlestickStart, timeFrame, -1);
     return getMACDDataForCandlestick(coinPair, timeFrame, lastCandlestickStart);
+  }
+
+  public double getStopLossLevelBasedOnBreakoutCandlestick(ChartPatternSignal chartPatternSignal) {
+    MACDData candlestickBeforeBreakoutOne = getMACDDataForCandlestick(
+        Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame(),
+        CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -2));
+    return candlestickBeforeBreakoutOne.candleClosingPrice;
   }
 }

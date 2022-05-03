@@ -175,7 +175,7 @@ public class BinanceTradingBot {
     BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       logger.info(String.format("isPriceAlreadyRetracedToPreBreakoutLevel: cps=%s breakoutBasedStopLoss=%f Returning %s." +
           "BookTicker ask=%f, bid=%f", chartPatternSignal, breakoutBasedStopLoss,
-          bookTicker.bestAsk(), bookTicker.bestBid(), ret? "true" : "false"));
+           ret? "true" : "false", bookTicker.bestAsk(), bookTicker.bestBid()));
       return ret;
   }
 

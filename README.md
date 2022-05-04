@@ -4,6 +4,9 @@ Change log for important changes:
 08/02/2022 02:25 pm: Attempt count as a primary key in the table and Profit percent inserted 
 at the time of signal invalidation. Removed backlog_from_coldstart as a reason for signal 
 invalidation. 
+03/05/2022 07:00 pm: Stop loss turned on at pre-breakout candle level
+04/05/2022 09:00 am: Turned flag on for entry based on macd same sign as trade.
+05/05/2022 07:00 pm: Remove stoploss for pre-breakout level, too many false negatives with wicks.
 
 Next steps:
 0. Price target already reached. (//TODO: Mark the cps as considered and dropped so it doesn't ever enter the trade for it.)

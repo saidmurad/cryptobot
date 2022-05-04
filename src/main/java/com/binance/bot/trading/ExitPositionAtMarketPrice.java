@@ -202,7 +202,7 @@ public class ExitPositionAtMarketPrice {
             ChartPatternSignal.Order.create(marketExitOrderResponse.getOrderId(),
                 tradeFillData.getQuantity(),
                 tradeFillData.getAvgPrice(), marketExitOrderResponse.getStatus()), tradeExitType);
-        mailer.sendEmail(String.format("Exited trade for %s.", tradeExitType.name()), chartPatternSignal.toString());
+        mailer.sendEmail(String.format("Exited trade %s for %s.", chartPatternSignal.coinPair(), tradeExitType.name()), chartPatternSignal.toString());
         if (chartPatternSignal.tradeType() == TradeType.SELL) {
           repayBorrowedOnMargin.repay(baseAsset, tradeFillData.getQuantity());
         }
@@ -213,7 +213,8 @@ public class ExitPositionAtMarketPrice {
       dao.writeAccountBalanceToDB();
     } catch (Exception ex) {
       logger.error(String.format("Exception for trade exit type %s." , tradeExitType.name()), ex);
-      mailer.sendEmail("ExitPositionAtMarketPrice uncaught exception for trade exit type" + tradeExitType.name(), ex.getMessage());
+      mailer.sendEmail(String.format("ExitPositionAtMarketPrice uncaught exception for trade exit type %s for %s",
+          tradeExitType.name(), chartPatternSignal.coinPair()), ex.getMessage());
     }
   }
 }

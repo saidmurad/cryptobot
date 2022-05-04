@@ -202,16 +202,22 @@ public class BinanceTradingBot {
         return beforeBreakoutCandlestickMACDData.candleClosingPrice;
     }
 
-    private final Set<Pair<ChartPatternSignal, String>> emailsAlreadySent = new HashSet<>();
+    private final Map<String, Integer> macdMissingCounts = new HashMap<>();
     private final Set<String> permanentErrorCases = new HashSet<>();
     private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
         MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
         if (lastMACD == null) {
-            //if (!emailsAlreadySent.contains(Pair.of(chartPatternSignal, MISSING_MACD_DATA))) {
-              logger.error("Got null last MACD data for cps " + chartPatternSignal);
-              mailer.sendEmail("Missing MACD data", "Got null last MACD data for cps " + chartPatternSignal);
-              emailsAlreadySent.add(Pair.of(chartPatternSignal, MISSING_MACD_DATA));
-            //}
+            Integer missingCount = macdMissingCounts.get(chartPatternSignal.coinPair());
+            if (missingCount == null) {
+              missingCount = 0;
+            }
+            macdMissingCounts.put(chartPatternSignal.coinPair(), ++missingCount);
+            if (missingCount >=5) {
+              String errMsg = "Keep getting null last MACD data for cps " + chartPatternSignal + ". Entering trade anyway.";
+              logger.error(errMsg);
+              mailer.sendEmail("Missing MACD data for " + chartPatternSignal.coinPair(), errMsg);
+              return true;
+            }
             return false;
         }
         return chartPatternSignal.tradeType() == TradeType.BUY && lastMACD.macd > 0

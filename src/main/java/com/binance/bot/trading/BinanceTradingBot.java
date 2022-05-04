@@ -356,7 +356,7 @@ public class BinanceTradingBot {
                 } else {
                     String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
                     logger.warn(msg);
-                    //mailer.sendEmail("Insufficient funds.", msg);
+                    mailer.sendEmail("Insufficient funds.", msg);
                     return;
                 }
                 break;
@@ -378,7 +378,7 @@ public class BinanceTradingBot {
                   } else {
                     String msg = String.format("Insufficient amount for trade for chart pattern signal %s.", chartPatternSignal);
                     logger.warn(msg);
-                    //mailer.sendEmail("Insufficient funds.", msg);
+                    mailer.sendEmail("Insufficient funds.", msg);
                     return;
                   }
                 }

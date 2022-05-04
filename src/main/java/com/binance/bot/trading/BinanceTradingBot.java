@@ -215,7 +215,9 @@ public class BinanceTradingBot {
             if (missingCount >=5) {
               String errMsg = "Keep getting null last MACD data for cps " + chartPatternSignal + ". Entering trade anyway.";
               logger.error(errMsg);
-              mailer.sendEmail("Missing MACD data for " + chartPatternSignal.coinPair(), errMsg);
+              if (missingCount == 5) {
+                mailer.sendEmail("Missing MACD data for " + chartPatternSignal.coinPair(), errMsg);
+              }
               return true;
             }
             return false;

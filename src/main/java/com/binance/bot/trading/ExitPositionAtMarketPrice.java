@@ -125,13 +125,14 @@ public class ExitPositionAtMarketPrice {
       if (qtyToExitAvail < qtyToExit) {
         // TODO: Remove.
         if (Util.decimalCompare(qtyToExitAvail, qtyToExit * 0.999)) {
-          logger.warn( String.format("Expected to find %f quantity of %s to exit but asset found only %f in cross margin account balance, but appears to be pre-bug fix for commissions deduction, hence proceeding to exit available quantity.",
+          logger.warn( String.format("Expected to find %f quantity of %s to exit but asset found only %f in cross margin account balance, " +
+                  "but appears to be pre-bug fix for commissions deduction, hence proceeding to exit available quantity.",
               qtyToExit, baseAsset, qtyToExitAvail));
           qtyToExit = qtyToExitAvail;
         } else {
           String errorMsg = String.format("Expected to find %f quantity of %s to exit but asset found only %f " +
-                  "in cross margin account balance. Proceeding to try exit this amount only.",
-              qtyToExit, baseAsset, qtyToExitAvail);
+                  "in cross margin account balance. Proceeding to try exit this amount only for cps %s.",
+              qtyToExit, baseAsset, qtyToExitAvail, chartPatternSignal);
           logger.error(errorMsg);
           mailer.sendEmail("Asset quantity expected amount to exit not found.", errorMsg);
           qtyToExit = qtyToExitAvail;

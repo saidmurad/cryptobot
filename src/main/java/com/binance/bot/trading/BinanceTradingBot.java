@@ -423,6 +423,7 @@ public class BinanceTradingBot {
         MarginNewOrder marketOrder = new MarginNewOrder(chartPatternSignal.coinPair(), orderSide,
             OrderType.MARKET, /* timeInForce= */ null,
             roundedQuantity).newOrderRespType(NewOrderResponseType.FULL);
+        logger.info(String.format("Placing order: %s", marketOrder));
         MarginNewOrderResponse marketOrderResp = binanceApiMarginRestClient.newOrder(marketOrder);
         String logmsg = String.format("Placed market %s order %s with status %s for chart pattern signal\n%s.", orderSide.name(),
             marketOrderResp.toString(), marketOrderResp.getStatus().name(), chartPatternSignal);

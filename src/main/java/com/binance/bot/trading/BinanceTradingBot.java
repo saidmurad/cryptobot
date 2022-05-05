@@ -390,17 +390,21 @@ public class BinanceTradingBot {
                     return;
                   }
                 }
-              } catch (BinanceApiException ex) {
-                // TODO: Unit test.
-                if (ex.getError().getCode() == -3045) {
-                  String msg = String.format("Got BinanceApiError for unavailable to borrow right now. Ignoring this cps %s.", chartPatternSignal);
-                  logger.warn(msg);
-                  mailer.sendEmail("Asset Unavailable to borrow", msg);
-                  permanentErrorCases.add(chartPatternSignal.coinPair());
-                  return;
-                } else {
-                  throw ex;
+              } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                  // TODO: Unit test.
+                  if (ex.getCause() != null && ex.getCause() instanceof BinanceApiException) {
+                    BinanceApiException binEx = (BinanceApiException) ex.getCause();
+                    if (binEx.getError() != null && binEx.getError().getCode() == -3045) {
+                      String msg = String.format("Got BinanceApiError for unavailable to borrow right now. Ignoring this cps %s.", chartPatternSignal);
+                      logger.warn(msg);
+                      mailer.sendEmail("Asset Unavailable to borrow", msg);
+                      permanentErrorCases.add(chartPatternSignal.coinPair());
+                      return;
+                    }
+                  }
                 }
+                throw ex;
               }
             default:
         }

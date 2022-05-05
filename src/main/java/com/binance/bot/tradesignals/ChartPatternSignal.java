@@ -142,6 +142,12 @@ public abstract class ChartPatternSignal {
   public abstract Date maxLossTime();
 
   @Nullable
+  public abstract Date twoPercentLossTime();
+
+  @Nullable
+  public abstract Date fivePercentLossTime();
+
+  @Nullable
   public abstract Boolean isPriceTargetMet();
 
   @Nullable
@@ -351,6 +357,10 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setMaxLossTime(Date maxLossTime);
 
+    public abstract Builder setTwoPercentLossTime(Date twoPercentLossTime);
+
+    public abstract Builder setFivePercentLossTime(Date fivePercentLossTime);
+
     public abstract Builder setIsPriceTargetMet(Boolean isPriceTargetMet);
 
     public abstract Builder setPriceTargetMetTime(Date priceTargetMetTime);
@@ -401,6 +411,8 @@ public abstract class ChartPatternSignal {
           .setMaxLoss(that.maxLoss())
           .setMaxLossPercent(that.maxLossPercent())
           .setMaxLossTime(that.maxLossTime())
+              .setTwoPercentLossTime(that.twoPercentLossTime())
+              .setFivePercentLossTime(that.fivePercentLossTime())
           .setIsPriceTargetMet(that.isPriceTargetMet())
           .setPriceTargetMetTime(that.priceTargetMetTime())
           .setRealized(that.realized())

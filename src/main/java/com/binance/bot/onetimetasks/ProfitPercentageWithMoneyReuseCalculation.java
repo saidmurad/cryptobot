@@ -438,10 +438,30 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return macdData == null? null : Pair.of(macdData.time, macdData.candleClosingPrice);
   }
 
-  private int missingForCount = 0;
   private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals) {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
-    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+    int chunkSize = 500;
+    int numChunks = chartPatternSignals.size() / chunkSize;
+    for (int i = 0; i < numChunks; i++){
+      TreeMap<Date, Pair<Integer, Double>> sublist = getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(chartPatternSignals, i * chunkSize, chunkSize);
+      Iterator<Map.Entry<Date, Pair<Integer, Double>>> sublistItr = sublist.entrySet().iterator();
+      for (Iterator<Map.Entry<Date, Pair<Integer, Double>>> it = sublistItr; it.hasNext(); ) {
+        Map.Entry<Date, Pair<Integer, Double>> entry = it.next();
+        amountsReleasedByDate.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return amountsReleasedByDate;
+  }
+
+  private int missingForCount = 0;
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals, int startIndex, int chunkSize) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    int endIndexPlusOne = startIndex + chunkSize;
+    if (endIndexPlusOne > chartPatternSignals.size()) {
+      endIndexPlusOne = chartPatternSignals.size();
+    }
+    for (int i = startIndex; i < endIndexPlusOne; i++) {
+      ChartPatternSignal chartPatternSignal = chartPatternSignals.get(i);
       logger.info(String.format("Finding pre-breakout price for cps %s.", chartPatternSignal));
       Date tradeExitTime;
       double amountReleasedFromTheTrade;

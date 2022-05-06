@@ -162,7 +162,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return TradeType.NONE;
   }
 
-  public void calculate() throws BinanceApiException {
+  public void calculate() throws BinanceApiException, InterruptedException {
     AtomicInteger numCrossMarginPairs = new AtomicInteger();
     AtomicInteger numCrossMarginPairsBuyAllowed = new AtomicInteger();
     AtomicInteger numCrossMarginPairsSellAllowed = new AtomicInteger();
@@ -438,13 +438,20 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return macdData == null? null : Pair.of(macdData.time, macdData.candleClosingPrice);
   }
 
-  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals) {
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals) throws InterruptedException {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
     int chunkSize = 500;
     int numChunks = chartPatternSignals.size() / chunkSize;
+    Thread [] chunkHandlerThreads = new Thread[numChunks];
+    ChunkHandler[] chunkHandlers = new ChunkHandler[numChunks];
     for (int i = 0; i < numChunks; i++){
-      TreeMap<Date, Pair<Integer, Double>> sublist = getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(chartPatternSignals, i * chunkSize, chunkSize);
-      Iterator<Map.Entry<Date, Pair<Integer, Double>>> sublistItr = sublist.entrySet().iterator();
+      chunkHandlers[i] = new ChunkHandler(chartPatternSignals, i * chunkSize, chunkSize);
+      chunkHandlerThreads[i] = new Thread(chunkHandlers[i]);
+      chunkHandlerThreads[i].start();
+    }
+    for (int i = 0; i < numChunks; i++){
+      chunkHandlerThreads[i].join();
+      Iterator<Map.Entry<Date, Pair<Integer, Double>>> sublistItr = chunkHandlers[i].amountsReleasedByDate.entrySet().iterator();
       for (Iterator<Map.Entry<Date, Pair<Integer, Double>>> it = sublistItr; it.hasNext(); ) {
         Map.Entry<Date, Pair<Integer, Double>> entry = it.next();
         amountsReleasedByDate.put(entry.getKey(), entry.getValue());
@@ -453,56 +460,70 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return amountsReleasedByDate;
   }
 
-  private int missingForCount = 0;
-  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals, int startIndex, int chunkSize) {
+  class ChunkHandler implements Runnable {
+
+    private final List<ChartPatternSignal> chartPatternSignals;
+    private final int startIndex;
+    private final int chunkSize;
+
+    ChunkHandler(List<ChartPatternSignal> chartPatternSignals, int startIndex, int chunkSize) {
+      this.chartPatternSignals = chartPatternSignals;
+      this.startIndex = startIndex;
+      this.chunkSize = chunkSize;
+    }
+
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
-    int endIndexPlusOne = startIndex + chunkSize;
-    if (endIndexPlusOne > chartPatternSignals.size()) {
-      endIndexPlusOne = chartPatternSignals.size();
-    }
-    for (int i = startIndex; i < endIndexPlusOne; i++) {
-      ChartPatternSignal chartPatternSignal = chartPatternSignals.get(i);
-      logger.info(String.format("Finding pre-breakout price for cps %s.", chartPatternSignal));
-      Date tradeExitTime;
-      double amountReleasedFromTheTrade;
-      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
-      Pair<Date, Double> stopLossTimeAndPrice = getStopLossTimeAndPrice(chartPatternSignal);
-      if (stopLossTimeAndPrice == null) {
-        continue;
+    @Override
+    public void run() {
+      TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+      int endIndexPlusOne = startIndex + chunkSize;
+      if (endIndexPlusOne > chartPatternSignals.size()) {
+        endIndexPlusOne = chartPatternSignals.size();
       }
-      if (chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetMetTime().before(stopLossTimeAndPrice.getFirst())) {
-        tradeExitTime = chartPatternSignal.priceTargetMetTime();
-        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
-            chartPatternSignal.profitPotentialPercent() / 100;
-      } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetTime().before(stopLossTimeAndPrice.getFirst())) {
-        tradeExitTime = chartPatternSignal.priceTargetTime();
-        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
-            chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
-      } else {
-        tradeExitTime = stopLossTimeAndPrice.getFirst();
-        double signedStopLossPercent = -(chartPatternSignal.priceAtTimeOfSignal() - stopLossTimeAndPrice.getSecond()) / chartPatternSignal.priceAtTimeOfSignal() * 100;
-        if (chartPatternSignal.tradeType() == TradeType.SELL) {
-          signedStopLossPercent = -signedStopLossPercent;
+      for (int i = startIndex; i < endIndexPlusOne; i++) {
+        ChartPatternSignal chartPatternSignal = chartPatternSignals.get(i);
+        logger.info(String.format("Finding pre-breakout price for cps %s.", chartPatternSignal));
+        Date tradeExitTime;
+        double amountReleasedFromTheTrade;
+        patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+        Pair<Date, Double> stopLossTimeAndPrice = getStopLossTimeAndPrice(chartPatternSignal);
+        if (stopLossTimeAndPrice == null) {
+          continue;
         }
-        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE * signedStopLossPercent / 100;
+        if (chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetMetTime().before(stopLossTimeAndPrice.getFirst())) {
+          tradeExitTime = chartPatternSignal.priceTargetMetTime();
+          amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+              chartPatternSignal.profitPotentialPercent() / 100;
+        } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetTime().before(stopLossTimeAndPrice.getFirst())) {
+          tradeExitTime = chartPatternSignal.priceTargetTime();
+          amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+              chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
+        } else {
+          tradeExitTime = stopLossTimeAndPrice.getFirst();
+          double signedStopLossPercent = -(chartPatternSignal.priceAtTimeOfSignal() - stopLossTimeAndPrice.getSecond()) / chartPatternSignal.priceAtTimeOfSignal() * 100;
+          if (chartPatternSignal.tradeType() == TradeType.SELL) {
+            signedStopLossPercent = -signedStopLossPercent;
+          }
+          amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE * signedStopLossPercent / 100;
+        }
+        Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+        int tradeCount = 1;
+        double amountReleased = amountReleasedFromTheTrade;
+        if (prevVal != null) {
+          tradeCount += prevVal.getFirst();
+          amountReleased += prevVal.getSecond();
+        }
+        amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+        Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(tradeExitTime);
+        if (cpsExitsOnDate == null) {
+          cpsExitsOnDate = new HashSet<>();
+          cpsByExitDate.put(tradeExitTime, cpsExitsOnDate);
+        }
+        cpsExitsOnDate.add(chartPatternSignal);
       }
-      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
-      int tradeCount = 1;
-      double amountReleased = amountReleasedFromTheTrade;
-      if (prevVal != null) {
-        tradeCount += prevVal.getFirst();
-        amountReleased += prevVal.getSecond();
-      }
-      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
-      Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(tradeExitTime);
-      if (cpsExitsOnDate == null) {
-        cpsExitsOnDate = new HashSet<>();
-        cpsByExitDate.put(tradeExitTime, cpsExitsOnDate);
-      }
-      cpsExitsOnDate.add(chartPatternSignal);
     }
-    return amountsReleasedByDate;
   }
+  private int missingForCount = 0;
 
   private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();

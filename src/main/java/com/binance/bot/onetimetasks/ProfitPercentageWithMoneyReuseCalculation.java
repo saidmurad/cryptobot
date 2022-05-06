@@ -97,12 +97,9 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private static final String QUERY_USING_MACD_SAME_SIGN_AS_TRADE_TYPE = "Select cps.* from ChartPatternSignal cps, MACDData macd \n" +
       "  where cps.TimeOfSignal=macd.Time and cps.TimeFrame = macd.TimeFrame and cps.CoinPair = replace(macd.CoinPair, '_', '') and \n" +
       "      ProfitPotentialPercent > 0 and IsPriceTargetMet is not null and \n" +
-      //" DateTime(cps.TimeOfSignal)>=DateTime('2022-03-01 00:00') and " +
-      " DateTime(cps.TimeOfSignal)<=DateTime('2022-02-28 11:59') and " +
       "      ProfitPercentAtSignalTargetTime is not null and ProfitPercentAtSignalTargetTime <100 and Attempt = 1 and \n" +
       "      ((cps.TradeType='BUY' and macd.macd >=0) or \n" +
-      "      (cps.TradeType='SELL' and macd.macd <=0)) and " +
-      " (cps.TimeFrame = 'FIFTEEN_MINUTES') " +
+      "      (cps.TradeType='SELL' and macd.macd <=0)) " +
       "order by TimeOfSignal";
   private final Map<String, CrossMarginPair> symbolAndIsMarginTradingAllowed = new HashMap<>();
   private final ChartPatternSignalDaoImpl dao;

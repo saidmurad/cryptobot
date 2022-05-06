@@ -442,7 +442,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals) {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
-      logger.info("Finding pre-breakout price for cps %s.", chartPatternSignal);
+      logger.info(String.format("Finding pre-breakout price for cps %s.", chartPatternSignal));
       Date tradeExitTime;
       double amountReleasedFromTheTrade;
       patternsWithReleaseByDateProcessed.add(chartPatternSignal);

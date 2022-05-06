@@ -41,14 +41,14 @@ public class MACDDataDao {
     this.clock = clock;
   }
 
-  synchronized public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
+  public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time",
         coinPair, timeFrame.name());
     return jdbcTemplate.query(sql, new MACDDataRowMapper());
   }
 
-  synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
+  public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time desc limit %d",
         coinPair, timeFrame.name(), numRows);
@@ -60,7 +60,7 @@ public class MACDDataDao {
     return ascendingList;
   }
 
-  synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
+  public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
     if (!coinPair.contains("_")) {
       String baseAsset = coinPair.substring(0, coinPair.length() - 4);
       coinPair = baseAsset + "_" + "USDT";
@@ -77,7 +77,7 @@ public class MACDDataDao {
     return ascendingList;
   }
 
-  synchronized public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
+  public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATETime(Time) = DATETime('%s')",
         coinPair, timeFrame.name(), dateFormat.format(time));
@@ -88,7 +88,7 @@ public class MACDDataDao {
     }
   }
 
-  synchronized private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
+  private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
     if (!coinPair.contains("_")) {
       String baseAsset = coinPair.substring(0, coinPair.length() - 4);
       coinPair = baseAsset + "_" + "USDT";
@@ -157,7 +157,7 @@ public class MACDDataDao {
     return null;
   }
 
-  synchronized public boolean insert(MACDData macd) {
+  public boolean insert(MACDData macd) {
     String updateSql = String.format("insert into MACDData(" +
             "CoinPair, TimeFrame, Time, CandleClosingPrice, SMA, SMASlope," +
             "Trend, EMA12, EMA26, MACD, MACDSignal, Histogram) values " +
@@ -167,7 +167,7 @@ public class MACDDataDao {
     return jdbcTemplate.update(updateSql) == 1;
   }
 
-  synchronized public void updatePPOMacd(MACDData macdData) {
+  public void updatePPOMacd(MACDData macdData) {
     String updateSql = String.format("update MACDData set PPOMacd=%f, PPOMacdSignalLine=%f, PPOHistogram=%f " +
         "where CoinPair='%s' and TimeFrame='%s' and Time='%s'", macdData.ppoMacd, macdData.ppoMacdSignalLine,
         macdData.ppoHistogram, macdData.coinPair, macdData.timeFrame.name(), dateFormat.format(macdData.time));

@@ -1,6 +1,7 @@
 package com.gateiobot.db;
 
 import com.binance.bot.common.CandlestickUtil;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TradeType;
@@ -13,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import com.binance.bot.tradesignals.TimeFrame;
 
+import javax.mail.MessagingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
@@ -41,14 +43,14 @@ public class MACDDataDao {
     this.clock = clock;
   }
 
-  public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
+  synchronized public List<MACDData> getFullMACDDataList(String coinPair, TimeFrame timeFrame) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time",
         coinPair, timeFrame.name());
     return jdbcTemplate.query(sql, new MACDDataRowMapper());
   }
 
-  public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
+  synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time desc limit %d",
         coinPair, timeFrame.name(), numRows);
@@ -60,7 +62,7 @@ public class MACDDataDao {
     return ascendingList;
   }
 
-  public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
+  synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
     if (!coinPair.contains("_")) {
       String baseAsset = coinPair.substring(0, coinPair.length() - 4);
       coinPair = baseAsset + "_" + "USDT";
@@ -77,7 +79,7 @@ public class MACDDataDao {
     return ascendingList;
   }
 
-  public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
+  synchronized public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATETime(Time) = DATETime('%s')",
         coinPair, timeFrame.name(), dateFormat.format(time));
@@ -88,7 +90,7 @@ public class MACDDataDao {
     }
   }
 
-  private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
+  synchronized private List<MACDData> getMACDDataAfterTime(String coinPair, TimeFrame timeFrame, Date time, int numRows) {
     if (!coinPair.contains("_")) {
       String baseAsset = coinPair.substring(0, coinPair.length() - 4);
       coinPair = baseAsset + "_" + "USDT";
@@ -157,7 +159,7 @@ public class MACDDataDao {
     return null;
   }
 
-  public boolean insert(MACDData macd) {
+  synchronized public boolean insert(MACDData macd) {
     String updateSql = String.format("insert into MACDData(" +
             "CoinPair, TimeFrame, Time, CandleClosingPrice, SMA, SMASlope," +
             "Trend, EMA12, EMA26, MACD, MACDSignal, Histogram) values " +
@@ -167,7 +169,7 @@ public class MACDDataDao {
     return jdbcTemplate.update(updateSql) == 1;
   }
 
-  public void updatePPOMacd(MACDData macdData) {
+  synchronized public void updatePPOMacd(MACDData macdData) {
     String updateSql = String.format("update MACDData set PPOMacd=%f, PPOMacdSignalLine=%f, PPOHistogram=%f " +
         "where CoinPair='%s' and TimeFrame='%s' and Time='%s'", macdData.ppoMacd, macdData.ppoMacdSignalLine,
         macdData.ppoHistogram, macdData.coinPair, macdData.timeFrame.name(), dateFormat.format(macdData.time));
@@ -197,10 +199,18 @@ public class MACDDataDao {
     return getMACDDataForCandlestick(coinPair, timeFrame, lastCandlestickStart);
   }
 
-  public double getStopLossLevelBasedOnBreakoutCandlestick(ChartPatternSignal chartPatternSignal) {
+  public double getStopLossLevelBasedOnBreakoutCandlestick(ChartPatternSignal chartPatternSignal)  {
     MACDData candlestickBeforeBreakoutOne = getMACDDataForCandlestick(
         Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame(),
         CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -2));
+    if (candlestickBeforeBreakoutOne == null) {
+      try {
+        mailer.sendEmail("Null pre-breakout candlestick price.", chartPatternSignal.toString());
+      } catch (MessagingException e) {
+        logger.error("Exception", e);
+      }
+    }
     return candlestickBeforeBreakoutOne.candleClosingPrice;
   }
+  private final Mailer mailer = new Mailer();
 }

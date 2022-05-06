@@ -60,6 +60,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
   private static final double MARGIN_LEVEL_TO_USE = 1.5;
   private static final boolean USE_SIGNAL_INVALIDATIONS = false;
   private final boolean useMACDForEntrySameSignAsTradeType = true;
+  private boolean usePrebreakoutCandlestickPriceForStopLoss = true;
   // Uses MACD line above or below signal line to determine entry to long or short respectively.
   private final boolean useHistogramForEntry = false;
   // Uses MACD signal line crossover to exit trade. No other conditions are used other than this.
@@ -220,6 +221,8 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingMACDSignalCrossOverForTradeExits(chartPatternSignals);
     } else if (useHistogramTrendReversalForExit) {
       amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingHistogramTrendReversalForTradeExits(chartPatternSignals);
+    } else if (usePrebreakoutCandlestickPriceForStopLoss) {
+      amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(chartPatternSignals);
     } else {
       amountsReleasedByDate = getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(chartPatternSignals);
     }
@@ -228,8 +231,9 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     nextEvent = eventDateIterator.next();
 
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
-      if (chartPatternSignal.coinPair().equals("RSRUSDT")) {
-        logger.info("here");
+      if (!patternsWithReleaseByDateProcessed.contains(chartPatternSignal)) {
+        logger.info("Skipping cps " + chartPatternSignal + " without exit time calculated");
+        continue;
       }
       processTradeExitEventsUntilGivenDate(chartPatternSignal.timeOfSignal());
       if (coffer >= AMOUNT_PER_TRADE) {
@@ -247,6 +251,7 @@ public class ProfitPercentageWithMoneyReuseCalculation {
       }
       numTradesLive++;
       tradesEnteredSoFar.add(chartPatternSignal);
+      /*
       if (!patternsWithReleaseByDateProcessed.contains(chartPatternSignal)) {
         List<ChartPatternSignal> chartPatternList = patternsNotInTargetTimeProcessedSet.get(chartPatternSignal.timeOfSignal());
         if (chartPatternList == null) {
@@ -254,13 +259,13 @@ public class ProfitPercentageWithMoneyReuseCalculation {
           patternsNotInTargetTimeProcessedSet.put(chartPatternSignal.timeOfSignal(), chartPatternList);
         }
         chartPatternList.add(chartPatternSignal);
-      }
+      }*/
     }
     // null is passed to process event dates calendar to finish.`
     processTradeExitEventsUntilGivenDate(null);
     printWallet("The end", new Date());
     System.out.println(String.format("Lowest pnlPercent=%f, hightest pnlPercent=%f.", lowestPnlPercent, highestPnlPercent));
-    dumpStateOfLockedChartPatterns();
+    //dumpStateOfLockedChartPatterns();
   }
 
   // TODO: Have to retest this since there was a bug in getMACDDataUntilTime using DAte in the query
@@ -424,7 +429,63 @@ public class ProfitPercentageWithMoneyReuseCalculation {
     return amountsReleasedByDate;
   }
 
+  private Pair<Date, Double> getStopLossTimeAndPrice(ChartPatternSignal cps) {
+    double stopLossPrice = macdDao.getStopLossLevelBasedOnBreakoutCandlestick(cps);
+    Date candlestickTime = cps.timeOfSignal();
+    MACDData macdData;
+    do {
+      macdData = macdDao.getMACDDataForCandlestick(cps.coinPair(), cps.timeFrame(), candlestickTime);
+      candlestickTime = CandlestickUtil.getIthCandlestickTime(candlestickTime, cps.timeFrame(), 1);
+    } while (macdData != null && (cps.tradeType() == TradeType.BUY && macdData.candleClosingPrice < stopLossPrice
+    || cps.tradeType() == TradeType.SELL && macdData.candleClosingPrice > stopLossPrice));
+    return macdData == null? null : Pair.of(macdData.time, macdData.candleClosingPrice);
+  }
+
   private int missingForCount = 0;
+  private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingPrebreakoutCandlestickForStopLoss(List<ChartPatternSignal> chartPatternSignals) {
+    TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
+    for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {
+      Date tradeExitTime;
+      double amountReleasedFromTheTrade;
+      patternsWithReleaseByDateProcessed.add(chartPatternSignal);
+      Pair<Date, Double> stopLossTimeAndPrice = getStopLossTimeAndPrice(chartPatternSignal);
+      if (stopLossTimeAndPrice == null) {
+        continue;
+      }
+      if (chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetMetTime().before(stopLossTimeAndPrice.getFirst())) {
+        tradeExitTime = chartPatternSignal.priceTargetMetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPotentialPercent() / 100;
+      } else if (!chartPatternSignal.isPriceTargetMet() && chartPatternSignal.priceTargetTime().before(stopLossTimeAndPrice.getFirst())) {
+        tradeExitTime = chartPatternSignal.priceTargetTime();
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE *
+            chartPatternSignal.profitPercentAtSignalTargetTime() / 100;
+      } else {
+        tradeExitTime = stopLossTimeAndPrice.getFirst();
+        double signedStopLossPercent = -(chartPatternSignal.priceAtTimeOfSignal() - stopLossTimeAndPrice.getSecond()) / chartPatternSignal.priceAtTimeOfSignal() * 100;
+        if (chartPatternSignal.tradeType() == TradeType.SELL) {
+          signedStopLossPercent = -signedStopLossPercent;
+        }
+        amountReleasedFromTheTrade = AMOUNT_PER_TRADE + AMOUNT_PER_TRADE * signedStopLossPercent / 100;
+      }
+      Pair<Integer, Double> prevVal = amountsReleasedByDate.get(tradeExitTime);
+      int tradeCount = 1;
+      double amountReleased = amountReleasedFromTheTrade;
+      if (prevVal != null) {
+        tradeCount += prevVal.getFirst();
+        amountReleased += prevVal.getSecond();
+      }
+      amountsReleasedByDate.put(tradeExitTime, Pair.of(tradeCount, amountReleased));
+      Set<ChartPatternSignal> cpsExitsOnDate = cpsByExitDate.get(tradeExitTime);
+      if (cpsExitsOnDate == null) {
+        cpsExitsOnDate = new HashSet<>();
+        cpsByExitDate.put(tradeExitTime, cpsExitsOnDate);
+      }
+      cpsExitsOnDate.add(chartPatternSignal);
+    }
+    return amountsReleasedByDate;
+  }
+
   private TreeMap<Date, Pair<Integer, Double>> getAmountsReleaseByDateCalendarUsingStopLossStrategyNotAltfinInvalidationTime(List<ChartPatternSignal> chartPatternSignals) {
     TreeMap<Date, Pair<Integer, Double>> amountsReleasedByDate = new TreeMap<>();
     for (ChartPatternSignal chartPatternSignal: chartPatternSignals) {

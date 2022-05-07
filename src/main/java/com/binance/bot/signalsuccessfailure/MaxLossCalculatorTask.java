@@ -52,7 +52,6 @@ public class MaxLossCalculatorTask {
         }
         Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
         long maxLossTime = 0;
-        Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
         boolean isProfitTargetMet = false;
         long targetMetTime = 0;
         long signalTime = chartPatternSignal.timeOfSignal().getTime();
@@ -79,7 +78,7 @@ public class MaxLossCalculatorTask {
               break;
             }
             Pair<Double, Double> newMaxLossAndPercent =
-                getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade, lossPercentageAndTimeMap);
+                getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade);
             if (newMaxLossAndPercent.getFirst() > maxLossAndPercent.getFirst()) {
               maxLossTime = aggTrade.getTradeTime();
             }
@@ -125,10 +124,8 @@ public class MaxLossCalculatorTask {
     }
   }
 
-  private final Integer[] LOSS_PERCENTAGES = {5,10,15,20,25,35};
   private Pair<Double, Double> getMaxLossAndPercent(Pair<Double, Double> maxPnLAndPercent,
-                                                    ChartPatternSignal chartPatternSignal, AggTrade aggTrade,
-                                                    Map<Integer, Long> lossPercentageAndTimeMap) throws ParseException {
+                                                    ChartPatternSignal chartPatternSignal, AggTrade aggTrade) throws ParseException {
     double pnl, pnlPercent;
     double aggTradePrice = numberFormat.parse(aggTrade.getPrice()).doubleValue();
     switch (chartPatternSignal.tradeType()) {
@@ -140,11 +137,6 @@ public class MaxLossCalculatorTask {
         pnl = aggTradePrice - chartPatternSignal.priceAtTimeOfSignal();
     }
     pnlPercent = pnl / chartPatternSignal.priceAtTimeOfSignal() * 100;
-    for (int lossPercentage: LOSS_PERCENTAGES) {
-      if (pnlPercent >= lossPercentage && lossPercentageAndTimeMap.get(lossPercentage) == null) {
-        lossPercentageAndTimeMap.put(lossPercentage, aggTrade.getTradeTime());
-      }
-    }
     if (maxPnLAndPercent.getFirst() < pnl) {
       return Pair.of(pnl, pnlPercent);
     }

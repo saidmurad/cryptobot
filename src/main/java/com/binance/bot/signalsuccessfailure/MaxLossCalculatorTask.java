@@ -145,24 +145,14 @@ public class MaxLossCalculatorTask {
   private Pair<Double, Double> getMaxLossAndPercent(Pair<Double, Double> maxPnLAndPercent,
                                                     ChartPatternSignal chartPatternSignal, AggTrade aggTrade,
                                                     Map<Integer, Long> lossPercentageAndTimeMap) throws ParseException {
-    double pnl, pnlPercent;
-    double aggTradePrice = numberFormat.parse(aggTrade.getPrice()).doubleValue();
-    switch (chartPatternSignal.tradeType()) {
-      case BUY:
-        pnl = chartPatternSignal.priceAtTimeOfSignal() - aggTradePrice;
-        break;
-      case SELL:
-      default:
-        pnl = aggTradePrice - chartPatternSignal.priceAtTimeOfSignal();
-    }
-    pnlPercent = pnl / chartPatternSignal.priceAtTimeOfSignal() * 100;
+    Pair<Double, Double> pnlAndPercent = getPnlAndPercent(chartPatternSignal, aggTrade);
     for (int lossPercentage: LOSS_PERCENTAGES) {
-      if (pnlPercent >= lossPercentage && lossPercentageAndTimeMap.get(lossPercentage) == null) {
+      if (pnlAndPercent.getSecond() >= lossPercentage && lossPercentageAndTimeMap.get(lossPercentage) == null) {
         lossPercentageAndTimeMap.put(lossPercentage, aggTrade.getTradeTime());
       }
     }
-    if (maxPnLAndPercent.getFirst() < pnl) {
-      return Pair.of(pnl, pnlPercent);
+    if (maxPnLAndPercent.getFirst() < pnlAndPercent.getFirst()) {
+      return pnlAndPercent;
     }
     return maxPnLAndPercent;
   }

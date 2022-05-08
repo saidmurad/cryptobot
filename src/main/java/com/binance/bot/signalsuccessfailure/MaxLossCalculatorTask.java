@@ -90,11 +90,11 @@ public class MaxLossCalculatorTask {
             }
             maxLossAndPercent = newMaxLossAndPercent;
             //which takes the closure loss to 2%
-            if(Math.abs(twoPercentLoss.getSecond() - 2) > Math.abs(pnlAndPercent.getSecond() - 2) ){
+            if((pnlAndPercent.getSecond() > 0 ) && (Math.abs(twoPercentLoss.getSecond() - 2) > Math.abs(pnlAndPercent.getSecond() - 2)) ){
               twoPercentLoss = pnlAndPercent;
               twoPercentLossTime = aggTrade.getTradeTime();
             }
-            if(Math.abs(fivePercentLoss.getSecond() - 5) > Math.abs(pnlAndPercent.getSecond() - 5) ){
+            if((pnlAndPercent.getSecond() > 0 ) && (Math.abs(fivePercentLoss.getSecond() - 5) > Math.abs(pnlAndPercent.getSecond() - 5)) ){
               fivePercentLoss = pnlAndPercent;
               fivePercentLossTime = aggTrade.getTradeTime();
             }

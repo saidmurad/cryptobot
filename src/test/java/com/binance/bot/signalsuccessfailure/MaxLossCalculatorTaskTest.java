@@ -162,22 +162,22 @@ public class MaxLossCalculatorTaskTest {
         AggTrade aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(1);
         aggTrade.setTradeTime(SIGNAL_TIME + 1);
-        aggTrade.setPrice("3500");
+        aggTrade.setPrice("3920");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(2);
         aggTrade.setTradeTime(SIGNAL_TIME + 2);
-        aggTrade.setPrice("3000");
+        aggTrade.setPrice("3800");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(3);
         aggTrade.setTradeTime(SIGNAL_TIME + 3);
-        aggTrade.setPrice("3800");
+        aggTrade.setPrice("3500");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(4);
         aggTrade.setTradeTime(SIGNAL_TIME + 4);
-        aggTrade.setPrice("3920");
+        aggTrade.setPrice("3000");
         aggTrades.add(aggTrade);
 
         when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
@@ -199,9 +199,9 @@ public class MaxLossCalculatorTaskTest {
         verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
         assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(1000.0);
         assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossPercent()).isEqualTo(25.0);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 3);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 1);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
         assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
         assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
     }
@@ -258,22 +258,22 @@ public class MaxLossCalculatorTaskTest {
         AggTrade aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(1);
         aggTrade.setTradeTime(SIGNAL_TIME + 1);
-        aggTrade.setPrice("4500");
+        aggTrade.setPrice("4080");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(2);
         aggTrade.setTradeTime(SIGNAL_TIME + 2);
-        aggTrade.setPrice("5000");
+        aggTrade.setPrice("4200");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(3);
         aggTrade.setTradeTime(SIGNAL_TIME + 3);
-        aggTrade.setPrice("4200");
+        aggTrade.setPrice("4500");
         aggTrades.add(aggTrade);
         aggTrade = new AggTrade();
         aggTrade.setAggregatedTradeId(4);
         aggTrade.setTradeTime(SIGNAL_TIME + 4);
-        aggTrade.setPrice("4080");
+        aggTrade.setPrice("5000");
         aggTrades.add(aggTrade);
         when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
                 .thenAnswer(invocation-> {
@@ -294,9 +294,9 @@ public class MaxLossCalculatorTaskTest {
         verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
         assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(1000.0);
         assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossPercent()).isEqualTo(25.0);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
-        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 3);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 1);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
         assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
         assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
     }

@@ -51,7 +51,12 @@ public class MaxLossCalculatorTask {
           continue;
         }
         Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
+        Pair<Double, Double> twoPercentLoss = Pair.of(0.0, 0.0);
+        Pair<Double, Double> fivePercentLoss = Pair.of(0.0, 0.0);
         long maxLossTime = 0;
+        long twoPercentLossTime = 0;
+        long fivePercentLossTime = 0;
+        Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
         boolean isProfitTargetMet = false;
         long targetMetTime = 0;
         long signalTime = chartPatternSignal.timeOfSignal().getTime();
@@ -79,10 +84,17 @@ public class MaxLossCalculatorTask {
             }
             Pair<Double, Double> newMaxLossAndPercent =
                 getMaxLossAndPercent(maxLossAndPercent, chartPatternSignal, aggTrade);
+            Pair<Double, Double> pnlAndPercent = getPnlAndPercent(chartPatternSignal, aggTrade);
             if (newMaxLossAndPercent.getFirst() > maxLossAndPercent.getFirst()) {
               maxLossTime = aggTrade.getTradeTime();
             }
             maxLossAndPercent = newMaxLossAndPercent;
+            if (pnlAndPercent.getSecond() >=2 && twoPercentLossTime == 0.0) {
+              twoPercentLossTime = aggTrade.getTradeTime();
+            }
+            if (pnlAndPercent.getSecond() >=5 && fivePercentLossTime == 0.0) {
+              fivePercentLossTime = aggTrade.getTradeTime();
+            }
             if (!isProfitTargetMet && isTargetMet(chartPatternSignal, aggTrade)) {
               isProfitTargetMet = true;
               targetMetTime = aggTrade.getTradeTime();
@@ -100,6 +112,8 @@ public class MaxLossCalculatorTask {
             .setMaxLoss(maxLossAndPercent.getFirst())
             .setMaxLossPercent(maxLossAndPercent.getSecond())
             .setMaxLossTime(maxLossTime > 0 ? new Date(maxLossTime) : null)
+                .setTwoPercentLossTime(twoPercentLossTime > 0 ? new Date(twoPercentLossTime) : null)
+                .setFivePercentLossTime(fivePercentLossTime > 0 ? new Date(fivePercentLossTime) : null)
             .setIsPriceTargetMet(isProfitTargetMet)
             .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)
             .build();
@@ -126,6 +140,14 @@ public class MaxLossCalculatorTask {
 
   private Pair<Double, Double> getMaxLossAndPercent(Pair<Double, Double> maxPnLAndPercent,
                                                     ChartPatternSignal chartPatternSignal, AggTrade aggTrade) throws ParseException {
+    Pair<Double, Double> pnlAndPercent = getPnlAndPercent(chartPatternSignal, aggTrade);
+    if (maxPnLAndPercent.getFirst() < pnlAndPercent.getFirst()) {
+      return pnlAndPercent;
+    }
+    return maxPnLAndPercent;
+  }
+
+  private Pair<Double, Double> getPnlAndPercent(ChartPatternSignal chartPatternSignal, AggTrade aggTrade) throws ParseException {
     double pnl, pnlPercent;
     double aggTradePrice = numberFormat.parse(aggTrade.getPrice()).doubleValue();
     switch (chartPatternSignal.tradeType()) {
@@ -137,9 +159,7 @@ public class MaxLossCalculatorTask {
         pnl = aggTradePrice - chartPatternSignal.priceAtTimeOfSignal();
     }
     pnlPercent = pnl / chartPatternSignal.priceAtTimeOfSignal() * 100;
-    if (maxPnLAndPercent.getFirst() < pnl) {
-      return Pair.of(pnl, pnlPercent);
-    }
-    return maxPnLAndPercent;
+
+    return Pair.of(pnl, pnlPercent);
   }
 }

@@ -485,6 +485,8 @@ public class ChartPatternSignalDaoImpl {
         "Attempt=?";
     int ret = jdbcTemplate.update(updateSql, chartPatternSignal.maxLoss(), chartPatternSignal.maxLossPercent(),
         chartPatternSignal.maxLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.maxLossTime()) : null,
+        chartPatternSignal.twoPercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.twoPercentLossTime()) : null,
+        chartPatternSignal.fivePercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.fivePercentLossTime()) : null,
         chartPatternSignal.isPriceTargetMet(),
         chartPatternSignal.priceTargetMetTime() != null ? CandlestickUtil.df.format(chartPatternSignal.priceTargetMetTime()) : null,
         chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),

@@ -9,6 +9,7 @@ import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import com.gateiobot.db.MACDDataDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import java.util.*;
 @Component
 public class MaxLossCalculatorTask {
   private final ChartPatternSignalDaoImpl dao;
+  private final MACDDataDao macdDataDao;
   private final BinanceApiRestClient binanceApiRestClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final SupportedSymbolsInfo supportedSymbolsInfo;
@@ -32,9 +34,10 @@ public class MaxLossCalculatorTask {
   private Mailer mailer = new Mailer();
 
   @Autowired
-  MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, BinanceApiClientFactory binanceApiClientFactory,
+  MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, MACDDataDao macdDataDao, BinanceApiClientFactory binanceApiClientFactory,
                         SupportedSymbolsInfo supportedSymbolsInfo) {
     this.dao = dao;
+    this.macdDataDao = macdDataDao;
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     this.supportedSymbolsInfo = supportedSymbolsInfo;
   }
@@ -65,6 +68,7 @@ public class MaxLossCalculatorTask {
         boolean isDone = false;
         Long fromId = null;
         long beginTime = System.currentTimeMillis();
+        double preBreakoutCandlestickStopLossPrice = macdDataDao.getLastMACDData(chartPatternSignal.coinPair(), chartPatternSignal.timeFrame()).candleClosingPrice;
         while (!isDone) {
           // Heart beat every 5 minutes.
           if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
@@ -112,8 +116,9 @@ public class MaxLossCalculatorTask {
             .setMaxLoss(maxLossAndPercent.getFirst())
             .setMaxLossPercent(maxLossAndPercent.getSecond())
             .setMaxLossTime(maxLossTime > 0 ? new Date(maxLossTime) : null)
-                .setTwoPercentLossTime(twoPercentLossTime > 0 ? new Date(twoPercentLossTime) : null)
-                .setFivePercentLossTime(fivePercentLossTime > 0 ? new Date(fivePercentLossTime) : null)
+            .setTwoPercentLossTime(twoPercentLossTime > 0 ? new Date(twoPercentLossTime) : null)
+            .setFivePercentLossTime(fivePercentLossTime > 0 ? new Date(fivePercentLossTime) : null)
+            .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)
             .setIsPriceTargetMet(isProfitTargetMet)
             .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)
             .build();

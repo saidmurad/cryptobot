@@ -148,6 +148,9 @@ public abstract class ChartPatternSignal {
   public abstract Date fivePercentLossTime();
 
   @Nullable
+  public abstract Double preBreakoutCandlestickStopLossPrice();
+
+  @Nullable
   public abstract Boolean isPriceTargetMet();
 
   @Nullable
@@ -361,6 +364,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setFivePercentLossTime(Date fivePercentLossTime);
 
+    public abstract Builder setPreBreakoutCandlestickStopLossPrice(Double preBreakoutCandlestickStopLossPrice);
+
     public abstract Builder setIsPriceTargetMet(Boolean isPriceTargetMet);
 
     public abstract Builder setPriceTargetMetTime(Date priceTargetMetTime);
@@ -411,8 +416,9 @@ public abstract class ChartPatternSignal {
           .setMaxLoss(that.maxLoss())
           .setMaxLossPercent(that.maxLossPercent())
           .setMaxLossTime(that.maxLossTime())
-              .setTwoPercentLossTime(that.twoPercentLossTime())
-              .setFivePercentLossTime(that.fivePercentLossTime())
+          .setTwoPercentLossTime(that.twoPercentLossTime())
+          .setFivePercentLossTime(that.fivePercentLossTime())
+          .setPreBreakoutCandlestickStopLossPrice(that.preBreakoutCandlestickStopLossPrice())
           .setIsPriceTargetMet(that.isPriceTargetMet())
           .setPriceTargetMetTime(that.priceTargetMetTime())
           .setRealized(that.realized())

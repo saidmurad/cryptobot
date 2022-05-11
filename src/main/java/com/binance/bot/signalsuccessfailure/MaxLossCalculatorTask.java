@@ -68,7 +68,7 @@ public class MaxLossCalculatorTask {
         boolean isDone = false;
         Long fromId = null;
         long beginTime = System.currentTimeMillis();
-        double preBreakoutCandlestickStopLossPrice = macdDataDao.getLastMACDData(chartPatternSignal.coinPair(), chartPatternSignal.timeFrame()).candleClosingPrice;
+        double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
         while (!isDone) {
           // Heart beat every 5 minutes.
           if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {

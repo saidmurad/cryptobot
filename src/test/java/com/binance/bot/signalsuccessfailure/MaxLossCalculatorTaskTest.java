@@ -188,9 +188,7 @@ public class MaxLossCalculatorTaskTest {
         aggTrade.setPrice("3000");
         aggTrades.add(aggTrade);
 
-        MACDData macd = new MACDData();
-        macd.candleClosingPrice = 190;
-        when(mockMacdDataDao.getLastMACDData(any(), any())).thenReturn( macd);
+        when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
         when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
                 .thenAnswer(invocation-> {
                     String fromId = invocation.getArgument(1);

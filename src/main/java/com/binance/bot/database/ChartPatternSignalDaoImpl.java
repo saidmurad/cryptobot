@@ -138,7 +138,7 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
-    String sql = String.format("select * from ChartPatternSignal where MaxLoss is null " +
+    String sql = String.format("select * from ChartPatternSignal where (MaxLoss is null or PreBreakoutCandlestickStopLossPrice is null) " +
         "and datetime(PriceTargetTime) < datetime('%s') " +
             "order by datetime(TimeOfSignal), TimeFrame",
         CandlestickUtil.df.format(new Date()));

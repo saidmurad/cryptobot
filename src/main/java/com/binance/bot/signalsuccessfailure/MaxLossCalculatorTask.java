@@ -8,7 +8,9 @@ import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +59,7 @@ public class MaxLossCalculatorTask {
         Pair<Double, Double> twoPercentLoss = Pair.of(0.0, 0.0);
         Pair<Double, Double> fivePercentLoss = Pair.of(0.0, 0.0);
         long maxLossTime = 0;
+        Date stopLossTime = null;
         long twoPercentLossTime = 0;
         long fivePercentLossTime = 0;
         Map<Integer, Long> lossPercentageAndTimeMap = new HashMap<>();
@@ -69,6 +72,14 @@ public class MaxLossCalculatorTask {
         Long fromId = null;
         long beginTime = System.currentTimeMillis();
         double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+        List<MACDData> macdDatas = macdDataDao.getMACDDataBetweenTimes(
+                chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), chartPatternSignal.priceTargetTime());
+        for (MACDData macdData : macdDatas){
+          if (stopLossTime == null && (chartPatternSignal.tradeType() == TradeType.BUY && macdData.candleClosingPrice < preBreakoutCandlestickStopLossPrice
+                  || chartPatternSignal.tradeType() == TradeType.SELL && macdData.candleClosingPrice > preBreakoutCandlestickStopLossPrice)){
+            stopLossTime = macdData.time;
+          }
+        }
         while (!isDone) {
           // Heart beat every 5 minutes.
           if (((System.currentTimeMillis() - beginTime) / 60000) % 5 == 0) {
@@ -116,6 +127,7 @@ public class MaxLossCalculatorTask {
             .setMaxLoss(maxLossAndPercent.getFirst())
             .setMaxLossPercent(maxLossAndPercent.getSecond())
             .setMaxLossTime(maxLossTime > 0 ? new Date(maxLossTime) : null)
+            .setStopLossTime(stopLossTime)
             .setTwoPercentLossTime(twoPercentLossTime > 0 ? new Date(twoPercentLossTime) : null)
             .setFivePercentLossTime(fivePercentLossTime > 0 ? new Date(fivePercentLossTime) : null)
             .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)

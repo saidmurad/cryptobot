@@ -142,6 +142,9 @@ public abstract class ChartPatternSignal {
   public abstract Date maxLossTime();
 
   @Nullable
+  public abstract Date stopLossTime();
+
+  @Nullable
   public abstract Date twoPercentLossTime();
 
   @Nullable
@@ -360,6 +363,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setMaxLossTime(Date maxLossTime);
 
+    public abstract Builder setStopLossTime(Date maxLossTime);
+
     public abstract Builder setTwoPercentLossTime(Date twoPercentLossTime);
 
     public abstract Builder setFivePercentLossTime(Date fivePercentLossTime);
@@ -416,6 +421,7 @@ public abstract class ChartPatternSignal {
           .setMaxLoss(that.maxLoss())
           .setMaxLossPercent(that.maxLossPercent())
           .setMaxLossTime(that.maxLossTime())
+          .setStopLossTime(that.stopLossTime())
           .setTwoPercentLossTime(that.twoPercentLossTime())
           .setFivePercentLossTime(that.fivePercentLossTime())
           .setPreBreakoutCandlestickStopLossPrice(that.preBreakoutCandlestickStopLossPrice())

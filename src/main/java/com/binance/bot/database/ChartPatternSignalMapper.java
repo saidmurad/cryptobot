@@ -59,6 +59,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setMaxLoss(rs.getDouble("MaxLoss"))
           .setMaxLossPercent(rs.getDouble("MaxLossPercent"))
           .setMaxLossTime(rs.getString("MaxLossTime") != null? dateFormat.parse(rs.getString("MaxLossTime")): null)
+          .setStopLossTime(rs.getString("StopLossTime") != null? dateFormat.parse(rs.getString("StopLossTime")): null)
           .setTwoPercentLossTime(rs.getString("TwoPercentLossTime") != null? dateFormat.parse(rs.getString("TwoPercentLossTime")): null)
           .setFivePercentLossTime(rs.getString("FivePercentLossTime") != null? dateFormat.parse(rs.getString("FivePercentLossTime")): null)
           .setPreBreakoutCandlestickStopLossPrice(rs.getDouble("PreBreakoutCandlestickStopLossPrice"))

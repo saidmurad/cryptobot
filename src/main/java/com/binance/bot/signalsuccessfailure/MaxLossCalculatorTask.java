@@ -79,6 +79,7 @@ public class MaxLossCalculatorTask {
             if (stopLossTime == null && (chartPatternSignal.tradeType() == TradeType.BUY && macdData.candleClosingPrice < preBreakoutCandlestickStopLossPrice
                     || chartPatternSignal.tradeType() == TradeType.SELL && macdData.candleClosingPrice > preBreakoutCandlestickStopLossPrice)) {
               stopLossTime = macdData.time;
+              break;
             }
           }
           while (!isDone) {

@@ -107,6 +107,16 @@ public interface BinanceApiRestClient {
   List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval, Integer limit, Long startTime, Long endTime) throws BinanceApiException;
 
   /**
+   * TODO: implement this doc comment
+   * @param symbol
+   * @param interval
+   * @param limit
+   * @return
+   * @throws BinanceApiException
+   */
+  List<Candlestick> getCandlestickBars(String symbol, CandlestickInterval interval, Integer limit) throws BinanceApiException;
+
+  /**
    * Kline/candlestick bars for a symbol. Klines are uniquely identified by their open time.
    *
    * @see #getCandlestickBars(String, CandlestickInterval, Integer, Long, Long)

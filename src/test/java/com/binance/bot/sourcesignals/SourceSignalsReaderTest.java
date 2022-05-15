@@ -11,9 +11,11 @@ import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
+import com.gateiobot.db.MACDDataDao;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -42,6 +44,7 @@ public class SourceSignalsReaderTest extends TestCase {
   @Mock
   private GetVolumeProfile mockGetVolumeProfile;
   @Mock private ChartPatternSignalDaoImpl mockDao;
+  @Mock private MACDDataDao macdDataDao;
   @Mock private BinanceApiClientFactory mockApiClientFactory;
   @Mock private BinanceApiRestClient mockRestClient;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
@@ -52,7 +55,7 @@ public class SourceSignalsReaderTest extends TestCase {
   public void setUp() throws BinanceApiException {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
-    sourceSignalsReader = new SourceSignalsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
+    sourceSignalsReader = new SourceSignalsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, macdDataDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of("ORNUSDT", "ORNUSDTXYZ", "RSRUSDT", "BTCUSDT", "ETHUSDT"));
     Candlestick currentCandlestick = new Candlestick();
@@ -446,6 +449,44 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(insertedVal.timeOfInsertion()).isNotNull();
     // First pattern in test file is a 15 min timeframe signal.
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
+  }
+
+
+  public void testInsertNewChartPatternSignal() throws ParseException, BinanceApiException {
+    long currentTimeMillis = System.currentTimeMillis();
+    Date currentTime = new Date(currentTimeMillis);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+            .setTimeOfSignal(currentTime)
+            .setTimeOfInsertion(currentTime)
+            .setPriceTargetTime(currentTime)
+            .build();
+
+    when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
+    when(macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn(1000.0);
+
+    sourceSignalsReader.insertNewChartPatternSignal(chartPatternSignal);
+
+    ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor = ArgumentCaptor.forClass(ChartPatternSignal.class);
+    ArgumentCaptor<VolumeProfile> volumeProfileArgumentCaptor = ArgumentCaptor.forClass(VolumeProfile.class);
+
+    verify(mockDao).insertChartPatternSignal(chartPatternSignalArgumentCaptor.capture(), volumeProfileArgumentCaptor.capture());
+    assertThat(chartPatternSignalArgumentCaptor.getValue().coinPair()).isEqualTo("ETHUSDT");
+    assertThat(chartPatternSignalArgumentCaptor.getValue().timeFrame()).isEqualTo(TimeFrame.FIFTEEN_MINUTES);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().pattern()).isEqualTo("Resistance");
+    assertThat(chartPatternSignalArgumentCaptor.getValue().tradeType()).isEqualTo(TradeType.BUY);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().timeOfSignal()).isEqualTo(currentTime);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().isInsertedLate()).isEqualTo(false);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetTime()).isEqualTo(currentTime);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().profitPotentialPercent()).isEqualTo(2.3);
+    assertThat(chartPatternSignalArgumentCaptor.getValue().tenCandlestickTime()).isEqualTo(new Date(currentTimeMillis + 150*60*1000));
+    assertThat(chartPatternSignalArgumentCaptor.getValue().preBreakoutCandlestickStopLossPrice()).isEqualTo(1000.0);
+
+    assertThat(volumeProfileArgumentCaptor.getValue().minVol()).isEqualTo(49.0);
+    assertThat(volumeProfileArgumentCaptor.getValue().maxVol()).isEqualTo(51.0);
+    assertThat(volumeProfileArgumentCaptor.getValue().isVolAtleastMaintained()).isEqualTo(true);
+    assertThat(volumeProfileArgumentCaptor.getValue().avgVol()).isEqualTo(50.0);
+    assertThat(volumeProfileArgumentCaptor.getValue().isVolSurged()).isEqualTo(true);
+
   }
 
   private TimeFrame changeTimeFrame(TimeFrame timeFrame) {

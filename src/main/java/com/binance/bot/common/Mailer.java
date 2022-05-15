@@ -12,7 +12,7 @@ import javax.mail.internet.*;
 public class Mailer{
   private static final Logger log = LoggerFactory.getLogger(Mailer.class);
   private static final String EMAIL_ADDRESS = "cryptoalertsforwalkingcorpse@gmail.com";
-  private static final String PASSWORD = "G0ladiator.";
+  private static final String PASSWORD = "wrong password.";
 
   public void sendEmail(String sub, String msg) throws MessagingException {
     //Get properties object

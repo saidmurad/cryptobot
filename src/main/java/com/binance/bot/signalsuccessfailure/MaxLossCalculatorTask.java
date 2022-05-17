@@ -48,7 +48,7 @@ public class MaxLossCalculatorTask {
   public void perform() throws MessagingException {
     try {
       List<ChartPatternSignal> chartPatternSignals = dao.getAllChartPatternsNeedingMaxLossCalculated();
-      logger.info(String.format("Found %d chart pattern signals that don't have max loss and profit target set.",
+      logger.info(String.format("Found %d chart pattern signals those either don't have max loss  or  don't have preBreakoutCandlestickStopLossPrice and profit target set.",
           chartPatternSignals.size()));
       for (ChartPatternSignal chartPatternSignal : chartPatternSignals) {
         HeartBeatChecker.logHeartBeat(getClass());
@@ -137,7 +137,8 @@ public class MaxLossCalculatorTask {
                   .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)
                   .build();
           dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
-        } else {
+        }
+        if(chartPatternSignal.maxLoss() != null) {
           double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
           ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
                   .copy(chartPatternSignal)

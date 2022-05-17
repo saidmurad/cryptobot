@@ -330,18 +330,7 @@ public class BinanceTradingBot {
         int stepSizeNumDecimalPlaces = minNotionalAndLotSize.getSecond();
       BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(chartPatternSignal.coinPair());
       double entryPrice = chartPatternSignal.tradeType() == TradeType.BUY? bookTicker.bestAsk() : bookTicker.bestBid();
-      if (useBreakoutCandlestickForStopLoss) {
-        double stopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
-        switch (chartPatternSignal.tradeType()) {
-          case BUY:
-            stopLossPercent = (entryPrice - stopLossPrice) / entryPrice * 100;
-            stopLimitPercent = stopLossPercent + 0.5;
-            break;
-          default:
-            stopLossPercent = (stopLossPrice - entryPrice) / entryPrice * 100;
-            stopLimitPercent = stopLossPercent + 0.5;
-        }
-      }
+
         double minNotionalAdjustedForStopLoss;
         if (chartPatternSignal.tradeType() == TradeType.BUY) {
           minNotionalAdjustedForStopLoss = MinNotionalTradeValueInUSDTCalculator.getMinNotionalTradeValueInUSDTForBuyTrade(

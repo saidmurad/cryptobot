@@ -15,6 +15,7 @@ import com.gateiobot.db.MACDDataDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -34,6 +35,8 @@ public class MaxLossCalculatorTask {
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Mailer mailer = new Mailer();
+
+
 
   @Autowired
   MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, MACDDataDao macdDataDao, BinanceApiClientFactory binanceApiClientFactory,

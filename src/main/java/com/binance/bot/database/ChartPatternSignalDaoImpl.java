@@ -340,6 +340,21 @@ public class ChartPatternSignalDaoImpl {
     return ret == 1;
   }
 
+  public synchronized void updateErrorMessage(ChartPatternSignal chartPatternSignal, String errorMessage) {
+    String updateSql = String.format("update ChartPatternSignal set ErrorMessage='%s', lastUpdatedTime='%s' " +
+                    "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)",
+            errorMessage, CandlestickUtil.df.format(new Date()));
+    boolean ret = jdbcTemplate.update(updateSql,
+            chartPatternSignal.coinPair(),
+            chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+            CandlestickUtil.df.format(chartPatternSignal.timeOfSignal())) == 1;
+    if (ret) {
+      logger.info(String.format("Updated Error Message and Last Updated Time for chart pattern signal: %s.", chartPatternSignal));
+    } else {
+      logger.error(String.format("Failed to update Error Message and Last Updated Time for chart pattern signal: %s", chartPatternSignal));
+    }
+  }
+
   // Called when signal is invalidated or target time has elapsed.
   public synchronized boolean setExitOrder(ChartPatternSignal chartPatternSignal,
                                            ChartPatternSignal.Order exitOrder,

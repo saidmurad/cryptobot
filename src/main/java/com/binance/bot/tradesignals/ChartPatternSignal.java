@@ -239,6 +239,12 @@ public abstract class ChartPatternSignal {
   public abstract Boolean isPositionExited();
 
   @Nullable
+  public abstract String errorMessage ();
+
+  @Nullable
+  public abstract Date lastUpdatedTime ();
+
+  @Nullable
   public abstract Double realized();
 
   @Nullable
@@ -347,6 +353,10 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setIsPositionExited(Boolean isPositionExited);
 
+    public abstract Builder setErrorMessage(String errorMessage);
+
+    public abstract Builder setLastUpdatedTime(Date lastUpdatedTime);
+
     public abstract Builder setTenCandlestickTime(Date tenCandlestickTime);
 
     public abstract Builder setRealized(Double realized);
@@ -417,6 +427,8 @@ public abstract class ChartPatternSignal {
           .setExitStopLimitOrder(that.exitStopLimitOrder())
           .setExitOrder(that.exitOrder())
           .setIsPositionExited(that.isPositionExited())
+              .setErrorMessage(that.errorMessage())
+              .setLastUpdatedTime(that.lastUpdatedTime())
           .setTenCandlestickTime(that.tenCandlestickTime())
           .setMaxLoss(that.maxLoss())
           .setMaxLossPercent(that.maxLossPercent())

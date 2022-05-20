@@ -99,8 +99,21 @@ public class ExitPositionAtMarketPrice {
           || chartPatternSignal.entryOrder() == null)) {
         return;
       }
-      logger.info(String.format("Going to exit position for cps %s.", chartPatternSignal));
       double qtyToExit = chartPatternSignal.entryOrder().executedQty();
+      double qtyPrice = qtyToExit * (chartPatternSignal.tradeType() == TradeType.BUY ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk():
+              bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid());
+      if (qtyPrice < 10){
+        dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
+        logger.info("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal);
+        if (chartPatternSignal.errorMessage() != "MIN_TRADE_VALUE_NOT_MET"){
+          mailer.sendEmail("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal.toString());
+        }
+        return;
+      }
+      if (chartPatternSignal.errorMessage() == "MIN_TRADE_VALUE_NOT_MET"){
+        dao.updateErrorMessage(chartPatternSignal, null);
+      }
+      logger.info(String.format("Going to exit position for cps %s.", chartPatternSignal));
       // This is because there were times when stop loss order failed to be placed due to bugs.
       if (chartPatternSignal.exitStopLimitOrder() != null) {
         // If partial order has been executed it could only be the stop limit order.

@@ -341,13 +341,14 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public synchronized void updateErrorMessage(ChartPatternSignal chartPatternSignal, String errorMessage) {
-    String updateSql = String.format("update ChartPatternSignal set ErrorMessage='%s', lastUpdatedTime='%s' " +
-                    "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)",
-            errorMessage, CandlestickUtil.df.format(new Date()));
+    String updateSql = String.format("update ChartPatternSignal set ErrorMessage=?, lastUpdatedTime=? " +
+                    "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)" );
     boolean ret = jdbcTemplate.update(updateSql,
+            errorMessage,
+            CandlestickUtil.df.format(new Date()),
             chartPatternSignal.coinPair(),
             chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-            CandlestickUtil.df.format(chartPatternSignal.timeOfSignal())) == 1;
+            CandlestickUtil.df.format(new Date())) == 1;
     if (ret) {
       logger.info(String.format("Updated Error Message and Last Updated Time for chart pattern signal: %s.", chartPatternSignal));
     } else {

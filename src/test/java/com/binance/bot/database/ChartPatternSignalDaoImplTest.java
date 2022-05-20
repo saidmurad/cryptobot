@@ -547,6 +547,30 @@ public class ChartPatternSignalDaoImplTest {
   }
 
   @Test
+  public void testUpdateErrorMessage() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.updateErrorMessage(chartPatternSignalInDB,"MIN_TRADE_VALUE_NOT_MET");
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.errorMessage()).isEqualTo("MIN_TRADE_VALUE_NOT_MET");
+    assertThat(chartPatternSignalInDB.lastUpdatedTime()).isNotNull();
+  }
+
+  @Test
+  public void testUpdateErrorMessageNull() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.updateErrorMessage(chartPatternSignalInDB,null);
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.errorMessage()).isNull();
+    assertThat(chartPatternSignalInDB.lastUpdatedTime()).isNotNull();
+  }
+
+  @Test
   public void testUpdateExitStopLossOrder_orderJustPlaced() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);

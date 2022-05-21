@@ -26,8 +26,6 @@ public class PriceMovementListenerTask {
     private static final long FOUR_HOURS = 4 * 60 * 60 * 1000;
     private static final long DAILY = 24 * 60 * 60 * 1000;
     private static final int CANDLE_LIMIT = 2;
-    private static final float SUPPORT_THRESHOLD = 1 - 0.01f;
-    private static final float RESISTANCE_THRESHOLD = 1 + 0.01f;
 
     private final BinanceApiRestClient binanceApiRestClient;
     private final Logger logger;
@@ -180,9 +178,11 @@ public class PriceMovementListenerTask {
                     nextLevel = SRValues.get(LC0Position);
                     break;
                 case APPROACHING_RESISTANCE:
+                case AT_RESISTANCE:
                     level = SRValues.get(LC0Position + 1);
                     break;
                 case APPROACHING_SUPPORT:
+                case AT_SUPPORT:
                     level = SRValues.get(LC0Position);
                     break;
                 case RETESTED_RESISTANCE:
@@ -233,15 +233,19 @@ public class PriceMovementListenerTask {
 
                 if (LC0Close > LC1Close) {
                     // going upwards
-                    if (LC1Close * SUPPORT_THRESHOLD <= nearestSupport && LC0Close * RESISTANCE_THRESHOLD < nearestResistance) {
+                    if (LC1Close <= nearestSupport * 1.01 && LC0Close < nearestResistance * 0.99) {
                         return PriceMovementDirection.RETESTED_SUPPORT;
+                    } else if (LC0Close >= nearestResistance * 0.99){
+                        return PriceMovementDirection.AT_RESISTANCE;
                     } else {
                         return PriceMovementDirection.APPROACHING_RESISTANCE;
                     }
                 } else if (LC0Close < LC1Close) {
                     // going downwards
-                    if (LC1Close * RESISTANCE_THRESHOLD >= nearestResistance && LC0Close * SUPPORT_THRESHOLD > nearestSupport) {
+                    if (LC1Close >= nearestResistance * 0.99 && LC0Close > nearestSupport * 1.01) {
                         return PriceMovementDirection.RETESTED_RESISTANCE;
+                    } else if (LC0Close <= nearestSupport * 1.01){
+                        return PriceMovementDirection.AT_SUPPORT;
                     } else {
                         return PriceMovementDirection.APPROACHING_SUPPORT;
                     }

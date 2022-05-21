@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 /**
  * sample application to print trading rules
  */
+@Deprecated
 public class TradingRuleExample {
 
     private static final String apiKey = "JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";

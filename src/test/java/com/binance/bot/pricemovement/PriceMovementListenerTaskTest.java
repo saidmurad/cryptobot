@@ -212,4 +212,56 @@ public class PriceMovementListenerTaskTest {
         assertEquals(35000, output.getLevel(), 0.001);
         assertEquals(-1, output.getNextLevel(), 0.001);
     }
+
+    @Test
+    public void testPerform_BTCUSDT_atSupport_fourHourly() throws BinanceApiException {
+        String symbol = "BTCUSDT";
+        CandlestickInterval interval = CandlestickInterval.FOUR_HOURLY;
+
+        Candlestick LC1 = new Candlestick();    // last-1 candlestick
+        LC1.setClose("35500");
+        Candlestick LC0 = new Candlestick();    // last candlestick
+        LC0.setClose("35349.1");
+
+        List<Candlestick> candlestickList = new ArrayList<>();
+        candlestickList.add(LC1);
+        candlestickList.add(LC0);
+
+        when(mockBinanceApiRestClient.getCandlestickBars(symbol, interval, 2)).thenReturn(candlestickList);
+
+        SRPriceDetail priceDetail = new SRPriceDetail(symbol, interval, Arrays.asList(30000f, 32000f, 35000f, 36000f, 37000f, 38000f));
+
+        PriceMovement output = priceMovementListenerTask.generatePriceMovement(priceDetail);
+        assertEquals(symbol, output.getSymbol());
+        assertEquals(interval, output.getInterval());
+        assertEquals(PriceMovementDirection.AT_SUPPORT, output.getMovementDirection());
+        assertEquals(35000, output.getLevel(), 0.001);
+        assertEquals(-1, output.getNextLevel(), 0.001);
+    }
+
+    @Test
+    public void testPerform_BTCUSDT_atResistance_fourHourly() throws BinanceApiException {
+        String symbol = "BTCUSDT";
+        CandlestickInterval interval = CandlestickInterval.FOUR_HOURLY;
+
+        Candlestick LC1 = new Candlestick();    // last-1 candlestick
+        LC1.setClose("31500");
+        Candlestick LC0 = new Candlestick();    // last candlestick
+        LC0.setClose("31680");
+
+        List<Candlestick> candlestickList = new ArrayList<>();
+        candlestickList.add(LC1);
+        candlestickList.add(LC0);
+
+        when(mockBinanceApiRestClient.getCandlestickBars(symbol, interval, 2)).thenReturn(candlestickList);
+
+        SRPriceDetail priceDetail = new SRPriceDetail(symbol, interval, Arrays.asList(30000f, 32000f, 35000f, 36000f, 37000f, 38000f));
+
+        PriceMovement output = priceMovementListenerTask.generatePriceMovement(priceDetail);
+        assertEquals(symbol, output.getSymbol());
+        assertEquals(interval, output.getInterval());
+        assertEquals(PriceMovementDirection.AT_RESISTANCE, output.getMovementDirection());
+        assertEquals(32000, output.getLevel(), 0.001);
+        assertEquals(-1, output.getNextLevel(), 0.001);
+    }
 }

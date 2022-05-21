@@ -11,75 +11,95 @@ import com.binance.api.client.exception.BinanceApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.net.URL;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 public class PriceMovementListenerTask {
-    private static final String INPUT_CSV_FILE_NAME = "sr_prices.csv";
+    @Value("${price.dataset.path}")
+    private String srDatasetPath;
+
     private static final long FOUR_HOURS = 4 * 60 * 60 * 1000;
     private static final long DAILY = 24 * 60 * 60 * 1000;
-    private static final int CANDLE_LIMIT = 2;
+    private static final int CANDLE_LIMIT = 3;
 
     private final BinanceApiRestClient binanceApiRestClient;
     private final Logger logger;
 
-    private final List<SRPriceDetail> fourHourlySRPrices;
-    private final List<SRPriceDetail> dailySRPrices;
+    private List<SRPriceDetail> fourHourlySRPrices;
+    private List<SRPriceDetail> dailySRPrices;
 
     @Autowired
     PriceMovementListenerTask(BinanceApiClientFactory binanceApiClientFactory) {
         this.binanceApiRestClient = binanceApiClientFactory.newRestClient();
         this.logger = LoggerFactory.getLogger(getClass());
 
-        List<SRPriceDetail> srPriceDetailList = readCSVInput(INPUT_CSV_FILE_NAME);
+        this.fourHourlySRPrices = Collections.emptyList();
+        this.dailySRPrices = Collections.emptyList();
 
-        fourHourlySRPrices = srPriceDetailList.stream()
-                .filter(prices -> CandlestickInterval.FOUR_HOURLY.equals(prices.getInterval()))
-                .collect(Collectors.toList());
-        dailySRPrices = srPriceDetailList.stream()
-                .filter(prices -> CandlestickInterval.DAILY.equals(prices.getInterval()))
-                .collect(Collectors.toList());
+        // test purpose only
+//        if (srDatasetPath == null || srDatasetPath.isEmpty()) {
+//            this.srDatasetPath = "E:\\FREELANCE\\UPWORK\\cryptobot\\src\\test\\resources\\sr_prices.csv";
+//        }
+    }
+
+    /**
+     * schedules repeated task to read csv file with support-resistance price points
+     * and classify them according to candlestick interval time
+     */
+//    @Scheduled(fixedRate = DAILY, initialDelayString = "${timing.initialDelay}")
+    @Scheduled(fixedRate = DAILY)
+    private void dailySRPriceLoader() {
+        List<SRPriceDetail> priceDetails = readCSVInput();
+
+        if (!priceDetails.isEmpty()) {
+            this.fourHourlySRPrices = priceDetails.stream()
+                    .filter(prices -> CandlestickInterval.FOUR_HOURLY.equals(prices.getInterval()))
+                    .collect(Collectors.toList());
+
+            this.dailySRPrices = priceDetails.stream()
+                    .filter(prices -> CandlestickInterval.DAILY.equals(prices.getInterval()))
+                    .collect(Collectors.toList());
+        }
     }
 
     /**
      * read CSV file and load support-resistance price levels for each provided currency type
      *
-     * @param resourceName csv file name
      * @return price details object containing SR prices list, for each record in the CSV file
      */
-    public List<SRPriceDetail> readCSVInput(String resourceName) {
+    public List<SRPriceDetail> readCSVInput() {
         List<SRPriceDetail> data = new ArrayList<>();
-        URL csvResource = getClass().getClassLoader().getResource(resourceName);
 
-        if (csvResource != null) {
-            try {
-                Scanner scanner = new Scanner(new File(csvResource.getFile()));
-                while (scanner.hasNext()) {
-                    String[] split = scanner.nextLine().strip().split(",");
+        try (BufferedReader reader = new BufferedReader(new FileReader(srDatasetPath))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] split = line.strip().split(",");
+                if (split.length >= 4) {
+                    String symbol = split[0];
+                    CandlestickInterval interval = CandlestickInterval.valueOf(split[1].strip());
 
-                    if (split.length >= 4) {
-                        String symbol = split[0];
-                        CandlestickInterval interval = CandlestickInterval.valueOf(split[1].strip());
+                    String[] stringBounds = Arrays.copyOfRange(split, 2, split.length);
+                    List<Float> bounds = Arrays.stream(stringBounds).map(s -> Float.parseFloat(s.strip())).collect(Collectors.toList());
 
-                        String[] stringBounds = Arrays.copyOfRange(split, 2, split.length);
-                        List<Float> bounds = Arrays.stream(stringBounds).map(s -> Float.parseFloat(s.strip())).collect(Collectors.toList());
-
-                        SRPriceDetail levels = new SRPriceDetail(symbol, interval, bounds);
-                        data.add(levels);
-                    }
+                    SRPriceDetail levels = new SRPriceDetail(symbol, interval, bounds);
+                    data.add(levels);
                 }
-            } catch (FileNotFoundException e) {
-                logger.error(e.getMessage());
-                return Collections.emptyList();
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
         return data;
     }
 
@@ -87,7 +107,8 @@ public class PriceMovementListenerTask {
      * scheduled task runs per 4 hours
      * executes price movement output generator method for each 4-hour SR data record
      */
-    @Scheduled(fixedRate = DAILY, initialDelayString = "${timing.initialDelay}")
+//    @Scheduled(fixedRate = DAILY, initialDelayString = "${timing.initialDelay}")
+    @Scheduled(fixedRate = DAILY)
     public void dailyObservation() {
         dailySRPrices.forEach( priceDetail -> {
             PriceMovement output = generatePriceMovement(priceDetail);
@@ -99,7 +120,8 @@ public class PriceMovementListenerTask {
      * scheduled task runs daily
      * executes price movement output generator method for each daily SR data record
      */
-    @Scheduled(fixedRate = FOUR_HOURS, initialDelayString = "${timing.initialDelay}")
+//    @Scheduled(fixedRate = FOUR_HOURS, initialDelayString = "${timing.initialDelay}")
+    @Scheduled(fixedRate = 10000)
     public void fourHourlyObservation() {
         fourHourlySRPrices.forEach( priceDetail -> {
             PriceMovement output = generatePriceMovement(priceDetail);
@@ -109,8 +131,8 @@ public class PriceMovementListenerTask {
 
     /**
      * given support-resistance price point details, output price movement object
-     * price movement direction details are derived from real-time binanace candle stick data API
-     * TODO: method is made public for the sake of unit testing
+     * price movement direction details are derived from real-time binance candle stick data API
+     * TODO: method is made public for unit testing purposes
      *
      * @param priceDetail price movement object
      */
@@ -202,7 +224,9 @@ public class PriceMovementListenerTask {
     /**
      * derive price movement direction from past candle stick data
      *
-     * @param candlestickBars last two candle stick data
+     *
+     * @param candlestickBars latest three candle stick data
+     *                        last one of them represents the current/incomplete candle which is neglected in current scenario
      * @param priceDetail     SR price point details for the currency
      * @return price movement direction
      */

@@ -39,30 +39,67 @@ public class PriceMovementListenerTaskTest {
         priceMovementListenerTask = new PriceMovementListenerTask(mockBinanceApiClientFactory);
     }
 
+    /*
+     * LC0 price < LC1 price ( price decreasing )
+     * SR = 3300f, 3400f, 3500f, 3600f, 3700f
+     *
+     * scenario 1       price crossing support
+     *                  LC1 = 3450, LC0 = 3500
+     *                  outcome = BROKE_RESISTANCE
+     *
+     * scenario 2       LC1 close to (1%) resistance, LC0 close to (1%) support
+     *                  LC1 = 35640, LC0 = 35350
+     *                  outcome = APPROACHING_SUPPORT
+     * scenario 3
+     *
+     *
+     *
+     *
+     *  last candle closing price < last-1 candle closing price
+     * possible combinations,
+     * scenario 1       last-1 candle close to (1%) resistance, last candle close to (1%) support
+     *                  last-1 = 35900, last = 35100
+     *                  outcome = APPROACHING_SUPPORT
+     * scenario 2       last-1 candle close to (1%) resistance, last candle NOT close to support
+     *                  last-1 = 35900, last = 35500
+     *                  outcome = RETESTED_RESISTANCE
+     * scenario 3       last-1 candle NOT close to resistance, last candle NOT close to support
+     *                  last-1 = 35600, last = 35400
+     *                  outcome = APPROACHING_SUPPORT
+     * scenario 4       last-1 candle NOT close to resistance, last candle close to (1%) support
+     *                  last-1 = 35600, last = 35100
+     *                  outcome = APPROACHING_SUPPORT
+     */
+
+
+    // scenario 1
     @Test
     public void testPerform_BTCUSDT_brokeResistance_fourHourly() throws BinanceApiException {
         String symbol = "BTCUSDT";
         CandlestickInterval interval = CandlestickInterval.FOUR_HOURLY;
 
         Candlestick LC1 = new Candlestick();    // last-1 candlestick
-        LC1.setClose("35400");
+        LC1.setClose("3450");
         Candlestick LC0 = new Candlestick();    // last candlestick
-        LC0.setClose("35700");
+        LC0.setClose("3501");
+        Candlestick C = new Candlestick();    // latest incomplete candlestick
+        C.setClose("3800");
 
         List<Candlestick> candlestickList = new ArrayList<>();
         candlestickList.add(LC1);
         candlestickList.add(LC0);
+        candlestickList.add(C);
 
-        when(mockBinanceApiRestClient.getCandlestickBars(symbol, interval, 2)).thenReturn(candlestickList);
+        when(mockBinanceApiRestClient.getCandlestickBars(symbol, interval, 3)).thenReturn(candlestickList);
 
-        SRPriceDetail priceDetail = new SRPriceDetail(symbol, interval, Arrays.asList(30000f, 32000f, 35500f, 36000f, 37000f));
+        SRPriceDetail priceDetail = new SRPriceDetail(symbol, interval, Arrays.asList(3300f, 3400f, 3500f, 3600f, 3700f));
 
         PriceMovement output = priceMovementListenerTask.generatePriceMovement(priceDetail);
         assertEquals(symbol, output.getSymbol());
         assertEquals(interval, output.getInterval());
         assertEquals(PriceMovementDirection.BROKE_RESISTANCE, output.getMovementDirection());
-        assertEquals(35500, output.getLevel(), 0.001);
-        assertEquals(36000, output.getNextLevel(), 0.001);
+        assertEquals(3500, output.getLevel(), 0.001);
+        assertEquals(3600, output.getNextLevel(), 0.001);
     }
 
 
@@ -91,23 +128,6 @@ public class PriceMovementListenerTaskTest {
         assertEquals(37000, output.getLevel(), 0.001);
         assertEquals(35500, output.getNextLevel(), 0.001);
     }
-
-    /*
-     * last candle closing price < last-1 candle closing price
-     * possible combinations,
-     * scenario 1       last-1 candle close to (1%) resistance, last candle close to (1%) support
-     *                  last-1 = 35900, last = 35100
-     *                  outcome = APPROACHING_SUPPORT
-     * scenario 2       last-1 candle close to (1%) resistance, last candle NOT close to support
-     *                  last-1 = 35900, last = 35500
-     *                  outcome = RETESTED_RESISTANCE
-     * scenario 3       last-1 candle NOT close to resistance, last candle NOT close to support
-     *                  last-1 = 35600, last = 35400
-     *                  outcome = APPROACHING_SUPPORT
-     * scenario 4       last-1 candle NOT close to resistance, last candle close to (1%) support
-     *                  last-1 = 35600, last = 35100
-     *                  outcome = APPROACHING_SUPPORT
-     */
 
     @Test
     public void testPerform_BTCUSDT_approachingSupport_daily() throws BinanceApiException {

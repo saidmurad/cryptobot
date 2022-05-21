@@ -22,7 +22,7 @@ public class TradingRuleExample {
 
     private static final String apiKey = "JWpRH4xzo9zySHIWbOH5gGwC5snn1gytOAaRxNt5cIidMTMC7HgM6lswbPEQmGig";
     private static final String secretKey = "LZdi5SFRq2p1gWeDaTP7uh4eumkI91h1Oc4lcoykGBL5KBBtysP8O0sUZmMcX1h8";
-    private static final int candleLimit = 2;
+    private static final int CANDLE_LIMIT = 3;
 
     private static final Logger logger = LoggerFactory.getLogger(TradingRuleExample.class);
 
@@ -36,7 +36,7 @@ public class TradingRuleExample {
             String symbol = currencyBounds.getSymbol();
             CandlestickInterval interval = currencyBounds.getInterval();
 
-            List<Candlestick> candlestickBars = client.getCandlestickBars(symbol, interval, candleLimit);
+            List<Candlestick> candlestickBars = client.getCandlestickBars(symbol, interval, CANDLE_LIMIT);
 
             if (candlestickBars.size() == 2) {
                 EventType signalType = identifyTradingSignalType(candlestickBars, currencyBounds);

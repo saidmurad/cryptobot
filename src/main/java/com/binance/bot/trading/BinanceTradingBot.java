@@ -449,24 +449,26 @@ public class BinanceTradingBot {
             double qtyAdjustedForCommission = tradeFillData.getQuantity() / 0.999;
             qtyForStopLossExit = Util.getRoundedUpQuantity(qtyAdjustedForCommission, stepSizeNumDecimalPlaces);
           }
-          MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
-              stopLossOrderSide,
-              OrderType.STOP_LOSS_LIMIT,
-              TimeInForce.GTC,
-              qtyForStopLossExit,
-              stopLimitPrice);
-          stopLossOrder.stopPrice(stopPrice);
-          logger.info(String.format("Placing stop loss order %s with stop price %s and stop limit price %s for cps %s.",
-              stopLossOrder, stopPrice, stopLimitPrice, chartPatternSignal));
-          MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
-          logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
-              stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
+          if (!useBreakoutCandlestickForStopLoss) {
+            MarginNewOrder stopLossOrder = new MarginNewOrder(chartPatternSignal.coinPair(),
+                stopLossOrderSide,
+                OrderType.STOP_LOSS_LIMIT,
+                TimeInForce.GTC,
+                qtyForStopLossExit,
+                stopLimitPrice);
+            stopLossOrder.stopPrice(stopPrice);
+            logger.info(String.format("Placing stop loss order %s with stop price %s and stop limit price %s for cps %s.",
+                stopLossOrder, stopPrice, stopLimitPrice, chartPatternSignal));
+            MarginNewOrderResponse stopLossOrderResp = binanceApiMarginRestClient.newOrder(stopLossOrder);
+            logger.info(String.format("Placed %s Stop loss order %s with status %s for chart pattern signal\n%s.",
+                stopLossOrderSide.name(), stopLossOrderResp.toString(), stopLossOrderResp.getStatus().name(), chartPatternSignal));
 
-          dao.setExitStopLimitOrder(chartPatternSignal,
-              ChartPatternSignal.Order.create(
-                  stopLossOrderResp.getOrderId(),
-                  0, 0,
-                  stopLossOrderResp.getStatus()));
+            dao.setExitStopLimitOrder(chartPatternSignal,
+                ChartPatternSignal.Order.create(
+                    stopLossOrderResp.getOrderId(),
+                    0, 0,
+                    stopLossOrderResp.getStatus()));
+          }
         } else {
           String errMsg = String.format("Weirdity occured for coin pair %s, got null minPriceAndTickSize for the symbol. Did not place stop loss order because of this. SupportedSymbolsInfo size was %d.", chartPatternSignal.coinPair(), supportedSymbolsInfo.getMinPricAndTickSizeMapSize());
           logger.error(errMsg);

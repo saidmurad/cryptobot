@@ -1612,6 +1612,50 @@ public class BinanceTradingBotTest {
   }
 
   @Test
+  public void preBreakoutCandlestickBasedStoplossEnabled_doesntPlaceHardStopLoss() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+    binanceTradingBot.useBreakoutCandlestickForStopLoss = true;
+    binanceTradingBot.entry_using_macd = true;
+    MACDData macdData = new MACDData();
+    macdData.macd = -1;
+    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.FIFTEEN_MINUTES)).thenReturn(macdData);
+
+    binanceTradingBot.stopLossPercent = 5.0;
+    // Allows for an additional $20 to be borrowed and new margin level will be 1.5
+    setUsdtBalance(12, 4);
+    when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
+        .thenReturn(Pair.of(10.0, 4));
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+        .setTradeType(TradeType.SELL)
+        .setPriceTarget(3000)
+        .build();
+    MarginNewOrderResponse sellOrderResp = new MarginNewOrderResponse();
+    sellOrderResp.setOrderId(1L);
+    sellOrderResp.setPrice("0.0");
+    sellOrderResp.setExecutedQty("0.005");
+    sellOrderResp.setStatus(OrderStatus.FILLED);
+    Trade trade = new Trade();
+    trade.setQty("0.005");
+    trade.setPrice("4000");
+    trade.setCommission("0");
+    sellOrderResp.setFills(Lists.newArrayList(trade));
+
+    when(mockBinanceApiMarginRestClient.newOrder(any(MarginNewOrder.class))).thenAnswer(new Answer<MarginNewOrderResponse>() {
+      private int count = 0;
+      @Override
+      public MarginNewOrderResponse answer(InvocationOnMock invocationOnMock) {
+        if (count == 0) {
+          count ++;
+          return sellOrderResp;
+        }
+        throw new UnsupportedOperationException("Unexpected call to newOrder");
+      }
+    });
+
+    binanceTradingBot.placeTrade(chartPatternSignal, 0);
+    verify(mockDao, never()).setExitStopLimitOrder(any(), any());
+  }
+
+  @Test
   public void sellTrade_atTheBorrowLimit_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
     binanceTradingBot.perTradeAmountConfigured = 20.0;
     // Can't borrow the $20 more needed because new margin level will be 37/25=1.48 whihc is < 1.5

@@ -141,13 +141,13 @@ public class MaxLossCalculatorTask {
                   .build();
           dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
         }
-        if(chartPatternSignal.maxLoss() != null) {
+        if(chartPatternSignal.preBreakoutCandlestickStopLossPrice() == null) {
           double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
           ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
                   .copy(chartPatternSignal)
                   .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)
                   .build();
-          dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
+          dao.updatePreBreakoutCandlestickStopLossPrice(updatedChartPatternSignal);
         }
       }
     } catch (Exception ex) {

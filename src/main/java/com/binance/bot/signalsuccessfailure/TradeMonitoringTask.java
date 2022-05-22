@@ -52,21 +52,20 @@ public class TradeMonitoringTask  {
       if (bookTicker == null) {
         continue;
       }
-      double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
       if (useBreakoutCandlestickForStopLoss) {
         double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(activePosition);
         double lastCompletedCandlestickClosingPrice = macdDataDao.getLastMACDData(activePosition.coinPair(), activePosition.timeFrame()).candleClosingPrice;
-        if (isPriceTargetMet(activePosition, currMarketPrice) && (activePosition.tradeType() == TradeType.BUY && lastCompletedCandlestickClosingPrice < preBreakoutCandlestickStopLossPrice
-                || activePosition.tradeType() == TradeType.SELL && lastCompletedCandlestickClosingPrice > preBreakoutCandlestickStopLossPrice)) {
+        if ((activePosition.tradeType() == TradeType.BUY && lastCompletedCandlestickClosingPrice < preBreakoutCandlestickStopLossPrice)
+                || (activePosition.tradeType() == TradeType.SELL && lastCompletedCandlestickClosingPrice > preBreakoutCandlestickStopLossPrice)) {
           logger.info(String.format("Price target meta and the last completed candlestick closing Price retraced to pre-breakout price for chart pattern signal:%s.", activePosition));
           exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.STOP_LOSS_PRE_BREAKOUT_HIT);
         }
+        continue;
       }
-      if (!useBreakoutCandlestickForStopLoss) {
-        if (isPriceTargetMet(activePosition, currMarketPrice)){
-          logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
-          exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
-        }
+      double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
+      if (isPriceTargetMet(activePosition, currMarketPrice)){
+        logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
+        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
       }
     }
   }

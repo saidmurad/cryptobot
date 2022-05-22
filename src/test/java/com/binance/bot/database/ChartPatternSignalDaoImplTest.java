@@ -836,6 +836,22 @@ public class ChartPatternSignalDaoImplTest {
   }
 
   @Test
+  public void updatePreBreakoutCandlestickStopLossPrice() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
+            .copy(chartPatternSignal)
+            .setPreBreakoutCandlestickStopLossPrice(4000.0)
+            .build();
+
+    dao.updatePreBreakoutCandlestickStopLossPrice(updatedChartPatternSignal);
+
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.preBreakoutCandlestickStopLossPrice()).isEqualTo(4000.0);
+  }
+
+  @Test
   public void testUpdateMaxLossAndTargetMetValues_emptyValues() {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);

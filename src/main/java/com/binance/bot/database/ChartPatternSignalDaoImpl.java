@@ -523,6 +523,26 @@ public class ChartPatternSignalDaoImpl {
     return ret == 1;
   }
 
+  public synchronized boolean updatePreBreakoutCandlestickStopLossPrice(ChartPatternSignal chartPatternSignal) {
+    String updateSql = "update ChartPatternSignal set PreBreakoutCandlestickStopLossPrice=? " +
+            "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
+            "Attempt=?";
+    int ret = jdbcTemplate.update(updateSql,
+            chartPatternSignal.preBreakoutCandlestickStopLossPrice(),
+            chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+            chartPatternSignal.tradeType(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()),
+            chartPatternSignal.attempt());
+    if (ret != 1) {
+      logger.error(String.format("Failed to update pre breakout candlestick stop loss price values for chart pattern signal \n%s.",
+              chartPatternSignal));
+    } else {
+      logger.info(String.format("Updated pre breakout candlestick stop loss price values for chart pattern signal:%s\n." +
+          "Updated values - preBreakoutCandlestickStopLossPrice=%f", chartPatternSignal,
+          chartPatternSignal.preBreakoutCandlestickStopLossPrice()));
+    }
+    return ret == 1;
+  }
+
   public synchronized void cancelStopLimitOrder(ChartPatternSignal chartPatternSignal) {
     String updateSql = String.format("update ChartPatternSignal set ExitStopLossOrderStatus='%s' " +
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)",

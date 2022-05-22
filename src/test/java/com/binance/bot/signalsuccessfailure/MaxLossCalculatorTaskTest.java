@@ -165,14 +165,14 @@ public class MaxLossCalculatorTaskTest {
   }
 
     @Test
-    public void testPerform_forMaxLossNotNull() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
+    public void testPerform_PreBreakoutCandlestickStopLossPrice_Null() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
       when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(
                 getChartPatternSignal().setMaxLoss(4500.0).setPreBreakoutCandlestickStopLossPrice(null).build()));
       when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
 
       maxLossCalculatorTask.perform();
 
-      verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
+      verify(mockDao).updatePreBreakoutCandlestickStopLossPrice(chartPatternSignalArgumentCaptor.capture());
       assertThat(chartPatternSignalArgumentCaptor.getValue().preBreakoutCandlestickStopLossPrice()).isEqualTo(190.0);
       assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(4500.0);
 

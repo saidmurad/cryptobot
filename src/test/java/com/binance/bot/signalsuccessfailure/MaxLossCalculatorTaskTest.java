@@ -9,6 +9,8 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import com.gateiobot.db.MACDData;
+import com.gateiobot.db.MACDDataDao;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
 import org.junit.Before;
@@ -26,6 +28,7 @@ import org.mockito.junit.MockitoRule;
 import javax.mail.MessagingException;
 import java.io.IOException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -42,6 +45,9 @@ public class MaxLossCalculatorTaskTest {
   public final MockitoRule mockitoRule = MockitoJUnit.rule();
   @Mock
   private ChartPatternSignalDaoImpl mockDao;
+
+  @Mock
+  private  MACDDataDao mockMacdDataDao;
   @Mock private BinanceApiClientFactory mockBinanceApiClientFactory;
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
@@ -51,11 +57,13 @@ public class MaxLossCalculatorTaskTest {
   private static final long SIGNAL_TIME = 1L;
   private static final long SIGNAL_TARGET_TIME = 100L;
 
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
   @Before
   public void setUp() throws BinanceApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     maxLossCalculatorTask = new MaxLossCalculatorTask(
-        mockDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
+        mockDao, mockMacdDataDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
   }
@@ -156,7 +164,74 @@ public class MaxLossCalculatorTaskTest {
     assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
   }
 
-  @Test
+    @Test
+    public void testPerform_PreBreakoutCandlestickStopLossPrice_Null() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
+      when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(
+                getChartPatternSignal().setMaxLoss(4500.0).setPreBreakoutCandlestickStopLossPrice(null).build()));
+      when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
+
+      maxLossCalculatorTask.perform();
+
+      verify(mockDao).updatePreBreakoutCandlestickStopLossPrice(chartPatternSignalArgumentCaptor.capture());
+      assertThat(chartPatternSignalArgumentCaptor.getValue().preBreakoutCandlestickStopLossPrice()).isEqualTo(190.0);
+      assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(4500.0);
+
+    }
+
+
+    @Test
+    public void testPerform_twoPercentAndFivePercentLoss_usingBuyTrade_tradeIdIncrementInRequest() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
+        List<AggTrade> aggTrades = new ArrayList<>();
+        AggTrade aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(1);
+        aggTrade.setTradeTime(SIGNAL_TIME + 1);
+        aggTrade.setPrice("3920");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(2);
+        aggTrade.setTradeTime(SIGNAL_TIME + 2);
+        aggTrade.setPrice("3800");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(3);
+        aggTrade.setTradeTime(SIGNAL_TIME + 3);
+        aggTrade.setPrice("3500");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(4);
+        aggTrade.setTradeTime(SIGNAL_TIME + 4);
+        aggTrade.setPrice("3000");
+        aggTrades.add(aggTrade);
+
+        when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
+        when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
+                .thenAnswer(invocation-> {
+                    String fromId = invocation.getArgument(1);
+                    Long startTime = invocation.getArgument(3);
+                    Long endTime = invocation.getArgument(4);
+                    if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
+                        return aggTrades;
+                    }
+                    if (fromId != null && (fromId.equals("3") || fromId.equals("4") || fromId.equals("5")) && startTime == null && endTime == null) {
+                        return Lists.newArrayList();
+                    }
+                    throw new RuntimeException("Unexpected arguments");
+                });
+
+        maxLossCalculatorTask.perform();
+
+        verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(1000.0);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossPercent()).isEqualTo(25.0);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 1);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().preBreakoutCandlestickStopLossPrice()).isEqualTo(190.0);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
+        assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
+    }
+
+    @Test
   public void testPerform_maxLoss_usingSellTrade_tradeIdIncrementInRequest() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTradeType(TradeType.SELL)
@@ -197,8 +272,61 @@ public class MaxLossCalculatorTaskTest {
     assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
     assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
   }
+    @Test
+    public void testPerform_twoPercentAndFivePercentLoss_usingSellTrade_tradeIdIncrementInRequest() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
+        ChartPatternSignal chartPatternSignal = getChartPatternSignal()
+                .setTradeType(TradeType.SELL)
+                .setPriceTarget(3000.0)
+                .build();
+        when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(chartPatternSignal));
+        List<AggTrade> aggTrades = new ArrayList<>();
+        AggTrade aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(1);
+        aggTrade.setTradeTime(SIGNAL_TIME + 1);
+        aggTrade.setPrice("4080");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(2);
+        aggTrade.setTradeTime(SIGNAL_TIME + 2);
+        aggTrade.setPrice("4200");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(3);
+        aggTrade.setTradeTime(SIGNAL_TIME + 3);
+        aggTrade.setPrice("4500");
+        aggTrades.add(aggTrade);
+        aggTrade = new AggTrade();
+        aggTrade.setAggregatedTradeId(4);
+        aggTrade.setTradeTime(SIGNAL_TIME + 4);
+        aggTrade.setPrice("5000");
+        aggTrades.add(aggTrade);
+        when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
+                .thenAnswer(invocation-> {
+                    String fromId = invocation.getArgument(1);
+                    Long startTime = invocation.getArgument(3);
+                    Long endTime = invocation.getArgument(4);
+                    if (fromId == null && startTime == SIGNAL_TIME && endTime == SIGNAL_TARGET_TIME) {
+                        return aggTrades;
+                    }
+                    if (fromId != null && (fromId.equals("3") || fromId.equals("4") || fromId.equals("5")) && startTime == null && endTime == null) {
+                        return Lists.newArrayList();
+                    }
+                    throw new RuntimeException("Unexpected arguments");
+                });
 
-  @Test
+        maxLossCalculatorTask.perform();
+
+        verify(mockDao).updateMaxLossAndTargetMetValues(chartPatternSignalArgumentCaptor.capture());
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLoss()).isEqualTo(1000.0);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossPercent()).isEqualTo(25.0);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().maxLossTime().getTime()).isEqualTo(SIGNAL_TIME + 4);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().twoPercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 1);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().fivePercentLossTime().getTime()).isEqualTo(SIGNAL_TIME + 2);
+        assertThat(chartPatternSignalArgumentCaptor.getValue().isPriceTargetMet()).isFalse();
+        assertThat(chartPatternSignalArgumentCaptor.getValue().priceTargetMetTime()).isNull();
+    }
+
+    @Test
   public void testPerform_data_from_two_iterations_fed_in_correctly() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
     when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {

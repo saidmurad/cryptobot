@@ -79,6 +79,17 @@ public class MACDDataDao {
     return ascendingList;
   }
 
+  synchronized public List<MACDData> getMACDDataBetweenTimes(String coinPair, TimeFrame timeFrame, Date fromTime, Date toTime) {
+    if (!coinPair.contains("_")) {
+      coinPair = Util.getGateFormattedCurrencyPair(coinPair);
+    }
+    String sql = String.format(
+            "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DateTime(Time) >= DateTime('%s') and DateTime(Time) <= DateTime('%s') " +
+                    "order by Time",
+            coinPair, timeFrame.name(), dateFormat.format(fromTime), dateFormat.format(toTime));
+    return jdbcTemplate.query(sql, new MACDDataRowMapper());
+  }
+
   synchronized public MACDData getMACDDataForCandlestick(String coinPair, TimeFrame timeFrame, Date time) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' and DATETime(Time) = DATETime('%s')",

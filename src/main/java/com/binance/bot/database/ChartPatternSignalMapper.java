@@ -59,6 +59,10 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
           .setMaxLoss(rs.getDouble("MaxLoss"))
           .setMaxLossPercent(rs.getDouble("MaxLossPercent"))
           .setMaxLossTime(rs.getString("MaxLossTime") != null? dateFormat.parse(rs.getString("MaxLossTime")): null)
+          .setStopLossTime(rs.getString("StopLossTime") != null? dateFormat.parse(rs.getString("StopLossTime")): null)
+          .setTwoPercentLossTime(rs.getString("TwoPercentLossTime") != null? dateFormat.parse(rs.getString("TwoPercentLossTime")): null)
+          .setFivePercentLossTime(rs.getString("FivePercentLossTime") != null? dateFormat.parse(rs.getString("FivePercentLossTime")): null)
+          .setPreBreakoutCandlestickStopLossPrice(rs.getDouble("PreBreakoutCandlestickStopLossPrice"))
           .setIsPriceTargetMet(rs.getString("IsPriceTargetMet") != null? rs.getInt("IsPriceTargetMet") == 1 : null)
           .setPriceTargetMetTime(rs.getString("PriceTargetMetTime") != null? dateFormat.parse(rs.getString("PriceTargetMetTime")): null);
       if (rs.getString("EntryOrderId") != null) {
@@ -86,6 +90,8 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
       chartPatternSignalBuilder.setUnRealized(rs.getDouble("UnRealized"));
       chartPatternSignalBuilder.setUnRealizedPercent(rs.getDouble("UnRealizedPercent"));
       chartPatternSignalBuilder.setIsPositionExited(rs.getInt("IsPositionExited") == 1);
+      chartPatternSignalBuilder.setErrorMessage(rs.getString("ErrorMessage"));
+      chartPatternSignalBuilder.setLastUpdatedTime(rs.getString("LastUpdatedTime") != null? dateFormat.parse(rs.getString("LastUpdatedTime")) : null);
       if (rs.getString("TradeExitType") != null) {
         chartPatternSignalBuilder.setTradeExitType(TradeExitType.valueOf(rs.getString("TradeExitType")));
       }

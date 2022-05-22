@@ -21,9 +21,11 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 @RunWith(JUnit4.class)
@@ -44,6 +46,37 @@ public class MACDDataDaoTest {
     macdDataDao.setMockClock(mockClock);
   }
 
+  @Test
+  public void getMACDDataBetweenTimes() throws ParseException {
+    MACDData macd1 = new MACDData();
+    macd1.coinPair = "BTC_USDT";
+    macd1.timeFrame = TimeFrame.FIFTEEN_MINUTES;
+    macd1.time = dateFormat.parse("2022-4-22 16:45");
+    macd1.trendType = TrendType.NA;
+    macd1.histogramTrendType = HistogramTrendType.NA;
+    macdDataDao.insert(macd1);
+    MACDData macd2 = new MACDData();
+    macd2.coinPair = "BTC_USDT";
+    macd2.timeFrame = TimeFrame.FIFTEEN_MINUTES;
+    macd2.time = dateFormat.parse("2022-4-22 17:15");
+    macd2.trendType = TrendType.NA;
+    macd2.histogramTrendType = HistogramTrendType.NA;
+    macdDataDao.insert(macd2);
+    MACDData macd3 = new MACDData();
+    macd3.coinPair = "BTC_USDT";
+    macd3.timeFrame = TimeFrame.FIFTEEN_MINUTES;
+    macd3.time = dateFormat.parse("2022-04-22 17:45");
+    macd3.trendType = TrendType.NA;
+    macd3.histogramTrendType = HistogramTrendType.NA;
+    macdDataDao.insert(macd3);
+    Date signalTime = dateFormat.parse("2022-04-22 17:00");
+    Date targetTime = dateFormat.parse("2022-04-22 17:30");
+
+    List<MACDData> macdDatas = macdDataDao.getMACDDataBetweenTimes("BTC_USDT", TimeFrame.FIFTEEN_MINUTES, signalTime, targetTime );
+
+    assertTrue(macdDatas.size() == 1);
+    assertThat(macdDatas.get(0).time).isEqualTo(macd2.time);
+  }
   @Test
   public void lastCandlestickMACD_queryingWithinImmediateNextCandle_isReturned() throws ParseException {
     MACDData macd = new MACDData();

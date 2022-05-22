@@ -142,6 +142,18 @@ public abstract class ChartPatternSignal {
   public abstract Date maxLossTime();
 
   @Nullable
+  public abstract Date stopLossTime();
+
+  @Nullable
+  public abstract Date twoPercentLossTime();
+
+  @Nullable
+  public abstract Date fivePercentLossTime();
+
+  @Nullable
+  public abstract Double preBreakoutCandlestickStopLossPrice();
+
+  @Nullable
   public abstract Boolean isPriceTargetMet();
 
   @Nullable
@@ -225,6 +237,12 @@ public abstract class ChartPatternSignal {
 
   @Nullable
   public abstract Boolean isPositionExited();
+
+  @Nullable
+  public abstract String errorMessage ();
+
+  @Nullable
+  public abstract Date lastUpdatedTime ();
 
   @Nullable
   public abstract Double realized();
@@ -335,6 +353,10 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setIsPositionExited(Boolean isPositionExited);
 
+    public abstract Builder setErrorMessage(String errorMessage);
+
+    public abstract Builder setLastUpdatedTime(Date lastUpdatedTime);
+
     public abstract Builder setTenCandlestickTime(Date tenCandlestickTime);
 
     public abstract Builder setRealized(Double realized);
@@ -350,6 +372,14 @@ public abstract class ChartPatternSignal {
     public abstract Builder setMaxLossPercent(Double maxLossPercent);
 
     public abstract Builder setMaxLossTime(Date maxLossTime);
+
+    public abstract Builder setStopLossTime(Date maxLossTime);
+
+    public abstract Builder setTwoPercentLossTime(Date twoPercentLossTime);
+
+    public abstract Builder setFivePercentLossTime(Date fivePercentLossTime);
+
+    public abstract Builder setPreBreakoutCandlestickStopLossPrice(Double preBreakoutCandlestickStopLossPrice);
 
     public abstract Builder setIsPriceTargetMet(Boolean isPriceTargetMet);
 
@@ -397,10 +427,16 @@ public abstract class ChartPatternSignal {
           .setExitStopLimitOrder(that.exitStopLimitOrder())
           .setExitOrder(that.exitOrder())
           .setIsPositionExited(that.isPositionExited())
+              .setErrorMessage(that.errorMessage())
+              .setLastUpdatedTime(that.lastUpdatedTime())
           .setTenCandlestickTime(that.tenCandlestickTime())
           .setMaxLoss(that.maxLoss())
           .setMaxLossPercent(that.maxLossPercent())
           .setMaxLossTime(that.maxLossTime())
+          .setStopLossTime(that.stopLossTime())
+          .setTwoPercentLossTime(that.twoPercentLossTime())
+          .setFivePercentLossTime(that.fivePercentLossTime())
+          .setPreBreakoutCandlestickStopLossPrice(that.preBreakoutCandlestickStopLossPrice())
           .setIsPriceTargetMet(that.isPriceTargetMet())
           .setPriceTargetMetTime(that.priceTargetMetTime())
           .setRealized(that.realized())

@@ -547,6 +547,30 @@ public class ChartPatternSignalDaoImplTest {
   }
 
   @Test
+  public void testUpdateErrorMessage() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.updateErrorMessage(chartPatternSignalInDB,"MIN_TRADE_VALUE_NOT_MET");
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.errorMessage()).isEqualTo("MIN_TRADE_VALUE_NOT_MET");
+    assertThat(chartPatternSignalInDB.lastUpdatedTime()).isNotNull();
+  }
+
+  @Test
+  public void testUpdateErrorMessageNull() {
+    ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
+
+    dao.updateErrorMessage(chartPatternSignalInDB,null);
+
+    chartPatternSignalInDB = dao.getChartPattern(chartPatternSignalInDB);
+    assertThat(chartPatternSignalInDB.errorMessage()).isNull();
+    assertThat(chartPatternSignalInDB.lastUpdatedTime()).isNotNull();
+  }
+
+  @Test
   public void testUpdateExitStopLossOrder_orderJustPlaced() {
     ChartPatternSignal chartPatternSignalInDB = getChartPatternSignal().setTradeType(TradeType.BUY).build();
     dao.insertChartPatternSignal(chartPatternSignalInDB, volProfile);
@@ -809,6 +833,22 @@ public class ChartPatternSignalDaoImplTest {
     assertThat(chartPatternSignal.isPriceTargetMet()).isTrue();
     assertThat(dateFormat.format(chartPatternSignal.priceTargetMetTime().getTime())).isEqualTo(
         dateFormat.format(currentTimeMillis + 3600000));
+  }
+
+  @Test
+  public void updatePreBreakoutCandlestickStopLossPrice() {
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
+            .copy(chartPatternSignal)
+            .setPreBreakoutCandlestickStopLossPrice(4000.0)
+            .build();
+
+    dao.updatePreBreakoutCandlestickStopLossPrice(updatedChartPatternSignal);
+
+    chartPatternSignal = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignal.preBreakoutCandlestickStopLossPrice()).isEqualTo(4000.0);
   }
 
   @Test

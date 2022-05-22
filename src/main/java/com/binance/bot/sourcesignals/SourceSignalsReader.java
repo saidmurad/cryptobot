@@ -11,6 +11,7 @@ import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
+import com.gateiobot.db.MACDDataDao;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
@@ -54,6 +55,7 @@ public class SourceSignalsReader {
   private final BinanceApiRestClient restClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
+  private final MACDDataDao macdDataDao;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
@@ -63,6 +65,7 @@ public class SourceSignalsReader {
   @Autowired
   public SourceSignalsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
                              ChartPatternSignalDaoImpl chartPatternSignalDao,
+                             MACDDataDao macdDataDao,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
@@ -75,6 +78,7 @@ public class SourceSignalsReader {
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
     this.chartPatternSignalDao = chartPatternSignalDao;
+    this.macdDataDao = macdDataDao;
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
@@ -215,9 +219,11 @@ public class SourceSignalsReader {
       return;
     }
     Date currTime = new Date();
+    double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))
+        .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)
         .build();
     VolumeProfile volProfile = getVolumeProfile.getVolumeProfile(chartPatternSignal.coinPair());
     //logger.info("Inserting chart pattern signal " + chartPatternSignal);

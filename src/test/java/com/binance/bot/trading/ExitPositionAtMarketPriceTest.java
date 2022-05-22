@@ -90,6 +90,48 @@ public class ExitPositionAtMarketPriceTest {
     verifyNoInteractions(mockDao);
   }
 
+  @Test
+  public void exitPositionIfStillHeld_qtyPriceLessThanTen_usingBuyTrade_onlyUpdateErrorMessage() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(1.3, 1.2);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false).setTradeType(TradeType.BUY)
+            .setEntryOrder(ChartPatternSignal.Order.create(1, 5.0, 20.0, OrderStatus.FILLED))
+            .build();
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+    verify(mockDao).updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
+    verify(mockDao,  never()).cancelStopLimitOrder(any());
+    verify(mockDao, never()).setExitOrder(any(), any(), any());
+  }
+
+  @Test
+  public void exitPositionIfStillHeld_qtyPriceLessThanTen_usingSellTrade_onlyUpdateErrorMessage() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(1.8, 1.9);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false).setTradeType(TradeType.SELL)
+            .setEntryOrder(ChartPatternSignal.Order.create(1, 5.0, 20.0, OrderStatus.FILLED))
+            .build();
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+    verify(mockDao).updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
+    verify(mockDao,  never()).cancelStopLimitOrder(any());
+    verify(mockDao, never()).setExitOrder(any(), any(), any());
+  }
+
+  @Test
+  public void exitPositionIfStillHeld_qtyPriceChangedToGreaterThanTen_UpdateErrorMessageToNull() throws MessagingException, InterruptedException, ParseException, BinanceApiException {
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(1.3, 1.2);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsPositionExited(false)
+            .setEntryOrder(ChartPatternSignal.Order.create(1, 10.0, 20.0, OrderStatus.FILLED))
+            .setErrorMessage("MIN_TRADE_VALUE_NOT_MET")
+            .build();
+
+    exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
+    verify(mockDao).updateErrorMessage(chartPatternSignal, null);
+
+  }
+
   @Captor ArgumentCaptor<OrderStatusRequest> stopLossOrderStatusRequestCapture;
   @Captor
   ArgumentCaptor<CancelOrderRequest> cancelOrderRequestCapture;

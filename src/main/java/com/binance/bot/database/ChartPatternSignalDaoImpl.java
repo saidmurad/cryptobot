@@ -138,7 +138,7 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
-    String sql = String.format("select * from ChartPatternSignal where MaxLoss is null " +
+    String sql = String.format("select * from ChartPatternSignal where (MaxLoss is null or PreBreakoutCandlestickStopLossPrice is null) " +
         "and datetime(PriceTargetTime) < datetime('%s') " +
             "order by datetime(TimeOfSignal), TimeFrame",
         CandlestickUtil.df.format(new Date()));
@@ -340,6 +340,22 @@ public class ChartPatternSignalDaoImpl {
     return ret == 1;
   }
 
+  public synchronized void updateErrorMessage(ChartPatternSignal chartPatternSignal, String errorMessage) {
+    String updateSql = String.format("update ChartPatternSignal set ErrorMessage=?, lastUpdatedTime=? " +
+                    "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)" );
+    boolean ret = jdbcTemplate.update(updateSql,
+            errorMessage,
+            CandlestickUtil.df.format(new Date()),
+            chartPatternSignal.coinPair(),
+            chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
+            CandlestickUtil.df.format(new Date())) == 1;
+    if (ret) {
+      logger.info(String.format("Updated Error Message and Last Updated Time for chart pattern signal: %s.", chartPatternSignal));
+    } else {
+      logger.error(String.format("Failed to update Error Message and Last Updated Time for chart pattern signal: %s", chartPatternSignal));
+    }
+  }
+
   // Called when signal is invalidated or target time has elapsed.
   public synchronized boolean setExitOrder(ChartPatternSignal chartPatternSignal,
                                            ChartPatternSignal.Order exitOrder,
@@ -485,6 +501,9 @@ public class ChartPatternSignalDaoImpl {
         "Attempt=?";
     int ret = jdbcTemplate.update(updateSql, chartPatternSignal.maxLoss(), chartPatternSignal.maxLossPercent(),
         chartPatternSignal.maxLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.maxLossTime()) : null,
+        chartPatternSignal.twoPercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.twoPercentLossTime()) : null,
+        chartPatternSignal.fivePercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.fivePercentLossTime()) : null,
+        chartPatternSignal.preBreakoutCandlestickStopLossPrice() != null ? CandlestickUtil.df.format(chartPatternSignal.preBreakoutCandlestickStopLossPrice()) : null,
         chartPatternSignal.isPriceTargetMet(),
         chartPatternSignal.priceTargetMetTime() != null ? CandlestickUtil.df.format(chartPatternSignal.priceTargetMetTime()) : null,
         chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
@@ -500,6 +519,26 @@ public class ChartPatternSignalDaoImpl {
           chartPatternSignal.isPriceTargetMet() != null ?
               chartPatternSignal.isPriceTargetMet() ? "True" : "False"
           : null));*/
+    }
+    return ret == 1;
+  }
+
+  public synchronized boolean updatePreBreakoutCandlestickStopLossPrice(ChartPatternSignal chartPatternSignal) {
+    String updateSql = "update ChartPatternSignal set PreBreakoutCandlestickStopLossPrice=? " +
+            "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
+            "Attempt=?";
+    int ret = jdbcTemplate.update(updateSql,
+            chartPatternSignal.preBreakoutCandlestickStopLossPrice(),
+            chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+            chartPatternSignal.tradeType(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()),
+            chartPatternSignal.attempt());
+    if (ret != 1) {
+      logger.error(String.format("Failed to update pre breakout candlestick stop loss price values for chart pattern signal \n%s.",
+              chartPatternSignal));
+    } else {
+      logger.info(String.format("Updated pre breakout candlestick stop loss price values for chart pattern signal:%s\n." +
+          "Updated values - preBreakoutCandlestickStopLossPrice=%f", chartPatternSignal,
+          chartPatternSignal.preBreakoutCandlestickStopLossPrice()));
     }
     return ret == 1;
   }

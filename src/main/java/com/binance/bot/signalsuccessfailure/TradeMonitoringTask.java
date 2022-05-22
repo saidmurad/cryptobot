@@ -52,7 +52,11 @@ public class TradeMonitoringTask  {
       if (bookTicker == null) {
         continue;
       }
-      if (useBreakoutCandlestickForStopLoss) {
+      double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
+      if (isPriceTargetMet(activePosition, currMarketPrice)){
+        logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
+        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
+      } else if (useBreakoutCandlestickForStopLoss) {
         double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(activePosition);
         double lastCompletedCandlestickClosingPrice = macdDataDao.getLastMACDData(activePosition.coinPair(), activePosition.timeFrame()).candleClosingPrice;
         if ((activePosition.tradeType() == TradeType.BUY && lastCompletedCandlestickClosingPrice < preBreakoutCandlestickStopLossPrice)
@@ -60,12 +64,6 @@ public class TradeMonitoringTask  {
           logger.info(String.format("Price target meta and the last completed candlestick closing Price retraced to pre-breakout price for chart pattern signal:%s.", activePosition));
           exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.STOP_LOSS_PRE_BREAKOUT_HIT);
         }
-        continue;
-      }
-      double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
-      if (isPriceTargetMet(activePosition, currMarketPrice)){
-        logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
-        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
       }
     }
   }

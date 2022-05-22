@@ -593,11 +593,27 @@ public class ExitPositionAtMarketPriceTest {
     when(mockBinanceApiRestClient.cancelOrder(any(CancelOrderRequest.class))).thenReturn(cancelOrderResponse);
     MarginAssetBalance ethBalance = new MarginAssetBalance();
     ethBalance.setAsset("ETH");
-    ethBalance.setFree("9.0");
+    ethBalance.setFree("9.0"); // Less than the quantity in the entryOrder.
     ethBalance.setLocked("0.0");
     MarginAccount account = new MarginAccount();
     account.setUserAssets(Lists.newArrayList(ethBalance));
     when(mockBinanceApiRestClient.getAccount()).thenReturn(account);
+    BookTickerPrices.BookTicker ethBookTicker = BookTickerPrices.BookTicker.create(3000, 2999);
+    when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(ethBookTicker);
+    MarginNewOrderResponse exitMarketOrderResponse = new MarginNewOrderResponse();
+    exitMarketOrderResponse.setOrderId(3L);
+    exitMarketOrderResponse.setExecutedQty("7.2227");
+    Trade fill1 = new Trade();
+    fill1.setPrice("0.9");
+    fill1.setQty("5.0");
+    fill1.setCommission("0");
+    Trade fill2 = new Trade();
+    fill2.setPrice("1.1");
+    fill2.setQty("5.0");
+    fill2.setCommission("0");
+    exitMarketOrderResponse.setFills(Lists.newArrayList(fill1, fill2));
+    exitMarketOrderResponse.setStatus(OrderStatus.FILLED);
+    when(mockBinanceApiRestClient.newOrder(any(MarginNewOrder.class))).thenReturn(exitMarketOrderResponse);
 
     exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal, TradeExitType.TARGET_TIME_PASSED);
 
@@ -605,9 +621,7 @@ public class ExitPositionAtMarketPriceTest {
     verify(mockDao).updateExitStopLimitOrder(any(), any());
     verify(mockBinanceApiRestClient).cancelOrder(any());
     verify(mockDao).cancelStopLimitOrder(chartPatternSignal);
-    verify(mockBinanceApiRestClient, never()).newOrder(any());
-    verify(mockDao, never()).setExitOrder(any(), any(), any());
-    verify(mockMailer).sendEmail(any(), any());
+    verify(mockMailer, times(2)).sendEmail(any(), any());
   }
 
   @Test

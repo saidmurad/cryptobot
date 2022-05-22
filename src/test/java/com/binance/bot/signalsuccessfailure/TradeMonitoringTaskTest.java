@@ -73,6 +73,7 @@ public class TradeMonitoringTaskTest {
 
   @Test
   public void testPerform_BUYTrade_priceTargetMet_exitsTrade() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
+    tradeMonitoringTask.useBreakoutCandlestickForStopLoss = true;
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
         getChartPatternSignal().build()));
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 5998);
@@ -84,17 +85,22 @@ public class TradeMonitoringTaskTest {
         chartPatternSignalArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
     assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(getChartPatternSignal().build());
     assertThat(tradeExitTypeArgumentCaptor.getValue()).isEqualTo(TradeExitType.PROFIT_TARGET_MET);
+    verify(mockMacdDataDao, never()).getStopLossLevelBasedOnBreakoutCandlestick(any());
   }
 
   @Test
   public void testPerform_BUYTrade_LastCandlestickRetracedToBeforeBreakout_exitsTrade() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
+    tradeMonitoringTask.useBreakoutCandlestickForStopLoss = true;
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
-            getChartPatternSignal().build()));
-    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 5998);
+            getChartPatternSignal()
+                .setPriceAtTimeOfSignal(4000)
+                .setPriceTarget(6000)
+                .build()));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(3989, 3989);
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
-    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 6010.0);
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 3990.0);
     MACDData macdData = new MACDData();
-    macdData.candleClosingPrice = 5990.0;
+    macdData.candleClosingPrice = 3989;
     when(mockMacdDataDao.getLastMACDData(any(), any())).thenReturn(macdData);
     tradeMonitoringTask.useBreakoutCandlestickForStopLoss = true;
 
@@ -109,10 +115,14 @@ public class TradeMonitoringTaskTest {
   @Test
   public void testPerform_SELLTrade_LastCandlestickRetracedToBeforeBreakout_exitsTrade() throws MessagingException, InterruptedException, IOException, ParseException, BinanceApiException {
     when(dao.getAllChartPatternsWithActiveTradePositions()).thenReturn(Lists.newArrayList(
-            getChartPatternSignal().setTradeType(TradeType.SELL).build()));
-    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 5998);
+            getChartPatternSignal()
+                .setTradeType(TradeType.SELL)
+                .setPriceAtTimeOfSignal(5990)
+                .setPriceTarget(5900)
+                .build()));
+    BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(6000, 6001);
     when(bookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
-    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 5990.0);
+    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 6000.0);
     MACDData macdData = new MACDData();
     macdData.candleClosingPrice = 6010.0;
     when(mockMacdDataDao.getLastMACDData(any(), any())).thenReturn(macdData);
@@ -151,6 +161,7 @@ public class TradeMonitoringTaskTest {
         chartPatternSignalArgumentCaptor.capture(), tradeExitTypeArgumentCaptor.capture());
     assertThat(chartPatternSignalArgumentCaptor.getValue()).isEqualTo(chartPatternSignal);
     assertThat(tradeExitTypeArgumentCaptor.getValue()).isEqualTo(TradeExitType.PROFIT_TARGET_MET);
+    verify(mockMacdDataDao, never()).getStopLossLevelBasedOnBreakoutCandlestick(any());
   }
 
   private ChartPatternSignal.Builder getChartPatternSignal() {

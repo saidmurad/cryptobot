@@ -495,7 +495,8 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public synchronized boolean updateMaxLossAndTargetMetValues(ChartPatternSignal chartPatternSignal) {
-    String updateSql = "update ChartPatternSignal set MaxLoss=?, MaxLossPercent=?, MaxLossTime=?, IsPriceTargetMet=?, " +
+    String updateSql = "update ChartPatternSignal set MaxLoss=?, MaxLossPercent=?, MaxLossTime=?, " +
+        "TwoPercentLossTime=?, FivePercentLossTime=?, IsPriceTargetMet=?, " +
         "PriceTargetMetTime=? " +
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
         "Attempt=?";
@@ -503,7 +504,6 @@ public class ChartPatternSignalDaoImpl {
         chartPatternSignal.maxLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.maxLossTime()) : null,
         chartPatternSignal.twoPercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.twoPercentLossTime()) : null,
         chartPatternSignal.fivePercentLossTime() != null ? CandlestickUtil.df.format(chartPatternSignal.fivePercentLossTime()) : null,
-        chartPatternSignal.preBreakoutCandlestickStopLossPrice() != null ? CandlestickUtil.df.format(chartPatternSignal.preBreakoutCandlestickStopLossPrice()) : null,
         chartPatternSignal.isPriceTargetMet(),
         chartPatternSignal.priceTargetMetTime() != null ? CandlestickUtil.df.format(chartPatternSignal.priceTargetMetTime()) : null,
         chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),

@@ -32,6 +32,7 @@ public class MACDDataDao {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   Clock clock = Clock.systemDefaultZone();
 
+
   @Autowired
   public MACDDataDao() {
     if (jdbcTemplate != null) {

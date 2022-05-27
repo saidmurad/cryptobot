@@ -26,6 +26,7 @@ import java.util.TimeZone;
 @Repository
 public class MACDDataDao {
   @Autowired
+  public
   JdbcTemplate jdbcTemplate;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -50,7 +51,7 @@ public class MACDDataDao {
     return jdbcTemplate.query(sql, new MACDDataRowMapper());
   }
 
-  synchronized public List<MACDData> getMACDDataUntilTime(String coinPair, TimeFrame timeFrame, int numRows) {
+  synchronized public List<MACDData> getMACDDataList(String coinPair, TimeFrame timeFrame, int numRows) {
     String sql = String.format(
         "select * from MACDData where CoinPair='%s' and TimeFrame='%s' order by Time desc limit %d",
         coinPair, timeFrame.name(), numRows);
@@ -173,10 +174,11 @@ public class MACDDataDao {
   synchronized public boolean insert(MACDData macd) {
     String updateSql = String.format("insert into MACDData(" +
             "CoinPair, TimeFrame, Time, CandleClosingPrice, SMA, SMASlope," +
-            "Trend, EMA12, EMA26, MACD, MACDSignal, Histogram) values " +
-            "('%s', '%s', '%s', %f, %f, %f, '%s', %f, %f, %f, %f, %f)",
+            "Trend, EMA12, EMA26, MACD, MACDSignal, Histogram, HistogramEMA, HistogramTrendType) values " +
+            "('%s', '%s', '%s', %f, %f, %f, '%s', %f, %f, %f, %f, %f, %f, '%s')",
         macd.coinPair, macd.timeFrame.name(), dateFormat.format(macd.time), macd.candleClosingPrice, macd.sma,
-        macd.smaSlope, macd.trendType, macd.ema12, macd.ema26, macd.macd, macd.macdSignal, macd.histogram);
+        macd.smaSlope, macd.trendType, macd.ema12, macd.ema26, macd.macd, macd.macdSignal, macd.histogram,
+        macd.histogramEMA, macd.histogramTrendType == null ? HistogramTrendType.NA.name() : macd.histogramTrendType.name());
     return jdbcTemplate.update(updateSql) == 1;
   }
 

@@ -87,6 +87,13 @@ public class Util {
       return Math.abs(val1 - val2) / val1 * 100 < 0.0001;
   }
 
+  public static boolean assertDecimalEquals(double d1, double d2) {
+    DecimalFormat df = new DecimalFormat("#.######");
+    double dbl1 = Double.parseDouble(df.format(d1));
+    double dbl2 = Double.parseDouble(df.format(d2));
+    return dbl1 == dbl2;
+  }
+
   public static String getTruncatedQuantity(double qty, Integer stepSizeNumDecimalPlaces) {
     String pattern = "#";
     for (int i = 0; i < stepSizeNumDecimalPlaces; i ++) {

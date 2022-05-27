@@ -2,6 +2,7 @@ package com.binance.bot.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -12,8 +13,8 @@ import javax.mail.internet.*;
 public class Mailer{
   private static final Logger log = LoggerFactory.getLogger(Mailer.class);
   private static final String EMAIL_ADDRESS = "cryptoalertsforwalkingcorpse@gmail.com";
-  private static final String PASSWORD = "wrong password.";
-
+  @Value("${email_password}")
+  private String emailPassword;
   public void sendEmail(String sub, String msg) throws MessagingException {
     //Get properties object
     Properties props = new Properties();
@@ -27,7 +28,7 @@ public class Mailer{
     Session session = Session.getDefaultInstance(props,
         new javax.mail.Authenticator() {
           protected PasswordAuthentication getPasswordAuthentication() {
-            return new PasswordAuthentication(EMAIL_ADDRESS, PASSWORD);
+            return new PasswordAuthentication(EMAIL_ADDRESS, emailPassword);
           }
         });
     //compose message
@@ -37,5 +38,10 @@ public class Mailer{
     message.setText(msg == null? "null message": msg);
     //send message
     Transport.send(message);
+  }
+
+  public static void main(String args[]) throws MessagingException {
+    Mailer mailer = new Mailer();
+    mailer.sendEmail("test email", "test body");
   }
 }

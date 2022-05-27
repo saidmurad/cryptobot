@@ -3,6 +3,7 @@ package com.binance.bot.sourcesignals;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
@@ -61,7 +62,9 @@ public class SourceSignalsReader {
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
   @Value("${use_sourcesignals_invalidations}")
   boolean useAltfinsInvalidations;
-
+  private final Set<ChartPatternSignal> erroredOutPatterns = new HashSet<>();
+  @Autowired
+  Mailer mailer;
   @Autowired
   public SourceSignalsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
                              ChartPatternSignalDaoImpl chartPatternSignalDao,
@@ -213,13 +216,21 @@ public class SourceSignalsReader {
     }
   }
 
-  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException {
+  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException, MessagingException {
     if (chartPatternSignal.profitPotentialPercent() < 0) {
       logger.warn(String.format("Skipping chart pattern signal with negative profit potential:\n%s.", chartPatternSignal));
       return;
     }
     Date currTime = new Date();
-    double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+    Double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+    // TODO: Unit test.
+    if (preBreakoutCandlestickStopLossPrice == null) {
+      if (!erroredOutPatterns.contains(chartPatternSignal)) {
+        mailer.sendEmail("Missing prebreakout candlestick", String.format("While inserting cps %s.", chartPatternSignal.toString()));
+        erroredOutPatterns.add(chartPatternSignal);
+      }
+      return;
+    }
     chartPatternSignal = ChartPatternSignal.newBuilder().copy(chartPatternSignal)
         .setTimeOfInsertion(currTime)
         .setTenCandlestickTime(new Date(chartPatternSignal.timeOfSignal().getTime() + Util.getTenCandleStickTimeIncrementMillis(chartPatternSignal)))

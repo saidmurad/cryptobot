@@ -452,7 +452,7 @@ public class SourceSignalsReaderTest extends TestCase {
   }
 
 
-  public void testInsertNewChartPatternSignal() throws ParseException, BinanceApiException {
+  public void testInsertNewChartPatternSignal() throws ParseException, BinanceApiException, MessagingException {
     long currentTimeMillis = System.currentTimeMillis();
     Date currentTime = new Date(currentTimeMillis);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()

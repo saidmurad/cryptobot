@@ -213,16 +213,12 @@ public class MACDDataDao {
     return getMACDDataForCandlestick(coinPair, timeFrame, lastCandlestickStart);
   }
 
-  public double getStopLossLevelBasedOnBreakoutCandlestick(ChartPatternSignal chartPatternSignal)  {
+  public Double getStopLossLevelBasedOnBreakoutCandlestick(ChartPatternSignal chartPatternSignal)  {
     MACDData candlestickBeforeBreakoutOne = getMACDDataForCandlestick(
         Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame(),
         CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -2));
     if (candlestickBeforeBreakoutOne == null) {
-      try {
-        mailer.sendEmail("Null pre-breakout candlestick price.", chartPatternSignal.toString());
-      } catch (MessagingException e) {
-        logger.error("Exception", e);
-      }
+      return null;
     }
     return candlestickBeforeBreakoutOne.candleClosingPrice;
   }

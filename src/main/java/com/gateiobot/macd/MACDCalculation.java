@@ -365,7 +365,7 @@ public class MACDCalculation implements CommandLineRunner {
           }
         }
       }
-      logger.info("Inserting " + macdDatamergedList.get(i));
+      //logger.info("Inserting " + macdDatamergedList.get(i));
       if (!macdDataDao.insert(macdDatamergedList.get(i))) {
         logger.error("Failed inserting macd data: " + macdDatamergedList.get(i));
       }

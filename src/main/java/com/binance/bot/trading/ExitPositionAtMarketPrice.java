@@ -28,7 +28,9 @@ import org.springframework.stereotype.Component;
 import javax.mail.MessagingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 /** For exiting at market price either due to signal invalidation, target time elapsed, or profit taking. */
@@ -45,6 +47,7 @@ public class ExitPositionAtMarketPrice {
   private final CrossMarginAccountBalance crossMarginAccountBalance;
   @Value("${do_not_decrement_num_outstanding_trades}")
   boolean doNotDecrementNumOutstandingTrades;
+  private Set<ChartPatternSignal> erroredOutPatterns = new HashSet<>();
 
   @Autowired
   ExitPositionAtMarketPrice(BinanceApiClientFactory binanceApiClientFactory, ChartPatternSignalDaoImpl dao,
@@ -106,7 +109,10 @@ public class ExitPositionAtMarketPrice {
         dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
         logger.info(String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal));
         if (chartPatternSignal.errorMessage() != "MIN_TRADE_VALUE_NOT_MET"){
-          mailer.sendEmail("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal.toString());
+          if (!erroredOutPatterns.contains(chartPatternSignal)) {
+            mailer.sendEmail("MIN_TRADE_VALUE_NOT_MET", String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal.toString()));
+            erroredOutPatterns.add(chartPatternSignal);
+          }
         }
         return;
       }

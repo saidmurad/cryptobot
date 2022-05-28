@@ -11,7 +11,7 @@ import com.google.common.collect.Lists;
 import io.gate.gateapi.ApiException;
 import io.gate.gateapi.api.MarginApi;
 import io.gate.gateapi.api.SpotApi;
-import io.gate.gateapi.models.MarginCurrencyPair;
+import io.gate.gateapi.models.CurrencyPair;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Rule;
@@ -47,8 +47,6 @@ public class MACDCalculationTest {
   @Mock
   private SpotApi mockSpotApi;
   @Mock
-  private MarginApi mockMarginApi;
-  @Mock
   private SpotApi.APIlistCandlesticksRequest mockAPIlistCandlesticksRequest, mockAPIlistCandlesticksRequest2,
       mockAPIlistCandlesticksRequest3;
   @Mock
@@ -80,8 +78,7 @@ public class MACDCalculationTest {
     CreateCryptobotDB.createCryptobotDB(dataSource);
     macdDataDao.jdbcTemplate = new JdbcTemplate(dataSource);
     when(mockGateIoClientFactory.getSpotApi()).thenReturn(mockSpotApi);
-    when(mockGateIoClientFactory.getMarginApi()).thenReturn(mockMarginApi);
-    when(mockMarginApi.listMarginCurrencyPairs()).thenReturn(getMarginCurrencyPairs());
+    when(mockSpotApi.listCurrencyPairs()).thenReturn(getCurrencyPairs());
     macdCalculation = new MACDCalculation(mockGateIoClientFactory, macdDataDao);
     macdCalculation.setClock(mockClock);
     macdCalculation.setMockMailer(mockMailer);
@@ -89,8 +86,8 @@ public class MACDCalculationTest {
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
   }
 
-  private List<MarginCurrencyPair> getMarginCurrencyPairs() {
-    MarginCurrencyPair btcUsdtMarginPair = new MarginCurrencyPair();
+  private List<CurrencyPair> getCurrencyPairs() {
+    CurrencyPair btcUsdtMarginPair = new CurrencyPair();
     btcUsdtMarginPair.setId(COINPAIR);
     return Lists.newArrayList(btcUsdtMarginPair);
   }
@@ -126,7 +123,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest.interval(timeFrameToStringMap.get(timeFrame))).thenReturn(mockAPIlistCandlesticksRequest);
     when(mockAPIlistCandlesticksRequest.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     verify(mockSpotApi).listCandlesticks(COINPAIR);
     verify(mockAPIlistCandlesticksRequest).from(START_TIME.getTime() / 1000);
@@ -167,7 +164,7 @@ public class MACDCalculationTest {
     preExistingRow.time = START_TIME;
     macdDataDao.insert(preExistingRow);
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     verify(mockSpotApi, never()).listCandlesticks(COINPAIR);
   }
@@ -208,7 +205,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest.interval(timeFrameToStringMap.get(timeFrame))).thenReturn(mockAPIlistCandlesticksRequest);
     when(mockAPIlistCandlesticksRequest.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     verify(mockSpotApi).listCandlesticks(COINPAIR);
     verify(mockAPIlistCandlesticksRequest).from(nextCandlestickStartTime.getTime() / 1000);
@@ -253,7 +250,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest.interval(timeFrameToStringMap.get(timeFrame))).thenReturn(mockAPIlistCandlesticksRequest);
     when(mockAPIlistCandlesticksRequest.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     verify(mockSpotApi).listCandlesticks(COINPAIR);
     verify(mockAPIlistCandlesticksRequest).from(nextCandlestickStartTime.getTime() / 1000);
@@ -315,7 +312,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     List<MACDData> macdDataInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 30);
     for (int i = 0; i < 30; i++) {
@@ -343,7 +340,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     MACDData macdDataInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 1).get(0);
     assertThat(macdDataInDB.coinPair).isEqualTo(COINPAIR);
@@ -386,7 +383,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.interval("15m")).thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     MACDData macdDataInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 1).get(0);
     assertThat(macdDataInDB.coinPair).isEqualTo(COINPAIR);
@@ -425,7 +422,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 31);
     assertThat(macdRowsInDB).hasSize(31);
@@ -480,7 +477,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 31);
     assertThat(macdRowsInDB).hasSize(31);
@@ -527,7 +524,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, TimeFrame.FIFTEEN_MINUTES, 31);
     assertThat(macdRowsInDB).hasSize(31);
@@ -585,7 +582,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
     when(mockClock.millis()).thenReturn(System.currentTimeMillis());
-    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(TimeFrame.FIFTEEN_MINUTES, 0, getCurrencyPairs());
 
     // old rows: i: 0 - 29     -> candlestick values: 1 - 30
     // new rows: i: 30 - 31    -> candlestick values: 31 - 32
@@ -661,7 +658,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 14);
     assertThat(macdRowsInDB).hasSize(14);
@@ -739,7 +736,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.interval(getTimeInterval(timeFrame))).thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 14);
     assertThat(macdRowsInDB).hasSize(14);
@@ -800,7 +797,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 28);
     assertThat(macdRowsInDB).hasSize(28);
@@ -880,7 +877,7 @@ public class MACDCalculationTest {
     when(mockAPIlistCandlesticksRequest2.interval(getTimeInterval(timeFrame))).thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 28);
     assertThat(macdRowsInDB).hasSize(28);
@@ -943,7 +940,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 37);
     assertThat(macdRowsInDB).hasSize(37);
@@ -1038,7 +1035,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest3);
     when(mockAPIlistCandlesticksRequest3.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 37);
     assertThat(macdRowsInDB).hasSize(37);
@@ -1104,7 +1101,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 37);
     for (int i = 0; i < 35; i++) {
@@ -1182,7 +1179,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest2);
     when(mockAPIlistCandlesticksRequest2.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 42);
     assertThat(macdRowsInDB.get(39).histogramEMA).isZero();
@@ -1273,7 +1270,7 @@ public class MACDCalculationTest {
         .thenReturn(mockAPIlistCandlesticksRequest3);
     when(mockAPIlistCandlesticksRequest3.execute()).thenReturn(ImmutableList.of());
 
-    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getMarginCurrencyPairs());
+    macdCalculation.fillMACDDataPartitioned(timeFrame, 0, getCurrencyPairs());
 
     List<MACDData> macdRowsInDB = macdDataDao.getMACDDataList(COINPAIR, timeFrame, 43);
     assertThat(macdRowsInDB).hasSize(43);

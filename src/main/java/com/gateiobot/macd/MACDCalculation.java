@@ -6,8 +6,8 @@ import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.*;
 import io.gate.gateapi.ApiException;
 import io.gate.gateapi.GateApiException;
-import io.gate.gateapi.api.MarginApi;
 import io.gate.gateapi.api.SpotApi;
+import io.gate.gateapi.models.CurrencyPair;
 import io.gate.gateapi.models.MarginCurrencyPair;
 import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
@@ -41,7 +41,6 @@ public class MACDCalculation implements CommandLineRunner {
   static int NUM_SHARDS = 100;
   boolean isTest = false;
   private final SpotApi spotApi;
-  private final MarginApi marginApi;
   private final Date START_TIME;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Clock clock;
@@ -60,7 +59,6 @@ public class MACDCalculation implements CommandLineRunner {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     START_TIME = dateFormat.parse("2021-12-01 00:00");
     spotApi = gateIoClientFactory.getSpotApi();
-    marginApi = gateIoClientFactory.getMarginApi();
     this.macdDataDao = macdDataDao;
     this.clock = Clock.systemDefaultZone();
   }
@@ -170,7 +168,7 @@ public class MACDCalculation implements CommandLineRunner {
       fillMACDDataPartitioned(TimeFrame.HOUR, 9);
     }
     */
-  public void fillMACDDataPartitioned(TimeFrame timeFrame, int i, List<MarginCurrencyPair> marginPairs)
+  public void fillMACDDataPartitioned(TimeFrame timeFrame, int i, List<CurrencyPair> marginPairs)
       throws MessagingException, ApiException, InterruptedException {
     int numMarginPairs = marginPairs.size();
     int chunkSize = numMarginPairs / NUM_SHARDS;
@@ -190,14 +188,14 @@ public class MACDCalculation implements CommandLineRunner {
   }
 
   boolean exitAfterOneIteration = false;
-  void fillMACDData(TimeFrame timeFrame, int startIndex, int chunkSize, List<MarginCurrencyPair> marginPairs) throws MessagingException {
+  void fillMACDData(TimeFrame timeFrame, int startIndex, int chunkSize, List<CurrencyPair> marginPairs) throws MessagingException {
     try {
       boolean allDone;
       do {
         allDone = true;
         Set<String> seen = new HashSet<>();
         for (int i = startIndex; i < startIndex + chunkSize; i ++) {
-          MarginCurrencyPair currencyPair = marginPairs.get(i);
+          CurrencyPair currencyPair = marginPairs.get(i);
           if (invalidCurrencyPairs.contains(currencyPair.getId()) || seen.contains(currencyPair.getId())) {
             continue;
           }
@@ -571,7 +569,7 @@ public class MACDCalculation implements CommandLineRunner {
       return;
     }
     try {
-      List<MarginCurrencyPair> marginPairs = marginApi.listMarginCurrencyPairs();
+      List<CurrencyPair> marginPairs = spotApi.listCurrencyPairs();
       List<Thread> runners = new ArrayList<>();
       for (TimeFrame timeFrame: TimeFrame.values()) {
         runners.addAll(startThreads(marginPairs, timeFrame));
@@ -582,7 +580,7 @@ public class MACDCalculation implements CommandLineRunner {
     }
   }
 
-  private List<Thread> startThreads(List<MarginCurrencyPair> marginPairs, TimeFrame timeFrame) {
+  private List<Thread> startThreads(List<CurrencyPair> marginPairs, TimeFrame timeFrame) {
     List<Thread> runners = new ArrayList<>();
     for (int i = 0; i < NUM_SHARDS; i++) {
       Thread runner = new Thread(new PartitionRunner(this, timeFrame, marginPairs, i));
@@ -600,12 +598,12 @@ public class MACDCalculation implements CommandLineRunner {
 class PartitionRunner implements Runnable {
   private final MACDCalculation macdCalculation;
   private final int shard;
-  private final List<MarginCurrencyPair> marginPairs;
+  private final List<CurrencyPair> marginPairs;
   private final TimeFrame timeFrame;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final Mailer mailer = new Mailer();
 
-  PartitionRunner(MACDCalculation macdCalculation, TimeFrame timeFrame, List<MarginCurrencyPair> marginPairs, int shard) {
+  PartitionRunner(MACDCalculation macdCalculation, TimeFrame timeFrame, List<CurrencyPair> marginPairs, int shard) {
     this.macdCalculation = macdCalculation;
     this.marginPairs = marginPairs;
     this.shard = shard;

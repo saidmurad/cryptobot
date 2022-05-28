@@ -1,6 +1,7 @@
 package com.binance.bot.signalsuccessfailure;
 
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.trading.ExitPositionAtMarketPrice;
@@ -28,6 +29,8 @@ public class TradeMonitoringTask  {
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
 
+  @Autowired
+  private Mailer mailer;
   @Value("${use_breakout_candlestick_for_stop_loss}")
   public boolean useBreakoutCandlestickForStopLoss;
 
@@ -44,27 +47,32 @@ public class TradeMonitoringTask  {
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
-  public void perform() throws IOException, MessagingException, ParseException, BinanceApiException, InterruptedException {
-    HeartBeatChecker.logHeartBeat(getClass());
-    List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
-    for (ChartPatternSignal activePosition: activePositions) {
-      BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(activePosition.coinPair());
-      if (bookTicker == null) {
-        continue;
-      }
-      double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
-      if (isPriceTargetMet(activePosition, currMarketPrice)){
-        logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
-        exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
-      } else if (useBreakoutCandlestickForStopLoss) {
-        double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(activePosition);
-        double lastCompletedCandlestickClosingPrice = macdDataDao.getLastMACDData(activePosition.coinPair(), activePosition.timeFrame()).candleClosingPrice;
-        if ((activePosition.tradeType() == TradeType.BUY && lastCompletedCandlestickClosingPrice < preBreakoutCandlestickStopLossPrice)
-                || (activePosition.tradeType() == TradeType.SELL && lastCompletedCandlestickClosingPrice > preBreakoutCandlestickStopLossPrice)) {
-          logger.info(String.format("Price target meta and the last completed candlestick closing Price retraced to pre-breakout price for chart pattern signal:%s.", activePosition));
-          exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.STOP_LOSS_PRE_BREAKOUT_HIT);
+  public void perform() throws MessagingException {
+    try {
+      HeartBeatChecker.logHeartBeat(getClass());
+      List<ChartPatternSignal> activePositions = dao.getAllChartPatternsWithActiveTradePositions();
+      for (ChartPatternSignal activePosition : activePositions) {
+        BookTickerPrices.BookTicker bookTicker = bookTickerPrices.getBookTicker(activePosition.coinPair());
+        if (bookTicker == null) {
+          continue;
+        }
+        double currMarketPrice = activePosition.tradeType() == TradeType.BUY ? bookTicker.bestAsk() : bookTicker.bestBid();
+        if (isPriceTargetMet(activePosition, currMarketPrice)) {
+          logger.info(String.format("Price target met for chart pattern signal:%s.", activePosition));
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.PROFIT_TARGET_MET);
+        } else if (useBreakoutCandlestickForStopLoss) {
+          double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(activePosition);
+          double lastCompletedCandlestickClosingPrice = macdDataDao.getLastMACDData(activePosition.coinPair(), activePosition.timeFrame()).candleClosingPrice;
+          if ((activePosition.tradeType() == TradeType.BUY && lastCompletedCandlestickClosingPrice < preBreakoutCandlestickStopLossPrice)
+              || (activePosition.tradeType() == TradeType.SELL && lastCompletedCandlestickClosingPrice > preBreakoutCandlestickStopLossPrice)) {
+            logger.info(String.format("Price target meta and the last completed candlestick closing Price retraced to pre-breakout price for chart pattern signal:%s.", activePosition));
+            exitPositionAtMarketPrice.exitPositionIfStillHeld(activePosition, TradeExitType.STOP_LOSS_PRE_BREAKOUT_HIT);
+          }
         }
       }
+    } catch (Exception ex) {
+      logger.error("Exception", ex);
+      mailer.sendEmail("TradeMonitoringTask exception", ex.getMessage());
     }
   }
 

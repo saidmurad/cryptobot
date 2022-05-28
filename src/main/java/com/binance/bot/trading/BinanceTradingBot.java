@@ -337,7 +337,7 @@ public class BinanceTradingBot {
               minNotionalAndLotSize.getFirst(), minNotionalAndLotSize.getSecond(), stopLossPercent, entryPrice);
         } else {
           minNotionalAdjustedForStopLoss = MinNotionalTradeValueInUSDTCalculator.getMinNotionalTradeValueInUSDTForSellTrade(
-              minNotionalAndLotSize.getFirst(), minNotionalAndLotSize.getSecond(), entryPrice);
+              minNotionalAndLotSize.getFirst(), minNotionalAndLotSize.getSecond(), chartPatternSignal.priceTarget());
         }
         double tradeValueInUSDTToDo = Math.max(minNotionalAdjustedForStopLoss, perTradeAmountConfigured);
         // Determine trade feasibility and borrow required quantity.

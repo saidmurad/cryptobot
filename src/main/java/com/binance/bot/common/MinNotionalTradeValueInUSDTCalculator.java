@@ -41,8 +41,8 @@ public class MinNotionalTradeValueInUSDTCalculator {
   }
 
   public static double getMinNotionalTradeValueInUSDTForSellTrade(
-      double minNotionalUSDT, int stepSizeNumDecimalPlaces, double entryPrice) {
-    double entryQty = (minNotionalUSDT / entryPrice) / 0.999;
+      double minNotionalUSDT, int stepSizeNumDecimalPlaces, double priceTarget) {
+    double entryQty = (minNotionalUSDT / priceTarget) / 0.999;
     // Round up using the step size for the coin pair.
     // No need to do the bumping unlike needed done for the Buy trades in the above function because, for Sell trades
     // the stop loss is a buy order that already buys slightly more (after applying 0.999) so there is no chance of

@@ -3,6 +3,7 @@ package com.binance.bot.signalsuccessfailure;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.trading.ExitPositionAtMarketPrice;
@@ -40,6 +41,8 @@ public class PriceTargetRealtimeCheckerTask {
   boolean exitTradesAtTenCandlestickTime;
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
   @Autowired
+  private Mailer mailer;
+  @Autowired
   PriceTargetRealtimeCheckerTask(BinanceApiClientFactory binanceApiClientFactory,
                                  ChartPatternSignalDaoImpl dao, SupportedSymbolsInfo supportedSymbolsInfo,
                                  ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
@@ -52,24 +55,29 @@ public class PriceTargetRealtimeCheckerTask {
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   // TODO: Unit test.
-  public void performPriceTargetChecks() throws ParseException, IOException, MessagingException, BinanceApiException {
-    HeartBeatChecker.logHeartBeat(getClass());
-    List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();
-    logger.info(String.format("%d chart pattern signals reached their target time:", signalsTargetTime.size()));
-    for (int i = 0; i < signalsTargetTime.size(); i++) {
-      ChartPatternSignal chartPatternSignal = signalsTargetTime.get(i);
-      if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
-        //logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
-        continue;
+  public void performPriceTargetChecks() throws MessagingException {
+    try {
+      HeartBeatChecker.logHeartBeat(getClass());
+      List<ChartPatternSignal> signalsTargetTime = dao.getChatPatternSignalsThatJustReachedTargetTime();
+      logger.info(String.format("%d chart pattern signals reached their target time:", signalsTargetTime.size()));
+      for (int i = 0; i < signalsTargetTime.size(); i++) {
+        ChartPatternSignal chartPatternSignal = signalsTargetTime.get(i);
+        if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
+          //logger.warn("Symbol unsupported or unavailable at the moment: " + chartPatternSignal.coinPair());
+          continue;
+        }
+        double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
+        // TODO: Race condition with ProfitTakerTask.
+        if (!exitTradesAtTenCandlestickTime) {
+          exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
+              TradeExitType.TARGET_TIME_PASSED);
+        }
+        boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
+        //logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
       }
-      double priceAtTargetTime = NumberFormat.getInstance(Locale.US).parse(restClient.getPrice(chartPatternSignal.coinPair()).getPrice()).doubleValue();
-      // TODO: Race condition with ProfitTakerTask.
-      if (!exitTradesAtTenCandlestickTime) {
-        exitPositionAtMarketPrice.exitPositionIfStillHeld(chartPatternSignal,
-            TradeExitType.TARGET_TIME_PASSED);
-      }
-      boolean ret = dao.setSignalTargetTimePrice(chartPatternSignal, priceAtTargetTime, getProfitPercentAtWithPrice(chartPatternSignal, priceAtTargetTime));
-      //logger.info("Set target time price for '" + chartPatternSignal.coinPair() + "' using api: Price. Ret val=" + ret);
+    } catch (Exception ex) {
+      logger.error("Exception", ex);
+      mailer.sendEmail("PriceTargetRealtimeCheckerTask exception.", ex.getMessage());
     }
   }
 }

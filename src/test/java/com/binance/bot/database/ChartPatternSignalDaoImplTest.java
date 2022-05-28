@@ -1145,6 +1145,8 @@ public class ChartPatternSignalDaoImplTest {
         .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(9)))
         .build();
     dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+    ChartPatternSignal chartPatternSignal2 = ChartPatternSignal.newBuilder().copy(chartPatternSignal).setAttempt(2).build();
+    dao.insertChartPatternSignal(chartPatternSignal2, volProfile);
 
     dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
 

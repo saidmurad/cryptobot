@@ -208,7 +208,7 @@ public class MACDCalculation implements CommandLineRunner {
             ret = fillMACDData(currencyPair.getId(), timeFrame);
           } catch (GateApiException ex) {
             if (ex.getErrorLabel().equals("INVALID_CURRENCY") || ex.getErrorLabel().equals("INVALID_CURRENCY_PAIR")) {
-              logger.info(currencyPair.getId() + " is invalid");
+              //logger.info(currencyPair.getId() + " is invalid");
               invalidCurrencyPairs.add(currencyPair.getId());
               ret = true;
             } else {

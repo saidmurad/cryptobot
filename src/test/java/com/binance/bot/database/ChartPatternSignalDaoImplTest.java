@@ -1135,4 +1135,20 @@ public class ChartPatternSignalDaoImplTest {
             });
     assertThat(result).isTrue();
   }
+
+  @Test
+  public void updateErrorMessage() {
+    Date currentTime = new Date();
+    ChartPatternSignal chartPatternSignal = getChartPatternSignal().setIsSignalOn(true)
+        .setCoinPair("ETHUSDT")
+        .setTimeFrame(TimeFrame.DAY)
+        .setTimeOfSignal(new Date(currentTime.getTime() - TimeUnit.DAYS.toMillis(9)))
+        .build();
+    dao.insertChartPatternSignal(chartPatternSignal, volProfile);
+
+    dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
+
+    ChartPatternSignal chartPatternSignalFromDB = dao.getChartPattern(chartPatternSignal);
+    assertThat(chartPatternSignalFromDB.errorMessage()).isEqualTo("MIN_TRADE_VALUE_NOT_MET");
+  }
 }

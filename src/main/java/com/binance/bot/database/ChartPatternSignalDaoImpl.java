@@ -341,18 +341,16 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public synchronized void updateErrorMessage(ChartPatternSignal chartPatternSignal, String errorMessage) {
-    String updateSql = String.format("update ChartPatternSignal set ErrorMessage=?, lastUpdatedTime=? " +
-                    "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?)" );
-    boolean ret = jdbcTemplate.update(updateSql,
-            errorMessage,
-            CandlestickUtil.df.format(new Date()),
-            chartPatternSignal.coinPair(),
-            chartPatternSignal.timeFrame().name(), chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(),
-            CandlestickUtil.df.format(new Date())) == 1;
-    if (ret) {
+    String updateSql = String.format("update ChartPatternSignal set ErrorMessage='%s', lastUpdatedTime='%s' " +
+                    "where CoinPair='%s' and TimeFrame='%s' and TradeType='%s' and Pattern='%s' and DATETIME(TimeOfSignal)=DATETIME('%s')",
+        errorMessage, CandlestickUtil.df.format(new Date()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+        chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()));
+    int numRowsUpdated = jdbcTemplate.update(updateSql);
+    if (numRowsUpdated == 1) {
       logger.info(String.format("Updated Error Message and Last Updated Time for chart pattern signal: %s.", chartPatternSignal));
     } else {
-      logger.error(String.format("Failed to update Error Message and Last Updated Time for chart pattern signal: %s", chartPatternSignal));
+      logger.error(String.format("Failed to update corectly (numRowsUpdated=%d) Error Message and Last Updated Time for chart pattern signal: %s",
+          numRowsUpdated, chartPatternSignal));
     }
   }
 

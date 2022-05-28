@@ -138,7 +138,9 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public List<ChartPatternSignal> getAllChartPatternsNeedingMaxLossCalculated() {
-    String sql = String.format("select * from ChartPatternSignal where (MaxLoss is null or PreBreakoutCandlestickStopLossPrice is null) " +
+    String sql = String.format("select * from ChartPatternSignal where Attempt = 1 and (MaxLoss is null or " +
+            " TwoPercentLossTime is null or FivePercentLossTime is null or " +
+            "PreBreakoutCandlestickStopLossPrice is null) " +
         "and datetime(PriceTargetTime) < datetime('%s') " +
             "order by datetime(TimeOfSignal), TimeFrame",
         CandlestickUtil.df.format(new Date()));
@@ -496,7 +498,8 @@ public class ChartPatternSignalDaoImpl {
 
   public synchronized boolean updateMaxLossAndTargetMetValues(ChartPatternSignal chartPatternSignal) {
     String updateSql = "update ChartPatternSignal set MaxLoss=?, MaxLossPercent=?, MaxLossTime=?, " +
-        "TwoPercentLossTime=?, FivePercentLossTime=?, IsPriceTargetMet=?, " +
+        "TwoPercentLossTime=?, FivePercentLossTime=?, LossTimesCalculated=1," +
+        "IsPriceTargetMet=?, " +
         "PriceTargetMetTime=? " +
         "where CoinPair=? and TimeFrame=? and TradeType=? and Pattern=? and DATETIME(TimeOfSignal)=DATETIME(?) and " +
         "Attempt=?";

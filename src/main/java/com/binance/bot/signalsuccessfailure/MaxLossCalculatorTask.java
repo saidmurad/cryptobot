@@ -58,10 +58,8 @@ public class MaxLossCalculatorTask {
         if (!supportedSymbolsInfo.getTradingActiveSymbols().containsKey(chartPatternSignal.coinPair())) {
           continue;
         }
-        if (chartPatternSignal.maxLoss() == null) {
+        if (chartPatternSignal.maxLoss() == null || chartPatternSignal.lossTimesCalculated() == null) {
           Pair<Double, Double> maxLossAndPercent = Pair.of(0.0, 0.0);
-          Pair<Double, Double> twoPercentLoss = Pair.of(0.0, 0.0);
-          Pair<Double, Double> fivePercentLoss = Pair.of(0.0, 0.0);
           long maxLossTime = 0;
           Date stopLossTime = null;
           long twoPercentLossTime = 0;
@@ -135,6 +133,7 @@ public class MaxLossCalculatorTask {
                   .setStopLossTime(stopLossTime)
                   .setTwoPercentLossTime(twoPercentLossTime > 0 ? new Date(twoPercentLossTime) : null)
                   .setFivePercentLossTime(fivePercentLossTime > 0 ? new Date(fivePercentLossTime) : null)
+                  .setLossTimesCalculated(true)
                   .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)
                   .setIsPriceTargetMet(isProfitTargetMet)
                   .setPriceTargetMetTime(targetMetTime > 0 ? new Date(targetMetTime) : null)

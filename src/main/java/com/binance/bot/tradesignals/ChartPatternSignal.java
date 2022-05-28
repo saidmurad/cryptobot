@@ -39,6 +39,9 @@ public abstract class ChartPatternSignal {
   @Nullable
   public abstract Double stopLossPrice();
 
+  @Nullable
+  public abstract Boolean lossTimesCalculated();
+
   @Override
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -389,6 +392,8 @@ public abstract class ChartPatternSignal {
 
     public abstract Builder setStopLossPrice(Double stopLossPrice);
 
+    public abstract Builder setLossTimesCalculated(Boolean lossTimesCalculated);
+
     public Builder copy(ChartPatternSignal that) {
       return ChartPatternSignal.newBuilder()
           .setCoinPair(that.coinPair())
@@ -436,6 +441,7 @@ public abstract class ChartPatternSignal {
           .setStopLossTime(that.stopLossTime())
           .setTwoPercentLossTime(that.twoPercentLossTime())
           .setFivePercentLossTime(that.fivePercentLossTime())
+          .setLossTimesCalculated(that.lossTimesCalculated())
           .setPreBreakoutCandlestickStopLossPrice(that.preBreakoutCandlestickStopLossPrice())
           .setIsPriceTargetMet(that.isPriceTargetMet())
           .setPriceTargetMetTime(that.priceTargetMetTime())

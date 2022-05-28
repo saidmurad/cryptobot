@@ -105,9 +105,9 @@ public class ExitPositionAtMarketPrice {
       double qtyPrice = qtyToExit * (chartPatternSignal.tradeType() == TradeType.BUY ? bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestAsk():
               bookTickerPrices.getBookTicker(chartPatternSignal.coinPair()).bestBid());
       if (qtyPrice < 10){
-        dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
-        logger.info(String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal));
         if (chartPatternSignal.errorMessage() == null || !chartPatternSignal.errorMessage().equals("MIN_TRADE_VALUE_NOT_MET")) {
+          dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
+          logger.info(String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal));
           mailer.sendEmail("MIN_TRADE_VALUE_NOT_MET", String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal.toString()));
         }
         return;

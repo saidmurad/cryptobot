@@ -91,7 +91,7 @@ public class ChartPatternSignalMapper implements RowMapper<ChartPatternSignal> {
       chartPatternSignalBuilder.setUnRealized(rs.getDouble("UnRealized"));
       chartPatternSignalBuilder.setUnRealizedPercent(rs.getDouble("UnRealizedPercent"));
       chartPatternSignalBuilder.setIsPositionExited(rs.getInt("IsPositionExited") == 1);
-      chartPatternSignalBuilder.setErrorMessage(rs.getString("ErrorMessage"));
+      chartPatternSignalBuilder.setErrorMessage(rs.getString("ErrorMessage") != null ? rs.getString("ErrorMessage") : null);
       chartPatternSignalBuilder.setLastUpdatedTime(rs.getString("LastUpdatedTime") != null? dateFormat.parse(rs.getString("LastUpdatedTime")) : null);
       if (rs.getString("TradeExitType") != null) {
         chartPatternSignalBuilder.setTradeExitType(TradeExitType.valueOf(rs.getString("TradeExitType")));

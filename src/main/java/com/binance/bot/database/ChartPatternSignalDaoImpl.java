@@ -343,12 +343,22 @@ public class ChartPatternSignalDaoImpl {
   }
 
   public synchronized void updateErrorMessage(ChartPatternSignal chartPatternSignal, String errorMessage) {
-    String updateSql = String.format("update ChartPatternSignal set ErrorMessage='%s', lastUpdatedTime='%s' " +
-                    "where CoinPair='%s' and TimeFrame='%s' and TradeType='%s' and Pattern='%s' and DATETIME(TimeOfSignal)=DATETIME('%s') " +
-            "and Attempt=%d",
-        errorMessage, CandlestickUtil.df.format(new Date()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
-        chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()),
-        chartPatternSignal.attempt());
+    String updateSql;
+    if (errorMessage != null) {
+      updateSql = String.format("update ChartPatternSignal set ErrorMessage='%s', lastUpdatedTime='%s' " +
+              "where CoinPair='%s' and TimeFrame='%s' and TradeType='%s' and Pattern='%s' and DATETIME(TimeOfSignal)=DATETIME('%s') " +
+              "and Attempt=%d",
+          errorMessage, CandlestickUtil.df.format(new Date()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+          chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()),
+          chartPatternSignal.attempt());
+    } else {
+      updateSql = String.format("update ChartPatternSignal set ErrorMessage=null, lastUpdatedTime='%s' " +
+              "where CoinPair='%s' and TimeFrame='%s' and TradeType='%s' and Pattern='%s' and DATETIME(TimeOfSignal)=DATETIME('%s') " +
+              "and Attempt=%d",
+          CandlestickUtil.df.format(new Date()), chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(),
+          chartPatternSignal.tradeType().name(), chartPatternSignal.pattern(), CandlestickUtil.df.format(chartPatternSignal.timeOfSignal()),
+          chartPatternSignal.attempt());
+    }
     int numRowsUpdated = jdbcTemplate.update(updateSql);
     if (numRowsUpdated == 1) {
       logger.info(String.format("Updated Error Message and Last Updated Time for chart pattern signal: %s.", chartPatternSignal));

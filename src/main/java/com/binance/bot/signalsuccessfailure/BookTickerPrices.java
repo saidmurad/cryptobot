@@ -50,9 +50,9 @@ public class BookTickerPrices {
   public BookTicker getBookTicker(String symbol) throws BinanceApiException, ParseException {
     BookTicker bookTicker = bookTickerMap.get(symbol);
     if (bookTicker == null) {
-      logger.info(String.format("No market stream ticker found for symbol %s.", symbol));
+      //logger.info(String.format("No market stream ticker found for symbol %s.", symbol));
       double price = numberFormat.parse(binanceApiRestClient.getPrice(symbol).getPrice()).doubleValue();
-      logger.info(String.format("Fetched price of %f using REST api.", price));
+      //logger.info(String.format("Fetched price of %f using REST api.", price));
       bookTicker = BookTicker.create(price, price);
     }
     return bookTicker;

@@ -107,7 +107,7 @@ public class ExitPositionAtMarketPrice {
       if (qtyPrice < 10){
         dao.updateErrorMessage(chartPatternSignal, "MIN_TRADE_VALUE_NOT_MET");
         logger.info(String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal));
-        if (chartPatternSignal.errorMessage() != "MIN_TRADE_VALUE_NOT_MET") {
+        if (chartPatternSignal.errorMessage() == null || !chartPatternSignal.errorMessage().equals("MIN_TRADE_VALUE_NOT_MET")) {
           mailer.sendEmail("MIN_TRADE_VALUE_NOT_MET", String.format("cps %s could not be exited due to failing to meet $10 trade value.", chartPatternSignal.toString()));
         }
         return;

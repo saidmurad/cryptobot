@@ -6,6 +6,7 @@ import org.apache.commons.lang3.time.DateUtils;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.TimeZone;
 
 public class CandlestickUtil {
   public static final SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -14,6 +15,15 @@ public class CandlestickUtil {
   public static final SimpleDateFormat dayFormat = new SimpleDateFormat("dd");
   public static final SimpleDateFormat hourFormat = new SimpleDateFormat("HH");
   public static final SimpleDateFormat minuteFormat = new SimpleDateFormat("mm");
+
+  static {
+    df.setTimeZone(TimeZone.getTimeZone("UTC"));
+    yearFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    monthFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    dayFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    hourFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+    minuteFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+  }
 
   public static Date getCandlestickStart(Date time, TimeFrame timeFrame) throws ParseException {
     int year = getDateComponent(yearFormat, time);
@@ -28,8 +38,9 @@ public class CandlestickUtil {
       case HOUR:
         return getHourlyCandlestickStart(year, month, day, hour);
       case FOUR_HOURS:
-      default:
         return getFourHourlyCandlestickStart(year, month, day, hour);
+      default:
+        return getDailyCandlestickStart(year, month, day);
     }
   }
 
@@ -51,6 +62,11 @@ public class CandlestickUtil {
   static Date getFourHourlyCandlestickStart(int year, int month, int day, int hour) throws ParseException {
     int roundedHour = hour / 4 * 4;
     String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, roundedHour, 0);
+    return df.parse(candlestickStartTimeStr);
+  }
+
+  static Date getDailyCandlestickStart(int year, int month, int day) throws ParseException {
+    String candlestickStartTimeStr = String.format("%d-%d-%d %d:%d", year, month, day, 0, 0);
     return df.parse(candlestickStartTimeStr);
   }
 

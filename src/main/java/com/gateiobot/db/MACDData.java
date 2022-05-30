@@ -41,13 +41,12 @@ public class MACDData {
 
   public double ppoHistogram;
 
-  public MomentumStatus momentumStatus;
-
   @Override
   public String toString() {
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     return String.format("CoinPair: %s, TimeFrame: %s, Time: %s, CandleClosingPrice: %f, SMA: %f, TrendType: %s," +
-        " SMASlope: %f.", coinPair, timeFrame.name(), dateFormat.format(time), candleClosingPrice, sma,
-        trendType.name(), smaSlope);
+        " SMASlope: %f, EMA12: %f, EMA26: %f, MACD: %f, MACD Signal: %f, Histogram: %f, HistogramEMA: %f," +
+            "HistogramTrendType: %s.", coinPair, timeFrame.name(), dateFormat.format(time), candleClosingPrice, sma,
+        trendType.name(), smaSlope, ema12, ema26, macd, macdSignal, histogram, histogramEMA, histogramTrendType.name());
   }
 }

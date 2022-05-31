@@ -9,11 +9,15 @@ import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import io.gate.gateapi.ApiException;
+import io.gate.gateapi.api.SpotApi;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -47,8 +51,9 @@ public class MaxLossCalculatorTaskTest {
   @Mock
   private ChartPatternSignalDaoImpl mockDao;
 
-  @Mock
-  private  MACDDataDao mockMacdDataDao;
+  @Mock private GateIoClientFactory mockGateIoClientFactory;
+  @Mock private SpotApi mockSpotApi;
+  @Mock private SpotApi.APIlistCandlesticksRequest mockAPIlistCandlesticksRequest;
   @Mock private BinanceApiClientFactory mockBinanceApiClientFactory;
   @Mock private BinanceApiRestClient mockBinanceApiRestClient;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
@@ -61,12 +66,25 @@ public class MaxLossCalculatorTaskTest {
   private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   @Before
-  public void setUp() throws BinanceApiException {
+  public void setUp() throws BinanceApiException, ParseException, ApiException {
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
+    when(mockGateIoClientFactory.getSpotApi()).thenReturn(mockSpotApi);
     maxLossCalculatorTask = new MaxLossCalculatorTask(
-        mockDao, mockMacdDataDao, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
+        mockDao, mockGateIoClientFactory, mockBinanceApiClientFactory, mockSupportedSymbolsInfo);
     when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(getChartPatternSignal().build()));
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
+      Date START_TIME = dateFormat.parse("2021-12-01 00:00");
+      when(mockSpotApi.listCandlesticks(any())).thenReturn(mockAPIlistCandlesticksRequest);
+      when(mockAPIlistCandlesticksRequest.from(any())).thenReturn(mockAPIlistCandlesticksRequest);
+      when(mockAPIlistCandlesticksRequest.to(any())).thenReturn(mockAPIlistCandlesticksRequest);
+      when(mockAPIlistCandlesticksRequest.interval(any())).thenReturn(mockAPIlistCandlesticksRequest);
+      List<List<String>> candlesticks = new ArrayList<>();
+      for (int i = 0; i < 2; i++) {
+          candlesticks.add(Lists.newArrayList(
+                  Long.toString(DateUtils.addMinutes(START_TIME, 15 * i).getTime() / 1000),
+                  "volume", Double.toString(i + 190), "highest", "lowest", "open"));
+      }
+      when(mockAPIlistCandlesticksRequest.execute()).thenReturn(candlesticks);
   }
 
   @Test
@@ -169,7 +187,6 @@ public class MaxLossCalculatorTaskTest {
     public void testPerform_PreBreakoutCandlestickStopLossPrice_Null() throws MessagingException, ParseException, IOException, InterruptedException, BinanceApiException {
       when(mockDao.getAllChartPatternsNeedingMaxLossCalculated()).thenReturn(Lists.newArrayList(
                 getChartPatternSignal().setMaxLoss(4500.0).setPreBreakoutCandlestickStopLossPrice(null).build()));
-      when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
 
       maxLossCalculatorTask.perform();
 
@@ -204,7 +221,6 @@ public class MaxLossCalculatorTaskTest {
         aggTrade.setPrice("3000");
         aggTrades.add(aggTrade);
 
-        when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
         when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
                 .thenAnswer(invocation-> {
                     String fromId = invocation.getArgument(1);
@@ -428,7 +444,6 @@ public class MaxLossCalculatorTaskTest {
     aggTrade.setPrice("3000");
     aggTrades.add(aggTrade);
 
-    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn( 190.0);
     when(mockBinanceApiRestClient.getAggTrades(eq("ETHUSDT"), any(), eq(1000), any(), any()))
         .thenAnswer(invocation-> {
           String fromId = invocation.getArgument(1);

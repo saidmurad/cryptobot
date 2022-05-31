@@ -3,6 +3,7 @@ package com.binance.bot.sourcesignals;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.common.Util;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
@@ -12,10 +13,13 @@ import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDDataDao;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
+import io.gate.gateapi.ApiException;
+import io.gate.gateapi.api.SpotApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +60,7 @@ public class SourceSignalsReader {
   private final BinanceApiRestClient restClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
   private final ChartPatternSignalDaoImpl chartPatternSignalDao;
-  private final MACDDataDao macdDataDao;
+  private final SpotApi spotApi;
   private final SupportedSymbolsInfo supportedSymbolsInfo;
   private GetVolumeProfile getVolumeProfile;
   private final ExitPositionAtMarketPrice exitPositionAtMarketPrice;
@@ -65,10 +69,12 @@ public class SourceSignalsReader {
   private final Set<ChartPatternSignal> erroredOutPatterns = new HashSet<>();
   @Autowired
   Mailer mailer;
+  private static final int CANDLESTICK_INDEX_CLOSING_PRICE = 2;
+  int NUM_CANDLESTICKS_MINUS_ONE = 1;
   @Autowired
   public SourceSignalsReader(BinanceApiClientFactory binanceApiClientFactory, GetVolumeProfile getVolumeProfile,
                              ChartPatternSignalDaoImpl chartPatternSignalDao,
-                             MACDDataDao macdDataDao,
+                             GateIoClientFactory gateIoClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ExitPositionAtMarketPrice exitPositionAtMarketPrice) {
     this.supportedSymbolsInfo = supportedSymbolsInfo;
@@ -81,13 +87,13 @@ public class SourceSignalsReader {
     restClient = binanceApiClientFactory.newRestClient();
     this.getVolumeProfile = getVolumeProfile;
     this.chartPatternSignalDao = chartPatternSignalDao;
-    this.macdDataDao = macdDataDao;
+    spotApi = gateIoClientFactory.getSpotApi();
     this.exitPositionAtMarketPrice = exitPositionAtMarketPrice;
   }
 
   @Scheduled(fixedDelay = 60000, initialDelayString = "${timing.initialDelay}")
   // TODO: Add unit tests.
-  public void run() throws IOException {
+  public void run() throws IOException, ApiException {
     try {
       for (int i =0; i < 4; i++) {
         File file = new File(SOURCESIGNALS_PATTERNS_DIR + "/" + patternsFiles[i]);
@@ -125,7 +131,7 @@ public class SourceSignalsReader {
   }
 
   // TODO: Unit test.
-  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException, MessagingException, BinanceApiException {
+  void processPaterns(List<ChartPatternSignal> patternFromAltfins, TimeFrame timeFrame) throws ParseException, MessagingException, BinanceApiException, ApiException {
     patternFromAltfins = makeUnique(patternFromAltfins);
     int origSize = patternFromAltfins.size();
     List<ChartPatternSignal> temp = patternFromAltfins.stream()
@@ -216,13 +222,19 @@ public class SourceSignalsReader {
     }
   }
 
-  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException, MessagingException {
+  void insertNewChartPatternSignal(ChartPatternSignal chartPatternSignal) throws ParseException, BinanceApiException, MessagingException, ApiException {
     if (chartPatternSignal.profitPotentialPercent() < 0) {
       logger.warn(String.format("Skipping chart pattern signal with negative profit potential:\n%s.", chartPatternSignal));
       return;
     }
+    SpotApi.APIlistCandlesticksRequest req = spotApi.listCandlesticks(chartPatternSignal.coinPair());
+    Date candlestickFromTime = CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -NUM_CANDLESTICKS_MINUS_ONE);
+    req = req.from(candlestickFromTime.getTime() / 1000);
+    req = req.to(chartPatternSignal.timeOfSignal().getTime() / 1000);
+    req = req.interval(getTimeInterval(chartPatternSignal.timeFrame()));
+    List<List<String>> candlesticks = req.execute();
+    Double preBreakoutCandlestickStopLossPrice = Double.parseDouble(candlesticks.get(0).get(CANDLESTICK_INDEX_CLOSING_PRICE));
     Date currTime = new Date();
-    Double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
     // TODO: Unit test.
     if (preBreakoutCandlestickStopLossPrice == null) {
       if (!erroredOutPatterns.contains(chartPatternSignal)) {
@@ -372,4 +384,19 @@ public class SourceSignalsReader {
       }
     }
   }
+
+  private String getTimeInterval(TimeFrame timeFrame) {
+    switch (timeFrame) {
+      case FIFTEEN_MINUTES:
+        return "15m";
+      case HOUR:
+        return "1h";
+      case FOUR_HOURS:
+        return "4h";
+      case DAY:
+      default:
+        return "1d";
+    }
+  }
+
 }

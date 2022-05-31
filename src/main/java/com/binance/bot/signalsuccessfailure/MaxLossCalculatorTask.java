@@ -4,14 +4,18 @@ import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.AggTrade;
 import com.binance.api.client.exception.BinanceApiException;
+import com.binance.bot.common.CandlestickUtil;
 import com.binance.bot.common.Mailer;
 import com.binance.bot.database.ChartPatternSignalDaoImpl;
 import com.binance.bot.heartbeatchecker.HeartBeatChecker;
 import com.binance.bot.tradesignals.ChartPatternSignal;
+import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
 import com.binance.bot.trading.SupportedSymbolsInfo;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
+import io.gate.gateapi.api.SpotApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,20 +33,21 @@ import java.util.*;
 @Component
 public class MaxLossCalculatorTask {
   private final ChartPatternSignalDaoImpl dao;
-  private final MACDDataDao macdDataDao;
+  private final SpotApi spotApi;
+  private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final BinanceApiRestClient binanceApiRestClient;
   private final NumberFormat numberFormat = NumberFormat.getInstance(Locale.US);
-  private final SupportedSymbolsInfo supportedSymbolsInfo;
   private final Logger logger = LoggerFactory.getLogger(getClass());
   private Mailer mailer = new Mailer();
-
-
+  private static final int CANDLESTICK_INDEX_CLOSING_PRICE = 2;
+  private static final int CANDLESTICK_INDEX_START_TIME = 0;
+  int NUM_CANDLESTICKS_MINUS_ONE = 1;
 
   @Autowired
-  MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, MACDDataDao macdDataDao, BinanceApiClientFactory binanceApiClientFactory,
+  MaxLossCalculatorTask(ChartPatternSignalDaoImpl dao, GateIoClientFactory gateIoClientFactory, BinanceApiClientFactory binanceApiClientFactory,
                         SupportedSymbolsInfo supportedSymbolsInfo) {
     this.dao = dao;
-    this.macdDataDao = macdDataDao;
+    spotApi = gateIoClientFactory.getSpotApi();
     binanceApiRestClient = binanceApiClientFactory.newRestClient();
     this.supportedSymbolsInfo = supportedSymbolsInfo;
   }
@@ -73,13 +78,16 @@ public class MaxLossCalculatorTask {
           boolean isDone = false;
           Long fromId = null;
           long beginTime = System.currentTimeMillis();
-          double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
-          List<MACDData> macdDatas = macdDataDao.getMACDDataBetweenTimes(
-                  chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(), chartPatternSignal.timeOfSignal(), chartPatternSignal.priceTargetTime());
-          for (MACDData macdData : macdDatas) {
-            if (stopLossTime == null && (chartPatternSignal.tradeType() == TradeType.BUY && macdData.candleClosingPrice < preBreakoutCandlestickStopLossPrice
-                    || chartPatternSignal.tradeType() == TradeType.SELL && macdData.candleClosingPrice > preBreakoutCandlestickStopLossPrice)) {
-              stopLossTime = macdData.time;
+          SpotApi.APIlistCandlesticksRequest req = spotApi.listCandlesticks(chartPatternSignal.coinPair());
+          req = req.from(chartPatternSignal.timeOfSignal().getTime() / 1000);
+          req = req.to(chartPatternSignal.priceTargetTime().getTime() / 1000);
+          req = req.interval(getTimeInterval(chartPatternSignal.timeFrame()));
+          List<List<String>> candlesticks = req.execute();
+          Double preBreakoutCandlestickStopLossPrice = Double.parseDouble(candlesticks.get(0).get(CANDLESTICK_INDEX_CLOSING_PRICE));
+          for (List<String> macdData : candlesticks) {
+            if (stopLossTime == null && (chartPatternSignal.tradeType() == TradeType.BUY &&  Double.parseDouble(macdData.get(CANDLESTICK_INDEX_CLOSING_PRICE)) < preBreakoutCandlestickStopLossPrice
+                    || chartPatternSignal.tradeType() == TradeType.SELL && Double.parseDouble(macdData.get(CANDLESTICK_INDEX_CLOSING_PRICE)) > preBreakoutCandlestickStopLossPrice)) {
+              stopLossTime = new Date(Long.parseLong(macdData.get(CANDLESTICK_INDEX_START_TIME)) * 1000);
               break;
             }
           }
@@ -141,7 +149,13 @@ public class MaxLossCalculatorTask {
           dao.updateMaxLossAndTargetMetValues(updatedChartPatternSignal);
         }
         if(chartPatternSignal.preBreakoutCandlestickStopLossPrice() == null) {
-          double preBreakoutCandlestickStopLossPrice = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+          SpotApi.APIlistCandlesticksRequest req = spotApi.listCandlesticks(chartPatternSignal.coinPair());
+          Date candlestickFromTime = CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -NUM_CANDLESTICKS_MINUS_ONE);
+          req = req.from(candlestickFromTime.getTime() / 1000);
+          req = req.to(chartPatternSignal.timeOfSignal().getTime() / 1000);
+          req = req.interval(getTimeInterval(chartPatternSignal.timeFrame()));
+          List<List<String>> candlesticks = req.execute();
+          Double preBreakoutCandlestickStopLossPrice = Double.parseDouble(candlesticks.get(0).get(CANDLESTICK_INDEX_CLOSING_PRICE));
           ChartPatternSignal updatedChartPatternSignal = ChartPatternSignal.newBuilder()
                   .copy(chartPatternSignal)
                   .setPreBreakoutCandlestickStopLossPrice(preBreakoutCandlestickStopLossPrice)
@@ -191,5 +205,19 @@ public class MaxLossCalculatorTask {
     pnlPercent = pnl / chartPatternSignal.priceAtTimeOfSignal() * 100;
 
     return Pair.of(pnl, pnlPercent);
+  }
+
+  private String getTimeInterval(TimeFrame timeFrame) {
+    switch (timeFrame) {
+      case FIFTEEN_MINUTES:
+        return "15m";
+      case HOUR:
+        return "1h";
+      case FOUR_HOURS:
+        return "4h";
+      case DAY:
+      default:
+        return "1d";
+    }
   }
 }

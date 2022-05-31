@@ -18,8 +18,12 @@ import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
+import com.gateiobot.macd.MACDCalculation;
+import io.gate.gateapi.ApiException;
+import io.gate.gateapi.api.SpotApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +36,7 @@ import org.springframework.stereotype.Component;
 import javax.mail.MessagingException;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.time.Clock;
 import java.util.*;
 
 import static com.binance.bot.tradesignals.TimeFrame.FIFTEEN_MINUTES;
@@ -50,7 +55,8 @@ public class BinanceTradingBot {
     private final RepayBorrowedOnMargin repayBorrowedOnMargin;
     public Mailer mailer = new Mailer();
     private final OutstandingTrades outstandingTrades;
-    private final MACDDataDao macdDataDao;
+    private final SpotApi spotApi;
+    private final MACDCalculation macdCalculation;
 
     @Value("${per_trade_amount}")
     public
@@ -89,23 +95,28 @@ public class BinanceTradingBot {
     boolean useAltfinsInvalidations;
     private MarginAccount account;
     private BookTickerPrices.BookTicker btcPrice;
+    private static final int CANDLESTICK_INDEX_CLOSING_PRICE = 2;
+    int NUM_CANDLESTICKS_MINUS_ONE = 1;
+    Clock clock = Clock.systemDefaultZone();
 
     @Autowired
     public BinanceTradingBot(BinanceApiClientFactory binanceApiRestClientFactory,
                              SupportedSymbolsInfo supportedSymbolsInfo,
                              ChartPatternSignalDaoImpl dao,
+                             MACDCalculation macdCalculation,
                              BookTickerPrices bookTickerPrices,
                              OutstandingTrades outstandingTrades,
                              RepayBorrowedOnMargin repayBorrowedOnMargin,
-                             MACDDataDao macdDataDao) {
+                             GateIoClientFactory gateIoClientFactory) {
         this.binanceApiRestClient = binanceApiRestClientFactory.newRestClient();
         this.binanceApiMarginRestClient = binanceApiRestClientFactory.newMarginRestClient();
         this.supportedSymbolsInfo = supportedSymbolsInfo;
         this.dao = dao;
+        this.macdCalculation = macdCalculation;
         this.bookTickerPrices = bookTickerPrices;
         this.outstandingTrades = outstandingTrades;
         this.repayBorrowedOnMargin = repayBorrowedOnMargin;
-        this.macdDataDao = macdDataDao;
+        spotApi = gateIoClientFactory.getSpotApi();
     }
 
     void setMockMailer(Mailer mailer) {
@@ -164,10 +175,16 @@ public class BinanceTradingBot {
         }
     }
 
-  private boolean isPriceAlreadyRetracedToPreBreakoutLevel(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException {
+  private boolean isPriceAlreadyRetracedToPreBreakoutLevel(ChartPatternSignal chartPatternSignal) throws BinanceApiException, ParseException, ApiException {
     double breakoutBasedStopLoss;
       try {
-        breakoutBasedStopLoss = macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(chartPatternSignal);
+          SpotApi.APIlistCandlesticksRequest req = spotApi.listCandlesticks(chartPatternSignal.coinPair());
+          Date candlestickFromTime = CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -NUM_CANDLESTICKS_MINUS_ONE);
+          req = req.from(candlestickFromTime.getTime() / 1000);
+          req = req.to(chartPatternSignal.timeOfSignal().getTime() / 1000);
+          req = req.interval(getTimeInterval(chartPatternSignal.timeFrame()));
+          List<List<String>> candlesticks = req.execute();
+          breakoutBasedStopLoss = Double.parseDouble(candlesticks.get(0).get(CANDLESTICK_INDEX_CLOSING_PRICE));
       } catch (NullPointerException ex) {
         logger.warn(String.format("Pre-breakout candlestick missing for cps %s. Ignoring for trade.", chartPatternSignal));
         return true;
@@ -196,16 +213,18 @@ public class BinanceTradingBot {
       }
     }
 
-    private double getBreakoutPointBasedStopLossPrice(ChartPatternSignal chartPatternSignal) {
+    private double getBreakoutPointBasedStopLossPrice(ChartPatternSignal chartPatternSignal) throws ParseException, ApiException {
         Date beforeBreakoutCandlestickTime = CandlestickUtil.getIthCandlestickTime(chartPatternSignal.timeOfSignal(), chartPatternSignal.timeFrame(), -2);
-        MACDData beforeBreakoutCandlestickMACDData = macdDataDao.getMACDDataForCandlestick(chartPatternSignal.coinPair(), chartPatternSignal.timeFrame(), beforeBreakoutCandlestickTime);
+        List<MACDData> macdDatas = macdCalculation.getMACDData(chartPatternSignal.coinPair(), beforeBreakoutCandlestickTime, chartPatternSignal.timeFrame());
+        MACDData beforeBreakoutCandlestickMACDData = macdDatas.get(macdDatas.size() -1);
         return beforeBreakoutCandlestickMACDData.candleClosingPrice;
     }
 
     private final Map<String, Integer> macdMissingCounts = new HashMap<>();
     private final Set<String> permanentErrorCases = new HashSet<>();
-    private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException {
-        MACDData lastMACD = macdDataDao.getLastMACDData(Util.getGateFormattedCurrencyPair(chartPatternSignal.coinPair()), chartPatternSignal.timeFrame());
+    private boolean canEnterBasedOnMACD(ChartPatternSignal chartPatternSignal) throws ParseException, MessagingException, ApiException {
+        List<MACDData> macdDatas = macdCalculation.getMACDData(chartPatternSignal.coinPair(), new Date(clock.millis()), chartPatternSignal.timeFrame());
+        MACDData lastMACD = macdDatas.get(macdDatas.size() -2);
         if (lastMACD == null) {
             Integer missingCount = macdMissingCounts.get(chartPatternSignal.coinPair());
             if (missingCount == null) {
@@ -495,5 +514,19 @@ public class BinanceTradingBot {
           return usdtToRepay;
       }
       return -1;
+    }
+
+    private String getTimeInterval(TimeFrame timeFrame) {
+        switch (timeFrame) {
+            case FIFTEEN_MINUTES:
+                return "15m";
+            case HOUR:
+                return "1h";
+            case FOUR_HOURS:
+                return "4h";
+            case DAY:
+            default:
+                return "1d";
+        }
     }
 }

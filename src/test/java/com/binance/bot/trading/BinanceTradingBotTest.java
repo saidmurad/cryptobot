@@ -18,9 +18,13 @@ import com.binance.bot.signalsuccessfailure.BookTickerPrices;
 import com.binance.bot.tradesignals.ChartPatternSignal;
 import com.binance.bot.tradesignals.TimeFrame;
 import com.binance.bot.tradesignals.TradeType;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDData;
 import com.gateiobot.db.MACDDataDao;
+import com.gateiobot.macd.MACDCalculation;
 import com.google.common.collect.Lists;
+import io.gate.gateapi.ApiException;
+import io.gate.gateapi.api.SpotApi;
 import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Rule;
@@ -38,7 +42,10 @@ import org.springframework.data.util.Pair;
 
 import javax.mail.MessagingException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -58,6 +65,14 @@ public class BinanceTradingBotTest {
   BinanceApiMarginRestClient mockBinanceApiMarginRestClient;
   @Mock
   ChartPatternSignalDaoImpl mockDao;
+  @Mock
+  MACDCalculation macdCalculation;
+  @Mock
+  GateIoClientFactory mockGateIoClientFactory;
+  @Mock
+  SpotApi mockSpotApi;
+  @Mock
+  SpotApi.APIlistCandlesticksRequest mockAPIlistCandlesticksRequest;
   @Mock SupportedSymbolsInfo mockSupportedSymbolsInfo;
   private BinanceTradingBot binanceTradingBot;
   @Mock private BookTickerPrices mockBookTickerPrices;
@@ -70,18 +85,19 @@ public class BinanceTradingBotTest {
   @Captor ArgumentCaptor<ChartPatternSignal> chartPatternSignalArgumentCaptor;
   @Captor ArgumentCaptor<ChartPatternSignal.Order> chartPatternSignalOrderArgumentCaptor;
   private static final double BTC_PRICE = 40000;
-  @Mock private MACDDataDao mockMacdDataDao;
+  private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
   @Before
-  public void setUp() throws MessagingException, ParseException, InterruptedException, BinanceApiException {
+  public void setUp() throws MessagingException, ParseException, InterruptedException, BinanceApiException, ApiException {
     when(mockSupportedSymbolsInfo.getTradingActiveSymbols()).thenReturn(Map.of("ETHUSDT", true));
     when(mockBinanceApiClientFactory.newRestClient()).thenReturn(mockBinanceApiRestClient);
     when(mockBinanceApiClientFactory.newMarginRestClient()).thenReturn(mockBinanceApiMarginRestClient);
     TickerPrice tickerPrice = new TickerPrice();
     tickerPrice.setPrice("4000");
     when(mockBinanceApiRestClient.getPrice("ETHUSDT")).thenReturn(tickerPrice);
-    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao,
-        mockBookTickerPrices, mockOutstandingTrades, mockRepayBorrowedOnMargin, mockMacdDataDao);
+    when(mockGateIoClientFactory.getSpotApi()).thenReturn(mockSpotApi);
+    binanceTradingBot = new BinanceTradingBot(mockBinanceApiClientFactory, mockSupportedSymbolsInfo, mockDao, macdCalculation,
+        mockBookTickerPrices, mockOutstandingTrades, mockRepayBorrowedOnMargin, mockGateIoClientFactory);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
     BookTickerPrices.BookTicker btcBookTicker = BookTickerPrices.BookTicker.create(BTC_PRICE, BTC_PRICE);
@@ -109,9 +125,19 @@ public class BinanceTradingBotTest {
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL, PRICE_AT_TIME_OF_SIGNAL);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
 
+    Date START_TIME = dateFormat.parse("2021-12-01 00:00");
+    when(mockSpotApi.listCandlesticks(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.from(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.to(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.interval(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    List<List<String>> candlesticks = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      candlesticks.add(Lists.newArrayList(
+              Long.toString(DateUtils.addMinutes(START_TIME, 15 * i).getTime() / 1000),
+              "volume", Double.toString(i + 1000), "highest", "lowest", "open"));
+    }
+    when(mockAPIlistCandlesticksRequest.execute()).thenReturn(candlesticks);
     // So that the condition for stop loss based on breakout candlestick is satisifed regardless of the trade type.
-    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any(ChartPatternSignal.class)))
-        .thenReturn(PRICE_AT_TIME_OF_SIGNAL);
     binanceTradingBot.useBreakoutCandlestickForStopLoss = false;
   }
 
@@ -276,15 +302,27 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void perform_stopLossBasedOnBreakoutCandlestick_alreadyRetraced_buyTrade_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void perform_stopLossBasedOnBreakoutCandlestick_alreadyRetraced_buyTrade_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setTimeFrame(TimeFrame.FIFTEEN_MINUTES)
         .setTradeType(TradeType.BUY)
         .build();
     when(mockDao.getChartPatternSignalsToPlaceTrade(TimeFrame.FIFTEEN_MINUTES, TradeType.BUY, true))
         .thenReturn(Lists.newArrayList(chartPatternSignal));
-    when(mockMacdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any(ChartPatternSignal.class)))
-        .thenReturn(PRICE_AT_TIME_OF_SIGNAL);
+    Date START_TIME = dateFormat.parse("2021-12-01 00:00");
+    when(mockSpotApi.listCandlesticks(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.from(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.to(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.interval(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    List<List<String>> candlesticks = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      candlesticks.add(Lists.newArrayList(
+              Long.toString(DateUtils.addMinutes(START_TIME, 15 * i).getTime() / 1000),
+              "volume", Double.toString(i + 4000), "highest", "lowest", "open"));
+    }
+    when(mockAPIlistCandlesticksRequest.execute()).thenReturn(candlesticks);
+    // So that the condition for stop loss based on breakout candlestick is satisifed regardless of the trade type.
+    binanceTradingBot.useBreakoutCandlestickForStopLoss = false;
     BookTickerPrices.BookTicker bookTicker = BookTickerPrices.BookTicker.create(PRICE_AT_TIME_OF_SIGNAL - 1, PRICE_AT_TIME_OF_SIGNAL);
     when(mockBookTickerPrices.getBookTicker("ETHUSDT")).thenReturn(bookTicker);
     binanceTradingBot.perform();
@@ -451,11 +489,16 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void buyTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void buyTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     binanceTradingBot.entry_using_macd = true;
-    MACDData macdData = new MACDData();
-    macdData.macd = -1;
-    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.HOUR)).thenReturn(macdData);
+    List<MACDData> macdDataList = new ArrayList<>();
+    MACDData macdData1 = new MACDData();
+    macdData1.macd = -1;
+    macdDataList.add(macdData1);
+    MACDData macdData2 = new MACDData();
+    macdData1.macd = -2;
+    macdDataList.add(macdData2);
+    when( macdCalculation.getMACDData(any(), any(), any())).thenReturn(macdDataList);
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
@@ -470,19 +513,23 @@ public class BinanceTradingBotTest {
 
     binanceTradingBot.perform();
 
-    verify(mockMacdDataDao).getLastMACDData("ETH_USDT", TimeFrame.HOUR);
+    verify(macdCalculation).getMACDData(any(), any(), any());
     verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
     verify(mockDao, never()).setEntryOrder(any(), any());
     verifyNoInteractions(mockMailer);
   }
 
   @Test
-  public void sellTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void sellTrade_entryUsingMACD_unmet_doesntPlaceTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     binanceTradingBot.entry_using_macd = true;
-    MACDData macdData = new MACDData();
-    macdData.macd = 1;
-    binanceTradingBot.stopLossPercent = 5.0;
-    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.HOUR)).thenReturn(macdData);
+    List<MACDData> macdDataList = new ArrayList<>();
+    MACDData macdData1 = new MACDData();
+    macdData1.macd = -1;
+    macdDataList.add(macdData1);
+    MACDData macdData2 = new MACDData();
+    macdData1.macd = -2;
+    macdDataList.add(macdData2);
+    when( macdCalculation.getMACDData(any(), any(), any())).thenReturn(macdDataList);
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
     setUsdtBalance(12, 4, 0);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
@@ -499,7 +546,7 @@ public class BinanceTradingBotTest {
 
     binanceTradingBot.perform();
 
-    verify(mockMacdDataDao).getLastMACDData("ETH_USDT", TimeFrame.HOUR);
+    verify(macdCalculation).getMACDData(any(), any(),any());
     verify(mockBinanceApiMarginRestClient, never()).newOrder(any());
     verify(mockDao, never()).setEntryOrder(any(), any());
     verifyNoInteractions(mockMailer);
@@ -600,12 +647,17 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void macdForEntry_met_placesTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void macdForEntry_met_placesTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     binanceTradingBot.stopLossPercent = 5.0;
     binanceTradingBot.entry_using_macd = true;
-    MACDData macdData = new MACDData();
-    macdData.macd = -1;
-    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.HOUR)).thenReturn(macdData);
+    List<MACDData> macdDataList = new ArrayList<>();
+    MACDData macdData1 = new MACDData();
+    macdData1.macd = -1;
+    macdDataList.add(macdData1);
+    MACDData macdData2 = new MACDData();
+    macdData1.macd = -2;
+    macdDataList.add(macdData2);
+    when( macdCalculation.getMACDData(any(), any(), any())).thenReturn(macdDataList);
     setUsdtBalanceForStraightBuys(120);
     when(mockSupportedSymbolsInfo.getMinNotionalAndLotSize("ETHUSDT"))
         .thenReturn(Pair.of(10.0, 4));
@@ -1534,11 +1586,16 @@ public class BinanceTradingBotTest {
   }
 
     @Test
-  public void testPlaceSellTrade_macdForEntry_met_placesTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void testPlaceSellTrade_macdForEntry_met_placesTrade() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     binanceTradingBot.entry_using_macd = true;
-    MACDData macdData = new MACDData();
-    macdData.macd = -1;
-    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.FIFTEEN_MINUTES)).thenReturn(macdData);
+      List<MACDData> macdDataList = new ArrayList<>();
+      MACDData macdData1 = new MACDData();
+      macdData1.macd = -1;
+      macdDataList.add(macdData1);
+      MACDData macdData2 = new MACDData();
+      macdData1.macd = -2;
+      macdDataList.add(macdData2);
+      when( macdCalculation.getMACDData(any(), any(), any())).thenReturn(macdDataList);
 
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5
@@ -1612,12 +1669,17 @@ public class BinanceTradingBotTest {
   }
 
   @Test
-  public void preBreakoutCandlestickBasedStoplossEnabled_doesntPlaceHardStopLoss() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException {
+  public void preBreakoutCandlestickBasedStoplossEnabled_doesntPlaceHardStopLoss() throws MessagingException, ParseException, InterruptedException, ParseException, BinanceApiException, ApiException {
     binanceTradingBot.useBreakoutCandlestickForStopLoss = true;
     binanceTradingBot.entry_using_macd = true;
-    MACDData macdData = new MACDData();
-    macdData.macd = -1;
-    when(mockMacdDataDao.getLastMACDData("ETH_USDT", TimeFrame.FIFTEEN_MINUTES)).thenReturn(macdData);
+    List<MACDData> macdDataList = new ArrayList<>();
+    MACDData macdData1 = new MACDData();
+    macdData1.macd = -1;
+    macdDataList.add(macdData1);
+    MACDData macdData2 = new MACDData();
+    macdData1.macd = -2;
+    macdDataList.add(macdData2);
+    when( macdCalculation.getMACDData(any(), any(), any())).thenReturn(macdDataList);
 
     binanceTradingBot.stopLossPercent = 5.0;
     // Allows for an additional $20 to be borrowed and new margin level will be 1.5

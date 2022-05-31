@@ -11,9 +11,13 @@ import com.binance.bot.tradesignals.*;
 import com.binance.bot.trading.GetVolumeProfile;
 import com.binance.bot.trading.SupportedSymbolsInfo;
 import com.binance.bot.trading.VolumeProfile;
+import com.gateiobot.GateIoClientFactory;
 import com.gateiobot.db.MACDDataDao;
 import com.google.common.collect.Lists;
+import io.gate.gateapi.ApiException;
+import io.gate.gateapi.api.SpotApi;
 import junit.framework.TestCase;
+import org.apache.commons.lang3.time.DateUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -44,7 +48,9 @@ public class SourceSignalsReaderTest extends TestCase {
   @Mock
   private GetVolumeProfile mockGetVolumeProfile;
   @Mock private ChartPatternSignalDaoImpl mockDao;
-  @Mock private MACDDataDao macdDataDao;
+  @Mock private GateIoClientFactory mockGateIoClientFactory;
+  @Mock private SpotApi mockSpotApi;
+  @Mock private SpotApi.APIlistCandlesticksRequest mockAPIlistCandlesticksRequest;
   @Mock private BinanceApiClientFactory mockApiClientFactory;
   @Mock private BinanceApiRestClient mockRestClient;
   @Mock private SupportedSymbolsInfo mockSupportedSymbolsInfo;
@@ -52,10 +58,11 @@ public class SourceSignalsReaderTest extends TestCase {
   @Captor
   private ArgumentCaptor<ChartPatternSignal> patternArgCaptor;
   @Before
-  public void setUp() throws BinanceApiException {
+  public void setUp() throws BinanceApiException, ParseException, ApiException {
     MockitoAnnotations.openMocks(this);
     when(mockApiClientFactory.newRestClient()).thenReturn(mockRestClient);
-    sourceSignalsReader = new SourceSignalsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, macdDataDao, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
+    when(mockGateIoClientFactory.getSpotApi()).thenReturn(mockSpotApi);
+    sourceSignalsReader = new SourceSignalsReader(mockApiClientFactory, mockGetVolumeProfile, mockDao, mockGateIoClientFactory, mockSupportedSymbolsInfo, mockExitPositionAtMarketPrice);
     dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
     when(mockSupportedSymbolsInfo.getSupportedSymbols()).thenReturn(Set.of("ORNUSDT", "ORNUSDTXYZ", "RSRUSDT", "BTCUSDT", "ETHUSDT"));
     Candlestick currentCandlestick = new Candlestick();
@@ -72,6 +79,19 @@ public class SourceSignalsReaderTest extends TestCase {
     when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
     tickerPrice = new TickerPrice();
     tickerPrice.setPrice("1,111.12");
+
+    Date START_TIME = dateFormat.parse("2021-12-01 00:00");
+    when(mockSpotApi.listCandlesticks(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.from(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.to(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    when(mockAPIlistCandlesticksRequest.interval(any())).thenReturn(mockAPIlistCandlesticksRequest);
+    List<List<String>> candlesticks = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      candlesticks.add(Lists.newArrayList(
+              Long.toString(DateUtils.addMinutes(START_TIME, 15 * i).getTime() / 1000),
+              "volume", Double.toString(i + 1000), "highest", "lowest", "open"));
+    }
+    when(mockAPIlistCandlesticksRequest.execute()).thenReturn(candlesticks);
   }
 
   public void testReadPatterns_skipsNonUSDTNonBUSDQuoteCurrency() throws IOException {
@@ -127,7 +147,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(patterns.get(6).coinPair()).isEqualTo("XRPUSDT");
   }
 
-  public void testFilterProcessPatterns_noNewPatterns() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_noNewPatterns() throws ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patterns = Lists.newArrayList(getChartPatternSignal().build());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patterns);
 
@@ -136,7 +156,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterProcessPatterns_dedupesDuplicates() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_dedupesDuplicates() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     List<ChartPatternSignal> patterns = Lists.newArrayList(chartPatternSignal, chartPatternSignal);
     when(mockRestClient.getPrice(chartPatternSignal.coinPair())).thenReturn(tickerPrice);
@@ -148,7 +168,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(chartPatternSignal, volumeProfile);
   }
 
-  public void testNegativeProfitPotential_neverInserted() throws ParseException, MessagingException, BinanceApiException {
+  public void testNegativeProfitPotential_neverInserted() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
         .setProfitPotentialPercent(-1.0)
         .build();
@@ -161,7 +181,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_comebackChartPattern() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
         .setIsSignalOn(false)
         .setAttempt(1)
@@ -182,7 +202,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(2);
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern_secondComeback() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_comebackChartPattern_secondComeback() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
         .setIsSignalOn(false)
         .setAttempt(1)
@@ -206,7 +226,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().attempt()).isEqualTo(3);
   }
 
-  public void testFilterProcessPatterns_comebackTest_someSignal0_noCountingAsSecondComeback() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_comebackTest_someSignal0_noCountingAsSecondComeback() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal invalidatedChartPatternSignal1 = getChartPatternSignal()
         .setIsSignalOn(false)
         .setAttempt(1)
@@ -228,7 +248,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testFilterNewPatterns_nonPrimaryKeyChange_consideredIndistinct() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patternsInDb = sourceSignalsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = sourceSignalsReader.readPatterns(getPatternsFileContents());
@@ -251,7 +271,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao, never()).insertChartPatternSignal(any(), any());
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testFilterNewPatterns_primaryKeyChange_coinPair() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patternsInDb = sourceSignalsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = sourceSignalsReader.readPatterns(getPatternsFileContents());
@@ -275,7 +295,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testFilterNewPatterns_primaryKeyChange_tradeType() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patternsInDb = sourceSignalsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = sourceSignalsReader.readPatterns(getPatternsFileContents());
@@ -298,7 +318,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testFilterNewPatterns_primaryKeyChange_timeFrame() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patternsInDb = sourceSignalsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = sourceSignalsReader.readPatterns(getPatternsFileContents());
@@ -321,7 +341,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockDao).insertChartPatternSignal(modifiedChartPatternSignal, volumeProfile);
   }
 
-  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testFilterNewPatterns_primaryKeyChange_timeOfSignal() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     List<ChartPatternSignal> patternsInDb = sourceSignalsReader.readPatterns(getPatternsFileContents());
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(patternsInDb);
     List<ChartPatternSignal> patternsFromAltfins = sourceSignalsReader.readPatterns(getPatternsFileContents());
@@ -380,7 +400,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(patternSignalsToInvalidate).hasSize(0);
   }
 
-  public void testInsertChartPatternSignal_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testInsertChartPatternSignal_timeOfInsertion_tenCandlesticktime() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal pattern = sourceSignalsReader.readPatterns(getPatternsFileContents()).get(0);
 
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
@@ -397,7 +417,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat((int) (insertedVal.tenCandlestickTime().getTime() - insertedVal.timeOfSignal().getTime())/60000).isEqualTo(150);
   }
 
-  public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testInsertChartPatternSignal_notInsertedLate_FifteenMinutesTimeFrame() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal pattern = getChartPatternSignal().build();
 
     when(mockRestClient.getPrice(pattern.coinPair())).thenReturn(tickerPrice);
@@ -411,7 +431,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(insertedVal.isInsertedLate()).isFalse();
   }
 
-  public void testFilterProcessPatterns_comebackChartPattern_neverMarkedInsertedLate() throws ParseException, MessagingException, BinanceApiException {
+  public void testFilterProcessPatterns_comebackChartPattern_neverMarkedInsertedLate() throws ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal invalidatedChartPatternSignal = getChartPatternSignal()
         .setIsSignalOn(false)
         .setTimeOfSignal(new Date(System.currentTimeMillis() - 16 * 60 * 1000))
@@ -432,7 +452,7 @@ public class SourceSignalsReaderTest extends TestCase {
     assertThat(patternArgCaptor.getValue().isInsertedLate()).isFalse();
   }
 
-  public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException, MessagingException, BinanceApiException {
+  public void testInsertChartPatternSignal_nullVolumeProfile() throws IOException, ParseException, MessagingException, BinanceApiException, ApiException {
     ChartPatternSignal pattern = sourceSignalsReader.readPatterns(getPatternsFileContents()).get(0);
     TickerPrice tickerPrice = new TickerPrice();
     tickerPrice.setPrice("1,111.12");
@@ -452,7 +472,7 @@ public class SourceSignalsReaderTest extends TestCase {
   }
 
 
-  public void testInsertNewChartPatternSignal() throws ParseException, BinanceApiException, MessagingException {
+  public void testInsertNewChartPatternSignal() throws ParseException, BinanceApiException, MessagingException, ApiException {
     long currentTimeMillis = System.currentTimeMillis();
     Date currentTime = new Date(currentTimeMillis);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -462,7 +482,6 @@ public class SourceSignalsReaderTest extends TestCase {
             .build();
 
     when(mockGetVolumeProfile.getVolumeProfile(any())).thenReturn(volumeProfile);
-    when(macdDataDao.getStopLossLevelBasedOnBreakoutCandlestick(any())).thenReturn(1000.0);
 
     sourceSignalsReader.insertNewChartPatternSignal(chartPatternSignal);
 
@@ -511,7 +530,7 @@ public class SourceSignalsReaderTest extends TestCase {
   }
 
   public void testChartPatternSignalsToInvalidate_removedFromAltfins__priceIsObtained()
-      throws ParseException, MessagingException, BinanceApiException {
+          throws ParseException, MessagingException, BinanceApiException, ApiException {
     Date currTime = new Date();
     Date newerOccurTimeForSignal = new Date(currTime.getTime() + 10000);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()
@@ -530,7 +549,7 @@ public class SourceSignalsReaderTest extends TestCase {
   }
 
   public void testChartPatternSignalsToInvalidate_notUseAltfinsInvalidations()
-      throws ParseException, MessagingException, BinanceApiException {
+          throws ParseException, MessagingException, BinanceApiException, ApiException {
     sourceSignalsReader.useAltfinsInvalidations = false;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
@@ -546,7 +565,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verifyNoInteractions(mockExitPositionAtMarketPrice);
   }
 
-  public void testChartPatternSignalsToInvalidate_useAltfinsInvalidations() throws ParseException, MessagingException, BinanceApiException {
+  public void testChartPatternSignalsToInvalidate_useAltfinsInvalidations() throws ParseException, MessagingException, BinanceApiException, ApiException {
     sourceSignalsReader.useAltfinsInvalidations = true;
     ChartPatternSignal chartPatternSignal = getChartPatternSignal().build();
     when(mockDao.getAllChartPatterns(TimeFrame.FIFTEEN_MINUTES)).thenReturn(Lists.newArrayList(chartPatternSignal));
@@ -563,7 +582,7 @@ public class SourceSignalsReaderTest extends TestCase {
     verify(mockExitPositionAtMarketPrice).exitPositionIfStillHeld(eq(chartPatternSignal), eq(TradeExitType.REMOVED_FROM_SOURCESIGNALS));
   }
 
-  public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException, MessagingException, BinanceApiException {
+  public void testChartPatternSignalsToInvalidate_comebackPatterns_marked_removedFromAltfins() throws ParseException, MessagingException, BinanceApiException, ApiException {
     Date currTime = new Date();
     Date olderOccurTimeForSignal = new Date(currTime.getTime() - 10000);
     ChartPatternSignal chartPatternSignal = getChartPatternSignal()

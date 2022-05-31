@@ -55,7 +55,7 @@ public class MACDCalculation {
     this.mailer = mailer;
   }
 
-  List<MACDData> getMACDData(String coinPair, Date candlestickTime, TimeFrame timeFrame) throws ApiException, ParseException {
+  public List<MACDData> getMACDData(String coinPair, Date candlestickTime, TimeFrame timeFrame) throws ApiException, ParseException {
     SpotApi.APIlistCandlesticksRequest req = spotApi.listCandlesticks(coinPair);
     Date candlestickFromTime = CandlestickUtil.getIthCandlestickTime(candlestickTime, timeFrame, -NUM_CANDLESTICKS_MINUS_ONE);
     req = req.from(candlestickFromTime.getTime() / 1000);
